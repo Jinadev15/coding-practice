@@ -1,0 +1,77 @@
+id,topic,difficulty,type,question,code,option_a,option_b,option_c,option_d,answer,explanation
+cpp-vec-01,cpp-vector-array,Easy,code,How many elements do a and b contain?,"std::vector<int> a(5, 7);
+  std::vector<int> b{5, 7};",5 and 5,5 and 2,2 and 2,2 and 5,B,Parentheses: count + value. Braces prefer the initializer_list constructor.
+cpp-vec-02,cpp-vector-array,Medium,code,What is wrong here?,"std::vector<int> v{1, 2, 3};
+  int& first = v[0];
+  v.push_back(4);
+  std::cout << first;",Nothing,"push_back may reallocate, leaving first dangling (undefined behaviour)",v[0] returns a copy,Compile error,B,"Reallocation invalidates all references, pointers and iterators."
+cpp-vec-03,cpp-vector-array,Medium,theory,Why should a type's move constructor be noexcept when stored in a std::vector?,,Otherwise it cannot be stored,During reallocation vector moves elements only if the move is noexcept; otherwise it copies to keep the strong guarantee,noexcept makes push_back O(1),It is required for sorting,B,std::move_if_noexcept chooses copy when the move might throw.
+cpp-vec-04,cpp-vector-array,Medium,theory,Which container provides O(1) push and pop at BOTH ends and random access?,,std::vector,std::deque,std::list,std::array,B,deque is a sequence of fixed-size blocks.
+cpp-vec-05,cpp-vector-array,Easy,theory,"Which statements about std::array<int, 4> are true? (select all)",,Its size is part of its type,It stores elements inline without heap allocation,It can grow with push_back,It can be copied by assignment,A|B|D,Unlike C arrays it doesn't decay and can be copied/returned.
+cpp-vec-06,cpp-vector-array,Medium,theory,What does v.reserve(1000) change?,,size() becomes 1000,capacity() becomes at least 1000; size() is unchanged,Elements are value-initialised,Nothing until push_back,B,resize() changes size; reserve() only preallocates.
+cpp-str-01,cpp-strings,Medium,code,What is the problem?,"std::string_view name() { std::string s = ""robot""; return s; }",Nothing,The returned view refers to a destroyed local string (dangling),string_view cannot be returned,It copies the string twice,B,string_view does not own its characters.
+cpp-str-02,cpp-strings,Easy,code,What is printed?,"std::string s = ""hello world"";
+  std::cout << s.find(""o"") << ' ' << s.rfind(""o"") << ' ' << s.substr(6, 3);",4 7 wor,5 8 wor,4 7 world,4 4 wor,A,"find/rfind return 0-based positions; substr(pos, count)."
+cpp-str-03,cpp-strings,Medium,code,"What does std::stoi(""42abc"") return?",,Throws std::invalid_argument,42,0,Undefined behaviour,B,It parses the longest valid prefix; use from_chars and check ptr to require the whole string.
+cpp-str-04,cpp-strings,Medium,theory,Why is std::string_view often preferred over const std::string& for read-only parameters?,,It is always NUL-terminated,"Passing literals or char* does not construct a temporary std::string, and substr is O(1)",It owns its data,It is mutable,B,But beware lifetimes and the lack of NUL termination.
+cpp-str-05,cpp-strings,Medium,theory,"With libstdc++, which strings are stored without heap allocation thanks to SSO?",,None,Strings up to 15 characters,Strings up to 255 characters,All strings,B,sizeof(std::string) is 32 and capacity() of an empty string is 15.
+cpp-ass-01,cpp-associative,Medium,code,What is m.size() after this code?,"std::map<int, std::string> m;
+  if (m[7].empty()) {}
+  m.find(8);",0,1,2,Compile error,B,operator[] inserts a default value for a missing key; find does not.
+cpp-ass-02,cpp-associative,Medium,code,What is printed?,"std::set<int> s{10, 20, 30};
+  std::cout << *s.lower_bound(20) << ' ' << *s.upper_bound(20);",20 20,20 30,10 30,10 20,B,lower_bound: first >= k; upper_bound: first > k.
+cpp-ass-03,cpp-associative,Hard,theory,"Why is std::lower_bound(s.begin(), s.end(), k) on a std::set slow?",,Sets are unsorted,"Set iterators are only bidirectional, so the free algorithm takes O(n) steps; the member s.lower_bound(k) is O(log n)",It copies the set,It is not slow,B,Always use the member functions on associative containers.
+cpp-ass-04,cpp-associative,Medium,code,How many elements remain?,"std::multiset<int> ms{1, 1, 1, 2};
+  ms.erase(1);",3,1,2,0,B,erase(value) removes ALL equal elements; erase(ms.find(1)) removes one.
+cpp-ass-05,cpp-associative,Hard,theory,What happens if a std::set comparator uses <= instead of <?,,Duplicates are allowed,It violates strict weak ordering — undefined behaviour,The set becomes descending,Nothing,B,"comp(a, a) must be false."
+cpp-uno-01,cpp-unordered,Medium,theory,"What is the worst-case complexity of unordered_map::find, and when does it occur?",,"O(log n), always","O(n), when many keys collide into the same bucket","O(1), always","O(n log n), when rehashing",B,Average O(1) depends on a good hash distribution.
+cpp-uno-02,cpp-unordered,Medium,theory,What does rehashing an unordered_map invalidate?,,Nothing,"Iterators, but not references or pointers to elements","References and pointers, but not iterators",Everything including the keys,B,Nodes don't move; only the bucket array is rebuilt.
+cpp-uno-03,cpp-unordered,Medium,theory,What is required to use a custom struct as an unordered_map key? (select all),,An equality comparison (operator== or a KeyEqual),A hash function (std::hash specialisation or a hasher type),operator<,Equal keys must produce equal hashes,A|B|D,operator< is what std::map needs.
+cpp-uno-04,cpp-unordered,Hard,theory,"Why can a contest solution using unordered_map<long long,int> be ""hacked"" into a time limit exceeded?",,unordered_map is always slower than map,"libstdc++ hashes integers with the identity and uses predictable bucket counts, so crafted keys all collide",long long keys are not supported,The table never rehashes,B,Use a randomised mixing hash such as SplitMix64.
+cpp-uno-05,cpp-unordered,Easy,theory,What is the default max_load_factor of std::unordered_map?,,0.5,0.75,1.0,2.0,C,"When size/bucket_count would exceed it, the table rehashes."
+cpp-adp-01,cpp-adaptors,Medium,code,What is printed?,"std::priority_queue<int> a;
+  std::priority_queue<int, std::vector<int>, std::greater<>> b;
+  for (int x : {3, 1, 4}) { a.push(x); b.push(x); }
+  std::cout << a.top() << b.top();",13,41,14,31,B,Default is a max-heap; greater<> makes a min-heap.
+cpp-adp-02,cpp-adaptors,Medium,theory,Why does std::stack::pop() return void?,,Performance only,"Returning the element by value could throw after removal, losing it; separating top() and pop() gives exception safety",Stacks cannot return values,Historical accident,B,The same design applies to queue and priority_queue.
+cpp-adp-03,cpp-adaptors,Hard,theory,"For priority_queue<Node, vector<Node>, decltype(cmp)>, which cmp puts the SMALLEST dist on top?",,"[](const Node& a, const Node& b) { return a.dist < b.dist; }","[](const Node& a, const Node& b) { return a.dist > b.dist; }","[](const Node& a, const Node& b) { return a.dist <= b.dist; }","[](const Node& a, const Node& b) { return a.dist == b.dist; }",B,"The comparator says when a should be below b; the ""greatest"" is on top."
+cpp-adp-04,cpp-adaptors,Medium,theory,std::priority_queue has no decrease_key. How does Dijkstra usually cope?,,It rebuilds the heap each time,Push a new (smaller) entry and skip stale entries when they are popped (lazy deletion),It uses std::set only,Dijkstra doesn't need it,B,Complexity stays O((V+E) log V).
+cpp-adp-05,cpp-adaptors,Easy,theory,What is the default underlying container of std::queue?,,std::vector,std::deque,std::list,std::array,B,"queue needs efficient pop_front, which vector lacks."
+cpp-it-01,cpp-iterators,Medium,theory,"Why doesn't std::sort(lst.begin(), lst.end()) compile for a std::list?",,Lists are unsortable,std::sort requires random-access iterators; list iterators are bidirectional (use lst.sort()),Lists have no begin(),It compiles but is slow,B,Algorithms state their minimum iterator category.
+cpp-it-02,cpp-iterators,Medium,theory,What does a container's end() refer to?,,The last element,The position one past the last element (must not be dereferenced),nullptr,The first element of the next container,B,"Ranges are half-open [begin, end)."
+cpp-it-03,cpp-iterators,Medium,code,"What is the correct way to erase all zero values from a std::map<int,int> m while iterating?",for (auto it = m.begin(); it != m.end(); ) { /* ? */ },if (it->second == 0) m.erase(it); ++it;,if (it->second == 0) it = m.erase(it); else ++it;,m.erase(it++) always,It is impossible,B,erase returns the next valid iterator; the erased one is invalid.
+cpp-it-04,cpp-iterators,Medium,code,What happens?,"std::vector<int> a{1, 2, 3}, b;
+  std::copy(a.begin(), a.end(), b.begin());","b becomes {1,2,3}",Undefined behaviour: b has no room; algorithms don't grow containers,Compile error,b stays empty,B,Use std::back_inserter(b).
+cpp-it-05,cpp-iterators,Medium,theory,Which containers never invalidate iterators to OTHER elements on insertion? (select all),,std::list,std::set,std::vector,std::map,A|B|D,Node-based containers never move existing nodes.
+cpp-alg-01,cpp-algorithms,Medium,code,What are w.size() and the contents of the first three elements after this line?,"std::vector<int> w{1, 2, 3, 2, 4};
+  auto e = std::remove(w.begin(), w.end(), 2);","3 — {1,3,4}","5 — {1,3,4} followed by unspecified values","5 — {1,2,3}","3 — {1,2,3}",B,"remove only shifts; call w.erase(e, w.end()) or std::erase(w, 2)."
+cpp-alg-02,cpp-algorithms,Medium,code,What is printed?,"std::vector<long long> v{3000000000LL, 3000000000LL};
+  std::cout << (std::accumulate(v.begin(), v.end(), 0) == 6000000000LL);",1,0 (accumulates in int and overflows/truncates),Compile error,Exception,B,The init value 0 makes the accumulator an int; use 0LL.
+cpp-alg-03,cpp-algorithms,Medium,theory,Which algorithm finds the k-th smallest element in average O(n)?,,std::sort,std::nth_element,std::partial_sort,std::stable_sort,B,"partial_sort is O(n log k), sort O(n log n)."
+cpp-alg-04,cpp-algorithms,Medium,code,"After this code, what does u contain?","std::vector<int> u{1, 1, 2, 2, 2, 3, 1};
+  u.erase(std::unique(u.begin(), u.end()), u.end());","{1, 2, 3}","{1, 2, 3, 1}","{1, 1, 2, 3}","{3, 2, 1}",B,unique removes only ADJACENT duplicates; sort first for full dedup.
+cpp-alg-05,cpp-algorithms,Medium,theory,Which statement about std::sort is true?,,It is stable,It is not stable; use std::stable_sort to keep equal elements in their original order,It works on std::list,It is O(n²) on sorted input,B,Introsort guarantees O(n log n) worst case.
+cpp-lam-01,cpp-lambdas,Medium,code,What is printed?,"int k = 1;
+  auto byval = [k] { return k; };
+  auto byref = [&k] { return k; };
+  k = 5;
+  std::cout << byval() << byref();",11,15,55,51,B,By-value capture copies at creation time.
+cpp-lam-02,cpp-lambdas,Medium,code,What is printed?,"int k = 10;
+  auto f = [k]() mutable { return ++k; };
+  f();
+  std::cout << f() << ' ' << k;",12 10,12 12,11 10,Compile error,A,"mutable lets the lambda modify its own copy, which persists between calls."
+cpp-lam-03,cpp-lambdas,Hard,code,What is wrong?,std::function<int()> counter() { int n = 0; return [&n] { return ++n; }; },Nothing,The lambda captures a local by reference and outlives it — dangling reference (UB),std::function can't hold lambdas,n must be static,B,Capture by value ([n]() mutable) when the lambda escapes the scope.
+cpp-lam-04,cpp-lambdas,Medium,theory,What are costs of std::function compared with a template parameter F? (select all),,Calls go through type erasure and generally cannot be inlined,It may heap-allocate for large captures,It cannot store lambdas with captures,It cannot be stored in a container,A|B,Its benefit is storing heterogeneous callables behind one type.
+cpp-lam-05,cpp-lambdas,Medium,theory,"Without the mutable keyword, a lambda's operator() is...",,static,const,virtual,noexcept,B,By-value captures therefore cannot be modified.
+cpp-utl-01,cpp-utilities,Easy,code,What is printed?,"std::optional<int> o;
+  std::cout << o.value_or(-1) << o.has_value();",-10,00,-11,Throws,A,Empty optional: value_or returns the fallback.
+cpp-utl-02,cpp-utilities,Medium,code,What happens?,"std::variant<int, std::string> v = std::string(""hi"");
+  int x = std::get<int>(v);",x == 0,Throws std::bad_variant_access,Compile error,Undefined behaviour,B,std::get_if returns nullptr instead of throwing.
+cpp-utl-03,cpp-utilities,Medium,theory,What advantage does std::visit over a variant have compared with virtual dispatch?,,It supports an open set of types,"Forgetting to handle an alternative is a compile error, and values are stored inline without heap allocation",It is always slower,It works with any type at runtime,B,Variants model closed sets of types.
+cpp-utl-04,cpp-utilities,Medium,theory,Why is std::tie useful in comparators?,,It copies objects faster,"It builds tuples of references that compare lexicographically, giving concise multi-key ordering",It ties two containers together,It is required by std::sort,B,"return std::tie(a.x, a.y) < std::tie(b.x, b.y);"
+cpp-utl-05,cpp-utilities,Medium,theory,What does *opt do on an empty std::optional?,,Returns a default value,Undefined behaviour (unchecked); value() is the checked version,Throws bad_optional_access,Returns nullptr,B,Test with if (opt) first.
+cpp-rng-01,cpp-ranges,Medium,code,What is printed?,"for (int x : std::views::iota(1, 10) | std::views::filter([](int x){ return x % 2; }) | std::views::take(3)) std::cout << x;",123,135,13579,246,B,"Odd numbers, first three."
+cpp-rng-02,cpp-ranges,Medium,theory,What does it mean that views are lazy?,,They are slow,"Elements are computed on demand during iteration, without intermediate containers",They cache all results,They run in a background thread,B,take(n) can stop an infinite pipeline early.
+cpp-rng-03,cpp-ranges,Medium,code,What does this do?,"std::ranges::sort(fleet, {}, &Robot::battery);",Sorts by name,Sorts robots by their battery member (a projection) using the default comparison,Compile error,Sorts pointers,B,The third argument is a projection applied before comparing.
+cpp-rng-04,cpp-ranges,Hard,theory,Which statements about views are true? (select all),,Views do not own the elements they refer to,A view can dangle if it outlives its source range,views::filter copies every element into a new vector,Views can represent infinite sequences,A|B|D,Filter just skips elements lazily.
+cpp-rng-05,cpp-ranges,Easy,theory,How do you iterate only the keys of a std::map m with ranges?,,m.keys(),m | std::views::keys,std::keys(m),m | std::views::first,B,views::values gives the mapped values.
