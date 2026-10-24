@@ -17,7 +17,8 @@ from pathlib import Path
 
 from .content import Language, Problem
 
-MAX_OUT = 64_000
+MAX_OUT = 64_000           # stderr / compiler messages
+MAX_STDOUT = 32_000_000   # program output kept for comparison (big tests print MBs)
 _expected_cache: dict[tuple[str, float], list[str]] = {}
 
 
@@ -129,7 +130,7 @@ class Workspace:
             )
         except subprocess.TimeoutExpired as e:
             out = e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or "")
-            return {"status": "TLE", "stdout": out[:MAX_OUT], "stderr": "Time limit exceeded",
+            return {"status": "TLE", "stdout": out[:MAX_STDOUT], "stderr": "Time limit exceeded",
                     "time_ms": int((time.perf_counter() - start) * 1000)}
         ms = int((time.perf_counter() - start) * 1000)
         stderr = r.stderr.replace(str(self.dir) + "/", "")[:MAX_OUT]
@@ -140,7 +141,7 @@ class Workspace:
                 stderr = f"Killed by signal {-r.returncode}"
         if ms > time_limit * 1000 and status == "OK":
             status = "TLE"
-        return {"status": status, "stdout": r.stdout[:MAX_OUT], "stderr": stderr, "time_ms": ms}
+        return {"status": status, "stdout": r.stdout[:MAX_STDOUT], "stderr": stderr, "time_ms": ms}
 
 
 def expected_outputs(lang: Language, problem: Problem) -> list[str]:
