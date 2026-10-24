@@ -141,6 +141,12 @@ class Progress:
                 if self.problem_state(st, pid) != "completed":
                     remaining_tasks.append({"kind": "problem", "topic": t.id, "problem": pid,
                                             "title": lang.problems[pid].title})
+        for m in summary["milestones"]:
+            if m["unlocked"]:
+                for pid in lang.milestones.get(m["n"], []):
+                    if self.problem_state(st, pid) != "completed":
+                        remaining_tasks.append({"kind": "problem", "topic": f"milestone-{m['n']}",
+                                                "problem": pid, "title": lang.problems[pid].title})
         remaining = len(remaining_tasks)
 
         pace_target = max(floor, math.ceil(avg * 1.1)) if avg else floor

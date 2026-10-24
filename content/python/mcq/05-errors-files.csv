@@ -1,0 +1,104 @@
+id,topic,difficulty,type,question,code,option_a,option_b,option_c,option_d,answer,explanation
+py-exc-01,py-exceptions,Easy,output,What is printed?,"try:
+    x = int(""42"")
+except ValueError:
+    print(""bad"")
+else:
+    print(""good"", x)
+finally:
+    print(""done"")",good 42 then done,bad then done,good 42,done,A,"No exception occurs, so `else` runs, then `finally` always runs."
+py-exc-02,py-exceptions,Medium,output,What is printed?,"def f():
+    try:
+        return ""try""
+    finally:
+        print(""finally"")
+print(f())",try,finally then try,try then finally,finally,B,"`finally` executes before the function actually returns, so its print appears first; then the caller prints ""try""."
+py-exc-03,py-exceptions,Medium,output,What is printed?,"try:
+    {}[""k""]
+except LookupError:
+    print(""lookup"")
+except KeyError:
+    print(""key"")",key,lookup,lookup then key,KeyError traceback,B,"Handlers are checked in order and the first match wins. KeyError is a subclass of LookupError, so the general handler catches it first — order specific before general."
+py-exc-04,py-exceptions,Medium,theory,Why is a bare `except:` dangerous?,,It is a syntax error,It also catches KeyboardInterrupt and SystemExit and hides real bugs,It only catches ValueError,It makes the program run slower,B,"A bare except catches everything deriving from BaseException, including Ctrl+C and sys.exit(). Catch specific exceptions."
+py-exc-05,py-exceptions,Easy,theory,"Which exception does `int(""abc"")` raise?",,TypeError,ValueError,SyntaxError,NameError,B,The argument has the right type (str) but an invalid value for conversion: ValueError. `int(None)` would be a TypeError.
+py-exc-06,py-exceptions,Medium,theory,"What does `raise AppError(""bad config"") from e` add compared to a plain raise?",,Nothing,It records e as the explicit cause (__cause__) so the traceback shows both errors,It suppresses e completely,It retries the operation,B,Explicit chaining preserves the original low-level error as the cause while raising a higher-level one.
+py-exc-07,py-exceptions,Medium,theory,Custom exceptions should usually inherit from which class?,,BaseException,Exception,object,Error,B,Inherit from Exception (or one of its subclasses). BaseException is reserved for system-exiting exceptions like KeyboardInterrupt.
+py-exc-08,py-exceptions,Medium,theory,What does EAFP stand for and mean?,,Every Assignment Follows Python — use PEP 8,Easier to Ask Forgiveness than Permission — try the operation and handle the exception,Errors Are Fatal Problems — avoid exceptions,Exceptions Always Fire Promptly,B,"EAFP is the idiomatic Python style: attempt the action and catch failures, avoiding race conditions and duplicate checks of the LBYL style."
+py-exc-09,py-exceptions,Hard,output,What is printed?,"def f():
+    try:
+        raise ValueError(""x"")
+    except ValueError:
+        raise
+try:
+    f()
+except ValueError as e:
+    print(""caught"", e)",caught x,Nothing,RuntimeError,caught None,A,"A bare `raise` inside an except block re-raises the current exception unchanged, which the outer handler catches."
+py-exc-10,py-exceptions,Medium,theory,Where is the best place to catch an exception?,,"In every function, as close to the error as possible","At the level that can meaningfully recover, report or retry — often near the top of the program",Only in the main module,Never — let all programs crash,B,"Low-level code raises with good messages; code that knows the context (UI, request handler, main loop) decides how to recover."
+py-ctx-01,py-context-managers,Easy,theory,Which two methods make an object usable in a `with` statement?,,__init__ and __del__,__enter__ and __exit__,__open__ and __close__,__start__ and __stop__,B,"The context manager protocol consists of `__enter__` (setup, its return value bound by `as`) and `__exit__` (teardown, always called)."
+py-ctx-02,py-context-managers,Medium,output,What is printed?,"class M:
+    def __enter__(self):
+        return 42
+    def __exit__(self, *a):
+        return False
+with M() as x:
+    print(x)",<__main__.M object>,42,None,True,B,"The `as` target receives whatever `__enter__` returns — here 42, not the manager object."
+py-ctx-03,py-context-managers,Medium,output,What happens?,"class M:
+    def __enter__(self):
+        return self
+    def __exit__(self, t, v, tb):
+        return True
+with M():
+    1 / 0
+print(""after"")",ZeroDivisionError traceback,after,Nothing,True,B,"`__exit__` returning a truthy value suppresses the exception, so execution continues after the with block."
+py-ctx-04,py-context-managers,Medium,output,What is printed?,"from contextlib import contextmanager
+@contextmanager
+def cm():
+    print(""in"")
+    yield
+    print(""out"")
+try:
+    with cm():
+        raise ValueError
+except ValueError:
+    print(""caught"")",in out caught,in caught,caught,in out,B,"Without try/finally around `yield`, the exception is raised at the yield and the code after it (""out"") never runs. Always wrap yield in try/finally."
+py-ctx-05,py-context-managers,Medium,output,In what order are a and b exited?,"with A() as a, B() as b:
+    pass",a then b,b then a,At the same time,Unspecified,B,"Context managers exit in reverse order of entry, like nested with statements (a stack)."
+py-ctx-06,py-context-managers,Easy,theory,What does `contextlib.suppress(FileNotFoundError)` do?,,Prevents files from being created,Silently ignores FileNotFoundError raised inside the with block,Deletes missing files,Converts the error into a warning,B,It is a ready-made context manager whose __exit__ returns True for the listed exception types.
+py-ctx-07,py-context-managers,Medium,theory,When is `contextlib.ExitStack` the right tool?,,When you have exactly one file,When the number of resources to manage is only known at run time,To exit the program,To suppress all exceptions,B,ExitStack lets you enter a dynamic number of context managers and guarantees all of them are exited in reverse order.
+py-ctx-08,py-context-managers,Medium,theory,Which C++ idiom is Python's context manager closest to?,,Templates,RAII (Resource Acquisition Is Initialization),Operator overloading,Multiple inheritance,B,"Both bind a resource's release to leaving a scope, guaranteeing cleanup even when errors occur."
+py-ctx-09,py-context-managers,Hard,output,What is printed?,"from contextlib import contextmanager
+@contextmanager
+def cm():
+    try:
+        yield 1
+    finally:
+        print(""cleanup"")
+with cm() as v:
+    print(v)
+print(""end"")",1 cleanup end,cleanup 1 end,1 end cleanup,end,A,"Setup runs, the body prints 1, leaving the block resumes the generator so the finally prints cleanup, then 'end'."
+py-fio-01,py-file-io,Easy,theory,"What happens when you open an existing file with mode ""w""?",,Writes are appended at the end,The file is truncated to empty immediately,FileExistsError is raised,It opens read-only,B,"""w"" truncates on open. Use ""a"" to append and ""x"" to refuse overwriting."
+py-fio-02,py-file-io,Easy,output,"A file contains the two lines ""a"" and ""b"". What is printed?","with open(""f.txt"", encoding=""utf-8"") as f:
+    print(f.readlines())","['a', 'b']","['a\n', 'b\n']",'a\nb\n',['a b'],B,"Lines keep their trailing newline characters; strip them with rstrip(""\n"")."
+py-fio-03,py-file-io,Medium,output,What does out.txt contain afterwards?,"with open(""out.txt"", ""w"", encoding=""utf-8"") as f:
+    f.write(""a"")
+    f.writelines([""b"", ""c""])",a\nb\nc\n,abc,a b c,"['b', 'c']",B,"Neither write nor writelines adds newlines; you must include ""\n"" yourself (print(..., file=f) adds one)."
+py-fio-04,py-file-io,Medium,theory,Which mode should you use to read a PNG image?,,"""r""","""rb""","""rt""","""r+""",B,Images are binary data; binary mode returns raw bytes without decoding or newline translation.
+py-fio-05,py-file-io,Medium,theory,"Why should you pass encoding=""utf-8"" when opening text files?",,It makes reading faster,"Otherwise the platform default encoding is used, which differs between systems",It is required syntax,It compresses the file,B,The default encoding is platform-dependent; being explicit makes the program behave the same everywhere.
+py-fio-06,py-file-io,Medium,theory,What is the most memory-efficient way to process a huge text file line by line?,,"f.read().split(""\n"")",f.readlines(),for line in f:,list(f),C,"Iterating over the file object reads lines lazily from a buffer, using constant memory."
+py-fio-07,py-file-io,Hard,theory,How do you update a config file so that a crash never leaves it half-written?,,"Open it with ""a""","Write to a temporary file, then os.replace() it over the original",Call f.flush() after every character,"Use mode ""r+""",B,os.replace is atomic: readers see either the complete old file or the complete new one.
+py-fio-08,py-file-io,Medium,output,What happens?,"with open(""x.txt"", ""w"") as f:
+    pass
+f.write(""hi"")",Writes hi,ValueError: I/O operation on closed file,FileNotFoundError,Nothing,B,The with block closed the file; any further operation on it raises ValueError.
+py-fio-09,py-file-io,Medium,theory,"A relative path like ""data.txt"" is resolved against what?",,The directory containing the script,The current working directory of the process,The home directory,The Python installation directory,B,"Relative paths use the CWD. Use Path(__file__).parent / ""data.txt"" for files next to your script."
+py-fio-10,py-file-io,Easy,theory,Which mode creates a new file but fails if it already exists?,,"""w""","""a""","""x""","""r+""",C,"Exclusive creation mode ""x"" raises FileExistsError instead of overwriting."
+py-path-01,py-pathlib-os,Easy,output,What is printed?,"from pathlib import Path
+p = Path(""data"") / ""scan.tar.gz""
+print(p.name, p.suffix, p.stem)",scan.tar.gz .gz scan.tar,scan .tar.gz scan,scan.tar.gz .tar.gz scan,data .gz scan,A,`.suffix` is only the last extension and `.stem` is the name without it.
+py-path-02,py-pathlib-os,Medium,theory,"What does `Path(""out/a/b"").mkdir(parents=True, exist_ok=True)` do?",,"Creates only b, failing if out/a is missing","Creates out, out/a and out/a/b as needed, with no error if they already exist",Deletes and recreates the directories,Creates a file named b,B,parents=True works like `mkdir -p`; exist_ok=True suppresses FileExistsError.
+py-path-03,py-pathlib-os,Medium,theory,"What is the difference between `glob(""*.py"")` and `rglob(""*.py"")`?",,None,glob looks only in the directory itself; rglob searches recursively through all subdirectories,rglob is faster,"glob returns strings, rglob returns Paths",B,"rglob(pattern) is equivalent to glob(""**/"" + pattern)."
+py-path-04,py-pathlib-os,Medium,theory,"How do you reliably open a data file that lives next to your script, regardless of where the program is launched from?",,"open(""data.txt"")","open(Path(__file__).resolve().parent / ""data.txt"")","open(os.getcwd() + ""data.txt"")","open(""~/data.txt"")",B,Relative paths depend on the current working directory; `__file__` gives the script's own location.
+py-path-05,py-pathlib-os,Easy,theory,Which call deletes a directory and everything inside it?,,Path(d).rmdir(),shutil.rmtree(d),os.remove(d),Path(d).unlink(),B,rmdir only removes EMPTY directories; unlink/os.remove delete files. rmtree removes whole trees permanently.
+py-path-06,py-pathlib-os,Medium,theory,Why should secrets like API keys be read with os.environ instead of written in the source code?,,os.environ is faster,Source code is shared and committed to version control; environment variables keep secrets out of it and allow per-machine configuration,Python cannot store strings in code,It encrypts them automatically,B,Configuration through the environment is a standard practice (twelve-factor apps); never commit credentials.
+py-path-07,py-pathlib-os,Medium,output,What is printed?,"from pathlib import Path
+print(Path(""a"") / ""b"" / ""c.txt"")",a/b/c.txt (on Linux),abc.txt,TypeError,a//b//c.txt,A,The `/` operator joins path components with the OS separator.
+py-path-08,py-pathlib-os,Hard,theory,"In `os.walk`, how do you stop it descending into a "".git"" directory?",,Raise StopIteration,"Remove "".git"" from the `dirs` list in place (e.g. dirs[:] = [...])","Pass skip="".git""",It is impossible,B,"os.walk (top-down) consults the same `dirs` list object to decide where to go next, so pruning it in place skips those subtrees."
