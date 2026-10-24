@@ -1,0 +1,14 @@
+{
+  "name": "C++",
+  "order": 3,
+  "color": "#00599c",
+  "icon": "C++",
+  "ext": "cpp",
+  "main": "main.cpp",
+  "source_ext": [".cpp", ".cc"],
+  "editor_mode": "text/x-c++src",
+  "compile": ["g++", "-std=c++23", "-O2", "-Wall", "-Wextra", "-pipe", "-o", "prog", "{sources}", "-lpthread"],
+  "run": ["./prog"],
+  "time_limit": 1,
+  "memory_mb": 512
+}

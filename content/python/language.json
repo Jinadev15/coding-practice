@@ -1,0 +1,13 @@
+{
+  "name": "Python",
+  "order": 1,
+  "color": "#3776ab",
+  "icon": "Py",
+  "ext": "py",
+  "main": "main.py",
+  "editor_mode": "python",
+  "compile": null,
+  "run": ["{python}", "-E", "-s", "-X", "utf8", "main.py"],
+  "time_limit": 2,
+  "memory_mb": 1024
+}

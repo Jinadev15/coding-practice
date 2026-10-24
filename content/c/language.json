@@ -1,0 +1,14 @@
+{
+  "name": "C",
+  "order": 2,
+  "color": "#5c6bc0",
+  "icon": "C",
+  "ext": "c",
+  "main": "main.c",
+  "source_ext": [".c"],
+  "editor_mode": "text/x-csrc",
+  "compile": ["gcc", "-std=c17", "-O2", "-Wall", "-Wextra", "-pipe", "-o", "prog", "{sources}", "-lm", "-lpthread"],
+  "run": ["./prog"],
+  "time_limit": 1,
+  "memory_mb": 512
+}
