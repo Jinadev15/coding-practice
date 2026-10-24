@@ -122,6 +122,7 @@ async function renderMarkdown(el, src) {
   if (nodes.length) {
     try {
       const mm = await loadMermaid();
+      if (!el.isConnected) return;     // the page changed while mermaid was loading
       const dark = (document.documentElement.dataset.theme || "dark") === "dark";
       mm.initialize({ startOnLoad: false, theme: dark ? "dark" : "default", securityLevel: "loose", fontFamily: "Inter, system-ui, sans-serif" });
       await mm.run({ nodes });
@@ -941,7 +942,13 @@ async function viewReview(lid) {
     <div class="crumbs"><a href="#/">Dashboard</a> / <a href="#/lang/${lid}">${esc(lang?.name || lid)}</a> / <span>Revision</span></div>
     <div class="page-head"><div><h1>Revision quiz</h1><div class="sub">15 questions mixed from every topic you've started, weighted toward the ones you get wrong.</div></div></div>
     <div id="rv"></div></div>`;
-  const q = await api(`/review/${lid}`);
+  let q;
+  try {
+    q = await api(`/review/${lid}`);
+  } catch (e) {
+    $("#rv").innerHTML = `<div class="card empty"><h3>Nothing to revise yet</h3>${esc(e.message)}<p><a class="btn" href="#/lang/${lid}">Open the curriculum</a></p></div>`;
+    return;
+  }
   runQuiz($("#rv"), q.questions, {
     submit: (payload) => api(`/review/${lid}`, { method: "POST", body: payload }),
     after: () => `<button class="btn primary" id="again">Another round</button>`,

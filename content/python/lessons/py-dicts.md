@@ -203,7 +203,7 @@ print(users.get("bob", {}).get("age"))   # None: safe chained lookup
 | key with max value | `max(d, key=d.get)` |
 | iterate pairs | `for k, v in d.items():` |
 | delete while iterating | `for k in list(d): ...` |
-| merge | `a | b` or `{**a, **b}` |
+| merge | `a \| b` or `{**a, **b}` |
 | invert | `{v: k for k, v in d.items()}` |
 | sort by value | `sorted(d.items(), key=lambda kv: kv[1])` |
 

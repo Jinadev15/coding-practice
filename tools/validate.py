@@ -8,6 +8,7 @@ passes 100% of its own tests. Run after adding content:
 """
 from __future__ import annotations
 
+import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -94,6 +95,18 @@ def main() -> int:
                 if problems:
                     failures += 1
                     print(f"  [mcq {q['id']}] {', '.join(problems)}")
+        for t in lang.topics:
+            if t.lesson_path:
+                in_fence = False
+                for i, line in enumerate(t.lesson_path.read_text(encoding="utf-8").splitlines(), 1):
+                    if line.startswith("```"):
+                        in_fence = not in_fence
+                    if in_fence or not line.lstrip().startswith("|"):
+                        continue
+                    for span in re.findall(r"`([^`]*)`", line):
+                        if re.search(r"(?<!\\)\|", span):
+                            failures += 1
+                            print(f"  [lesson {t.id}:{i}] unescaped | inside a table cell: `{span}` (write \\|)")
         seen = set()
         for t in lang.topics:
             for q in t.mcqs:
