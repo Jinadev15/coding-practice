@@ -1,0 +1,26 @@
+id,topic,difficulty,type,question,code,option_a,option_b,option_c,option_d,answer,explanation
+c-arr-01,c-arrays,Easy,output,What is printed?,"int a[5] = {1, 2};
+printf(""%d %d"", a[1], a[4]);",2 0,2 garbage,1 2,Compile error,A,Elements without an initializer in a partially initialised array are set to zero.
+c-arr-02,c-arrays,Medium,theory,What does C do on `int a[4]; a[4] = 1;`?,,Raises an IndexError,Undefined behaviour — no bounds checking; it writes past the array,Grows the array,Compile error always,B,C never checks bounds at run time; use -fsanitize=address to catch such writes in testing.
+c-arr-03,c-arrays,Medium,theory,Why can't you copy an array with `b = a;`?,,Arrays are not assignable in C; use memcpy or a loop,It needs a cast,It works fine,Only for char arrays,A,An array name is not a modifiable lvalue; it decays to a pointer in most expressions.
+c-arr-04,c-arrays,Hard,output,"For `int a[10];` on a typical system, what is `(char*)(&a + 1) - (char*)a`?",,4,40,10,8,B,&a has type int (*)[10]; adding 1 advances past the whole 40-byte array.
+c-arr-05,c-arrays,Medium,theory,Why are large VLAs (int buf[n] with big n) risky?,,They are slow to index,"They live on the stack, and a large n overflows it with no error reporting",They cannot be passed to functions,They are always zero,B,Use malloc for large or unbounded sizes.
+c-2d-01,c-2d-arrays,Medium,theory,"For `int m[R][C]`, at what element offset from the start is m[i][j]?",,j*R + i,i*C + j,i + j,i*R + j,B,C stores 2D arrays in row-major order.
+c-2d-02,c-2d-arrays,Medium,theory,Which parameter declaration correctly accepts `int m[5][4]`?,,int **m,int m[][4],int m[][],int *m[4],B,The column count is needed for indexing; m decays to int (*)[4]. int ** is a different structure.
+c-2d-03,c-2d-arrays,Medium,theory,Why is iterating a large 2D array column-by-column slower than row-by-row?,,More instructions,"It jumps across memory, causing cache misses; row-by-row access is sequential",The compiler forbids it,It isn't slower,B,Caches load contiguous lines; keep the innermost loop on the last index.
+c-2d-04,c-2d-arrays,Easy,output,What is sizeof m for `int m[2][3]` (4-byte int)?,,6,24,12,8,B,2 rows x 3 ints x 4 bytes.
+c-str-01,c-strings,Easy,output,What is printed?,"char s[] = ""hi"";
+printf(""%zu %zu"", sizeof s, strlen(s));",2 2,3 2,2 3,3 3,B,sizeof counts the array bytes including the terminating '\0'; strlen counts characters before it.
+c-str-02,c-strings,Easy,theory,How do you test whether two C strings have the same contents?,,a == b,"strcmp(a, b) == 0","strcmp(a, b) == 1",strlen(a) == strlen(b),B,== compares addresses; strcmp returns 0 for equal strings.
+c-str-03,c-strings,Medium,theory,"What happens with `char *s = ""hello""; s[0] = 'H';`?",,"s becomes ""Hello""",Undefined behaviour — string literals are read-only (often a segfault),Compile error,Nothing,B,"Use char s[] = ""hello""; for a modifiable copy, and const char * for literal pointers."
+c-str-04,c-strings,Medium,theory,"What is a known trap of strncpy(dst, src, n)?",,It always overflows,"If src has n or more characters, dst is NOT null-terminated",It reverses the string,It allocates memory,B,strncpy was designed for fixed-width fields; prefer snprintf or a copy that always terminates.
+c-str-05,c-strings,Medium,output,What is printed?,"char buf[6];
+snprintf(buf, sizeof buf, ""%s"", ""robotics"");
+printf(""[%s]"", buf);",[robotics],[robot],[roboti],Undefined,B,snprintf writes at most size-1 characters plus '\0': 5 characters fit.
+c-str-06,c-strings,Hard,theory,"Why is `if (strcmp(a, b))` a frequent source of bugs?",,strcmp is slow,"It is true when the strings DIFFER (non-zero), the opposite of what readers expect",It modifies a,It is undefined behaviour,B,"Write strcmp(a, b) == 0 explicitly for equality."
+c-ctp-01,c-ctype-parsing,Medium,theory,Why cast to unsigned char in isdigit((unsigned char)c)?,,For speed,Passing a negative char value (other than EOF) to ctype functions is undefined behaviour,isdigit only accepts unsigned,To convert to ASCII,B,Bytes >= 128 are negative when char is signed; the cast makes the value valid.
+c-ctp-02,c-ctype-parsing,Medium,theory,What is wrong with atoi for parsing user input?,,It only parses hex,"It cannot report errors: ""abc"" and ""0"" both give 0, and overflow is UB",It is not standard,It allocates memory,B,strtol reports the end position and sets errno = ERANGE on overflow.
+c-ctp-03,c-ctype-parsing,Medium,theory,"After `long v = strtol(""12abc"", &end, 10);`, what are v and *end?",,0 and '1',12 and 'a',12 and '\0',Error,B,strtol stops at the first invalid character and reports where via end — check *end == '\0' for strict parsing.
+c-ctp-04,c-ctype-parsing,Medium,theory,Which is a problem with strtok?,,It cannot split on commas,"It modifies the input, keeps hidden static state (not reentrant) and skips empty fields",It returns integers,It needs a length argument,B,Use strtok_r or manual scanning with strchr for robust tokenising.
+c-ctp-05,c-ctype-parsing,Easy,output,What is printed?,"char c = '7';
+printf(""%d"", c - '0');",55,7,'7',48,B,"Digit characters are consecutive, so subtracting '0' gives the numeric value."
