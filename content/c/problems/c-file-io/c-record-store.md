@@ -1,0 +1,30207 @@
+---
+id: c-record-store
+title: Fixed-Size Record Store on Disk
+difficulty: Medium
+order: 1
+tags: binary files, fseek, fread, fwrite, random access
+---
+## Statement
+Build a tiny database that stores fixed-size records in a **binary file** `store.bin` (in the current directory), using random access instead of loading everything into memory:
+
+```c
+typedef struct {
+    int32_t id;          /* 0 means "empty slot" */
+    char    name[24];    /* NUL-terminated */
+    double  score;
+} Record;
+```
+
+Record with id `k` (1 ≤ k ≤ 100000) lives at byte offset `(k - 1) * sizeof(Record)`. Commands (stdin):
+
+| Command | Effect | Output |
+|---|---|---|
+| `put K NAME SCORE` | write the record into slot K (overwriting) | `ok` |
+| `get K` | read slot K | `K NAME SCORE` (2 decimals) or `missing` (past the end of the file, or empty slot) |
+| `del K` | mark slot K empty (id 0) if it exists | `ok` or `missing` |
+| `count` | scan the file: number of non-empty slots | `N` |
+| `size` | the file size in bytes (`fseek` + `ftell`) | `B` |
+| `export` | write all live records to `store.csv` as `id,name,score`, then read that file back and print its lines | the CSV lines |
+
+Start by creating an empty `store.bin` (mode `"w+b"`). Writing slot K beyond the end of the file automatically extends it, and the gap reads back as zero bytes (empty slots). Check every `fopen`, `fread` and `fwrite`.
+
+## Starter
+```c
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+typedef struct {
+    int32_t id;
+    char    name[24];
+    double  score;
+} Record;
+
+int main(void) {
+    FILE *db = fopen("store.bin", "w+b");
+    if (!db) { perror("store.bin"); return 1; }
+    /* TODO */
+    fclose(db);
+    return 0;
+}
+```
+
+## Tests
+=== sample
+put 3 lidar 9.5
+put 1 imu 7.25
+get 1
+get 2
+get 3
+get 9
+count
+size
+put 3 camera 8
+del 1
+del 2
+get 3
+count
+export
+---
+ok
+ok
+1 imu 7.25
+missing
+3 lidar 9.50
+missing
+2
+120
+ok
+ok
+missing
+3 camera 8.00
+1
+3,camera,8.00
+=== hidden
+count
+size
+get 1
+export
+put 100000 far 1
+size
+count
+get 99999
+get 100000
+del 100000
+count
+put 2 b 2.5
+put 1 a 1.5
+put 2 bb 22.5
+export
+---
+0
+0
+missing
+ok
+4000000
+1
+missing
+100000 far 1.00
+ok
+0
+ok
+ok
+ok
+1,a,1.50
+2,bb,22.50
+=== hidden
+get 1520
+put 1415 n965 86.84
+put 954 n794 40.8
+get 1846
+put 762 n480 40.39
+put 209 n587 40.85
+put 444 n417 45.79
+put 1777 n784 63.8
+put 1633 n73 22.73
+get 912
+put 4 n995 0.87
+put 442 n983 27.17
+del 593
+put 408 n552 33.55
+put 1984 n707 32.25
+count
+put 45 n369 67.97
+put 299 n270 10.67
+put 1675 n617 96.03
+put 1389 n724 55.36
+put 728 n838 50.14
+put 647 n189 78.84
+put 361 n58 41.97
+count
+del 733
+del 38
+get 858
+put 1185 n861 1.48
+put 1450 n185 32.19
+put 504 n951 75.72
+put 727 n914 85.96
+put 948 n110 96.62
+get 1633
+put 606 n37 70.93
+del 187
+put 1051 n625 59.41
+del 697
+put 1439 n558 15.08
+put 649 n313 29.07
+get 1284
+put 1412 n316 79.26
+put 100 n82 98.41
+get 832
+put 1517 n608 56.33
+del 934
+get 299
+put 1877 n653 5.36
+del 685
+del 268
+count
+del 1292
+del 848
+put 890 n381 24.45
+put 862 n301 23.13
+put 1271 n872 27.73
+count
+count
+get 982
+put 963 n413 24.0
+put 1684 n544 29.39
+get 1023
+del 369
+put 558 n527 89.8
+del 740
+put 1629 n793 58.27
+get 1360
+put 627 n372 91.63
+get 576
+del 543
+get 1415
+get 1960
+del 1331
+put 1745 n11 77.7
+get 514
+put 561 n474 47.32
+del 1326
+get 731
+put 1320 n353 66.92
+put 1727 n176 73.69
+count
+put 291 n542 27.22
+put 742 n959 78.19
+put 162 n736 68.26
+put 1599 n958 95.16
+get 1918
+put 1278 n566 44.35
+get 57
+put 1202 n451 29.61
+put 1405 n184 6.85
+count
+put 1827 n136 18.15
+put 372 n494 31.68
+get 851
+put 779 n678 11.79
+get 488
+get 766
+put 831 n974 45.63
+del 1775
+put 1703 n560 61.25
+count
+get 195
+put 1050 n347 95.17
+put 721 n838 21.16
+put 1666 n577 88.2
+put 292 n160 97.63
+put 977 n980 32.62
+count
+put 1682 n914 0.15
+put 668 n579 88.37
+put 1290 n897 92.45
+put 885 n231 80.84
+put 1992 n725 62.22
+put 1751 n935 26.05
+get 533
+get 617
+put 851 n20 52.28
+del 630
+put 587 n146 78.14
+put 1352 n636 72.65
+put 82 n800 22.35
+del 28
+put 1148 n280 39.89
+del 1602
+put 1004 n274 25.35
+get 586
+put 1246 n486 84.9
+get 1237
+del 1833
+put 1558 n129 49.26
+put 1451 n344 48.63
+get 55
+put 740 n698 96.79
+put 6 n258 90.64
+put 1878 n110 89.38
+put 880 n797 70.07
+get 1412
+get 1295
+get 1759
+del 790
+put 1398 n872 32.18
+del 953
+del 136
+put 7 n711 70.91
+get 1328
+get 1866
+put 339 n489 89.96
+del 1993
+put 315 n435 95.98
+get 100
+put 472 n273 13.95
+get 1360
+del 683
+get 141
+count
+put 253 n862 20.04
+put 1323 n844 18.21
+get 276
+count
+del 307
+put 380 n423 26.4
+put 437 n44 91.01
+put 777 n763 11.79
+put 1170 n589 19.39
+get 1800
+get 21
+put 645 n701 98.33
+put 724 n961 61.3
+del 284
+get 310
+get 1389
+get 1865
+del 1127
+get 540
+put 483 n260 46.43
+get 274
+del 1769
+put 1509 n398 29.37
+put 39 n670 55.96
+put 1368 n36 14.93
+del 1038
+get 489
+put 948 n491 52.96
+put 1087 n30 88.81
+get 110
+del 1935
+count
+get 1536
+put 1993 n933 80.51
+del 287
+get 770
+put 482 n296 54.6
+del 1445
+put 791 n387 22.35
+get 734
+get 1648
+get 1969
+del 1060
+put 1175 n220 29.57
+put 199 n37 5.43
+put 401 n40 80.28
+del 986
+get 714
+put 963 n307 70.22
+put 946 n102 31.39
+put 326 n72 61.38
+del 1780
+del 312
+get 226
+put 331 n768 47.03
+get 68
+put 66 n352 60.45
+put 121 n704 3.56
+get 967
+del 320
+put 1370 n332 47.69
+put 492 n746 26.74
+put 1464 n25 94.16
+put 161 n632 65.71
+del 1448
+put 639 n188 76.68
+put 137 n749 76.68
+put 493 n179 34.2
+del 1323
+get 1488
+count
+put 928 n797 67.2
+put 69 n561 85.02
+get 1925
+put 146 n242 80.47
+put 966 n55 39.88
+get 1019
+put 124 n49 41.84
+del 914
+put 106 n896 6.16
+count
+put 1042 n655 65.92
+put 479 n86 51.42
+get 178
+get 1887
+put 155 n877 35.12
+get 904
+get 997
+put 1574 n385 85.57
+get 1487
+put 1549 n314 73.57
+del 459
+get 285
+put 180 n798 43.16
+del 641
+put 1100 n83 77.26
+put 173 n817 70.23
+count
+put 126 n504 40.75
+put 410 n815 46.86
+del 1814
+put 862 n787 51.43
+put 1576 n569 0.01
+del 1340
+del 270
+get 906
+put 1409 n671 3.06
+get 1437
+put 219 n831 62.65
+get 658
+put 347 n140 43.02
+put 662 n292 5.57
+put 1565 n756 91.29
+put 250 n51 21.31
+del 893
+del 1945
+count
+put 879 n128 59.37
+put 734 n12 26.75
+get 1694
+put 196 n274 86.88
+get 1292
+get 914
+get 890
+get 243
+put 914 n936 37.4
+put 890 n175 72.32
+put 1369 n958 26.31
+get 1986
+put 4 n106 20.78
+del 860
+get 426
+count
+del 483
+put 1806 n362 64.34
+put 413 n283 32.95
+put 1057 n365 39.57
+put 1657 n254 10.16
+get 821
+put 293 n851 39.04
+put 78 n96 27.78
+put 1544 n734 46.11
+del 409
+get 1547
+put 1399 n481 87.45
+get 1640
+put 1411 n10 16.96
+get 1202
+get 1666
+put 650 n694 4.43
+get 1052
+put 976 n558 65.38
+put 1614 n835 94.92
+del 1419
+get 126
+get 1636
+put 1963 n607 3.3
+get 1070
+put 587 n79 4.47
+put 729 n625 95.09
+del 1928
+get 629
+count
+put 1467 n240 11.8
+put 181 n686 49.24
+del 1409
+del 1910
+get 1252
+get 990
+get 1836
+put 701 n998 89.12
+put 1985 n3 63.92
+put 1538 n668 86.56
+del 1865
+get 659
+put 224 n863 90.67
+get 766
+put 205 n217 48.14
+put 549 n816 12.76
+del 343
+put 846 n784 30.38
+put 129 n583 92.71
+get 1311
+del 1492
+put 473 n435 79.17
+get 1853
+put 857 n287 13.83
+get 1980
+put 864 n31 24.44
+put 1153 n568 98.86
+get 889
+put 1218 n104 54.09
+get 126
+count
+del 1961
+put 388 n870 76.67
+get 1898
+del 1830
+get 1722
+get 1721
+put 397 n688 25.66
+put 688 n155 60.24
+get 215
+get 904
+get 1672
+get 375
+get 1893
+get 1189
+get 1977
+del 749
+put 133 n200 33.81
+put 355 n469 13.72
+put 1929 n556 76.34
+put 241 n611 61.34
+put 7 n507 62.43
+count
+get 1005
+get 1478
+get 33
+put 982 n362 32.01
+del 783
+put 1855 n510 14.51
+get 607
+put 1932 n868 10.36
+get 104
+put 488 n277 12.02
+put 1982 n98 90.66
+put 369 n554 63.28
+del 502
+put 729 n132 13.7
+put 1569 n144 59.15
+del 44
+put 939 n979 62.72
+del 161
+put 448 n198 72.52
+put 1064 n87 45.73
+get 1719
+get 1041
+put 328 n402 81.94
+put 1216 n962 96.19
+put 49 n431 67.7
+del 1687
+del 1875
+del 31
+count
+put 694 n151 49.63
+get 865
+del 158
+count
+put 391 n277 22.81
+put 587 n2 20.2
+get 1553
+put 152 n703 62.45
+put 839 n906 24.5
+put 38 n765 80.9
+count
+put 959 n242 12.65
+del 1921
+get 30
+put 879 n87 43.69
+put 1340 n381 54.74
+get 312
+put 1836 n998 91.35
+put 228 n108 65.44
+put 756 n928 78.26
+get 909
+count
+count
+put 1117 n12 63.12
+put 986 n680 9.15
+put 1580 n216 68.62
+put 1467 n625 38.67
+get 115
+del 489
+put 790 n905 56.64
+get 1143
+put 922 n105 20.22
+del 759
+get 565
+get 1920
+get 800
+count
+del 1211
+del 159
+get 114
+get 1083
+get 202
+del 613
+del 765
+del 283
+put 130 n506 0.62
+get 425
+get 87
+put 181 n119 56.05
+del 767
+count
+del 992
+get 1518
+put 515 n849 4.06
+get 796
+put 1617 n251 43.15
+get 1793
+put 1838 n856 28.98
+get 1159
+put 1515 n363 91.95
+put 934 n44 80.99
+get 1331
+put 1206 n421 19.24
+put 1088 n625 72.53
+get 454
+get 1426
+put 132 n736 96.94
+put 137 n732 75.41
+put 1075 n913 88.65
+get 143
+count
+del 247
+put 626 n264 74.28
+put 4 n899 52.88
+get 1848
+put 780 n159 35.45
+del 645
+del 421
+put 308 n361 12.96
+get 897
+get 1333
+put 403 n142 80.47
+put 1029 n457 93.92
+put 35 n148 71.08
+put 1012 n514 87.83
+count
+get 1357
+put 1132 n803 41.17
+del 602
+get 402
+put 733 n866 84.58
+put 1289 n726 14.13
+count
+get 227
+put 211 n891 46.62
+del 1193
+put 1591 n995 88.97
+put 1304 n342 42.7
+put 1757 n337 15.71
+put 600 n734 55.23
+put 1782 n418 10.27
+put 142 n184 6.45
+del 1620
+get 1963
+get 214
+put 147 n231 69.09
+put 1158 n554 47.51
+get 1396
+get 1912
+put 156 n477 62.3
+put 1575 n251 18.8
+get 195
+put 1360 n555 62.35
+put 558 n313 90.26
+put 1682 n438 6.41
+put 1055 n940 21.9
+put 1299 n185 31.44
+put 1661 n728 86.67
+put 627 n54 76.34
+put 1133 n939 94.04
+get 524
+put 1525 n643 41.98
+put 828 n776 99.1
+put 1221 n207 74.89
+get 1494
+get 912
+count
+put 1317 n91 73.13
+put 951 n877 26.73
+del 987
+put 1189 n906 41.26
+get 1429
+put 1476 n568 20.03
+put 49 n344 94.63
+get 1309
+del 1792
+del 1884
+get 1240
+put 1796 n295 21.76
+get 603
+put 2000 n791 21.01
+put 399 n775 5.37
+put 1933 n163 51.19
+count
+get 862
+del 1212
+get 697
+del 1074
+get 1458
+get 1617
+get 327
+get 1336
+put 1620 n494 76.29
+del 89
+put 5 n490 19.57
+get 347
+count
+get 1364
+del 1334
+put 856 n660 37.52
+get 1885
+put 1345 n241 95.25
+put 1907 n515 61.13
+put 628 n228 15.36
+put 1223 n564 72.83
+get 1489
+put 534 n543 0.43
+put 117 n474 2.37
+put 389 n108 28.21
+put 898 n920 76.9
+put 1069 n76 4.06
+get 1432
+get 1277
+put 1267 n628 98.99
+get 1743
+del 419
+put 1812 n454 82.31
+put 136 n713 55.69
+put 1094 n378 14.61
+put 811 n3 5.49
+put 615 n192 63.69
+put 1581 n976 18.75
+del 1412
+put 271 n412 73.89
+put 1968 n26 44.87
+put 1573 n206 43.69
+get 1784
+put 866 n812 68.17
+del 1843
+get 1808
+del 1506
+put 391 n207 53.65
+get 1467
+get 1576
+put 1682 n546 26.39
+put 194 n725 99.22
+put 1671 n147 47.18
+put 1115 n152 69.68
+del 1522
+put 1127 n477 53.43
+get 1814
+put 309 n376 1.11
+count
+get 1551
+del 543
+del 925
+del 675
+get 1100
+put 806 n436 91.54
+put 1686 n16 37.62
+put 224 n836 84.22
+put 1100 n495 35.98
+put 1342 n608 51.42
+put 1496 n333 66.73
+put 718 n877 6.83
+put 1388 n798 20.23
+del 1824
+put 1313 n891 13.93
+put 1051 n900 76.92
+put 623 n154 69.49
+put 921 n586 11.65
+count
+put 595 n851 14.88
+get 150
+del 598
+put 328 n354 69.45
+put 702 n891 34.24
+put 213 n472 53.25
+put 1766 n508 53.75
+put 1978 n463 9.52
+get 1822
+put 542 n470 82.31
+get 1052
+get 1733
+get 1808
+put 1346 n201 66.43
+del 254
+put 900 n330 6.21
+put 748 n431 98.84
+del 222
+put 914 n146 50.02
+put 223 n603 7.82
+put 167 n301 47.86
+put 1345 n237 5.6
+put 608 n165 54.42
+get 1045
+get 810
+del 1269
+put 80 n181 59.88
+put 655 n869 14.5
+put 1814 n279 60.7
+del 697
+del 1926
+put 824 n877 73.62
+count
+put 1640 n744 88.84
+put 570 n185 28.4
+count
+del 824
+put 399 n634 25.49
+put 1257 n528 74.46
+put 775 n36 31.79
+del 1350
+put 1416 n511 95.17
+get 54
+del 1595
+get 204
+put 1253 n355 26.59
+del 26
+put 1024 n33 44.78
+put 420 n46 36.73
+count
+get 453
+put 35 n33 19.99
+get 223
+count
+put 1842 n66 18.0
+get 1834
+get 1885
+del 719
+get 523
+put 1592 n276 50.17
+put 360 n246 80.45
+del 1572
+put 1740 n237 9.04
+get 1498
+get 1933
+get 786
+get 199
+put 75 n704 42.59
+put 302 n123 13.2
+del 655
+put 1961 n629 79.78
+put 1427 n762 0.31
+get 660
+get 724
+put 1300 n220 95.67
+put 307 n702 1.46
+get 407
+put 12 n577 49.48
+put 486 n210 62.73
+get 1197
+put 1724 n748 22.71
+put 1887 n173 19.47
+get 1260
+get 1501
+get 455
+del 1289
+put 521 n80 97.77
+put 954 n819 89.33
+get 1385
+get 710
+get 1936
+get 1718
+put 29 n573 27.06
+get 1343
+get 777
+put 964 n872 98.47
+get 691
+put 914 n561 91.79
+get 1519
+put 1903 n862 3.4
+del 371
+put 64 n203 44.22
+get 568
+put 1864 n277 13.0
+get 639
+get 1280
+put 1237 n234 46.05
+del 776
+put 528 n68 78.67
+put 307 n415 78.19
+del 127
+get 1959
+put 1226 n45 32.97
+get 1357
+put 1031 n700 28.71
+put 1263 n827 26.64
+del 1450
+del 1754
+get 473
+get 1609
+get 125
+put 465 n427 80.62
+put 1742 n739 28.84
+get 959
+put 1005 n453 92.8
+put 485 n331 36.1
+count
+put 914 n667 76.71
+get 1618
+put 1383 n150 2.24
+put 1261 n695 22.98
+count
+put 1560 n66 69.85
+put 377 n968 19.56
+get 684
+get 893
+get 1368
+get 1548
+del 1463
+put 336 n505 83.93
+put 1347 n915 92.04
+put 1577 n982 96.25
+put 1024 n43 33.34
+put 1903 n259 45.44
+count
+del 495
+put 137 n582 81.3
+del 977
+put 849 n265 35.41
+put 1 n322 19.57
+get 487
+put 1574 n240 58.04
+get 601
+put 1145 n490 41.45
+put 1073 n645 44.06
+put 1367 n804 17.23
+put 616 n784 23.81
+get 1790
+put 668 n969 30.17
+put 1834 n666 69.5
+put 235 n265 86.1
+get 1510
+put 198 n6 51.44
+put 954 n142 24.48
+put 1974 n567 49.91
+put 895 n436 85.29
+put 983 n317 77.87
+put 1067 n796 12.21
+put 866 n112 17.05
+get 1314
+count
+put 394 n689 77.61
+get 752
+put 1456 n30 3.92
+put 831 n423 1.67
+count
+put 479 n918 51.38
+del 530
+put 1746 n499 79.12
+put 546 n87 94.72
+get 1461
+put 1376 n910 76.69
+del 1361
+put 477 n435 84.78
+del 1216
+put 720 n240 10.43
+get 879
+put 913 n967 80.59
+get 1769
+put 1942 n166 59.45
+put 1815 n479 48.7
+put 947 n330 58.99
+del 1914
+count
+put 573 n674 60.81
+del 1395
+get 1523
+put 707 n804 28.04
+del 781
+get 764
+get 863
+put 1940 n225 97.76
+put 1460 n955 5.07
+put 92 n97 32.15
+del 876
+get 1260
+del 1376
+get 877
+count
+put 231 n577 6.01
+put 645 n972 37.23
+put 845 n340 45.68
+del 637
+put 350 n236 7.61
+get 672
+put 1309 n509 58.77
+count
+put 1244 n336 82.43
+get 1566
+get 970
+put 806 n449 44.45
+del 1274
+del 54
+get 1458
+get 217
+put 322 n525 3.45
+get 1176
+put 522 n788 4.26
+del 1772
+get 733
+del 1407
+get 1859
+put 1077 n224 30.09
+get 1319
+put 1431 n910 33.35
+get 1455
+put 1240 n852 79.28
+put 1266 n407 74.43
+put 544 n322 54.13
+put 584 n673 64.94
+put 1151 n794 38.75
+put 156 n816 17.88
+put 214 n613 66.76
+count
+put 737 n137 81.33
+del 76
+put 762 n329 94.24
+put 1735 n978 86.25
+get 1289
+get 1206
+del 1454
+put 268 n925 10.94
+put 264 n640 97.4
+get 1565
+put 225 n134 73.36
+get 442
+del 902
+get 560
+get 205
+get 1619
+put 1239 n682 37.43
+get 1829
+put 1189 n508 49.51
+put 286 n561 79.39
+get 1863
+get 1729
+put 1334 n142 66.83
+get 275
+get 793
+get 852
+put 736 n603 75.05
+get 1004
+put 465 n334 57.51
+put 1923 n695 69.77
+put 1480 n26 87.88
+get 1415
+del 396
+get 1473
+get 1916
+put 669 n680 67.42
+count
+put 153 n127 12.59
+get 145
+get 1056
+put 391 n913 81.66
+put 1712 n353 62.62
+put 755 n195 31.45
+put 1357 n904 50.84
+put 1497 n423 97.14
+put 1792 n624 52.59
+count
+get 25
+put 1291 n200 7.85
+del 1386
+put 528 n507 80.86
+put 926 n573 12.78
+get 650
+put 1652 n539 6.87
+get 1181
+put 45 n577 53.42
+del 198
+del 971
+del 1709
+del 1101
+del 1248
+put 53 n717 38.78
+put 234 n41 18.26
+get 964
+put 454 n372 92.71
+put 431 n241 31.6
+count
+del 256
+get 793
+get 33
+get 560
+del 984
+put 454 n19 89.37
+get 1913
+del 294
+put 1789 n268 28.47
+put 218 n707 51.78
+put 412 n370 88.63
+count
+put 1563 n441 27.37
+put 1651 n342 8.97
+put 1393 n970 85.64
+get 522
+del 1993
+put 899 n992 12.27
+put 257 n261 59.25
+put 1754 n450 37.28
+get 1775
+put 1812 n239 76.03
+put 331 n264 60.26
+get 413
+get 879
+del 94
+put 855 n233 60.67
+put 1815 n5 76.6
+get 1183
+count
+get 1771
+get 700
+get 943
+get 796
+del 1130
+put 1477 n314 95.84
+put 1933 n217 69.85
+count
+del 1857
+put 695 n438 60.44
+get 526
+put 1977 n256 20.85
+put 1991 n762 12.8
+put 342 n380 11.71
+put 1707 n570 99.1
+del 1487
+get 1696
+put 866 n120 62.23
+put 1869 n453 71.44
+put 1982 n645 13.55
+put 1994 n591 60.3
+get 478
+get 545
+put 941 n360 68.81
+del 788
+get 570
+get 163
+get 329
+get 1675
+put 1345 n647 97.84
+get 233
+get 1138
+put 58 n553 81.46
+get 35
+put 1713 n66 54.39
+put 489 n944 72.31
+get 611
+put 205 n416 57.02
+del 764
+del 306
+get 1367
+put 1288 n252 29.83
+del 298
+get 366
+put 1006 n653 73.95
+get 361
+put 1080 n39 23.36
+put 1615 n380 96.74
+put 1590 n301 34.01
+del 1980
+put 1223 n630 1.9
+put 905 n260 25.05
+del 1469
+count
+put 326 n65 88.54
+get 447
+get 1466
+del 395
+get 1898
+put 942 n76 95.92
+put 1951 n282 10.26
+del 303
+put 168 n699 42.63
+put 949 n231 38.12
+del 1759
+get 1487
+put 1672 n502 11.32
+put 954 n315 53.37
+put 17 n985 22.15
+put 1732 n839 44.76
+put 1821 n622 96.18
+put 1281 n564 62.36
+put 173 n561 90.96
+del 1292
+del 1007
+put 1633 n445 64.18
+put 719 n822 52.79
+get 462
+del 412
+put 1381 n76 53.54
+get 884
+get 585
+put 544 n989 58.53
+put 1400 n630 92.9
+put 1375 n52 61.58
+put 1368 n397 94.68
+del 609
+del 26
+put 258 n142 55.05
+put 492 n345 64.82
+del 501
+get 1939
+put 271 n539 34.53
+get 1384
+put 296 n728 99.07
+get 879
+del 1970
+put 184 n281 96.21
+put 1782 n813 69.41
+put 1706 n768 2.85
+get 1542
+count
+put 755 n400 6.03
+put 1933 n316 72.13
+put 50 n176 94.88
+put 37 n42 55.66
+get 892
+put 1324 n286 84.01
+get 816
+put 84 n829 45.54
+get 200
+put 780 n801 83.16
+put 40 n769 34.21
+put 1685 n90 32.96
+put 1581 n765 91.03
+put 790 n960 48.2
+put 1748 n185 21.24
+put 258 n908 56.64
+put 406 n746 71.68
+get 496
+del 1170
+get 1182
+put 1022 n515 20.48
+put 1897 n876 96.52
+del 291
+count
+del 1682
+get 1090
+get 1838
+put 1894 n435 86.26
+put 1808 n656 29.84
+count
+put 1648 n466 9.41
+get 1260
+put 625 n925 7.94
+get 1486
+put 480 n202 30.9
+put 547 n878 33.55
+put 1538 n236 32.25
+del 1708
+put 950 n25 57.39
+put 1322 n167 58.13
+get 810
+put 1348 n250 92.22
+get 1978
+put 546 n254 66.59
+get 1563
+put 1961 n613 92.14
+put 1848 n889 22.04
+get 875
+put 890 n993 75.89
+put 1676 n461 99.18
+put 1423 n286 44.99
+get 630
+get 1199
+put 1090 n924 89.62
+get 601
+put 192 n119 23.91
+get 708
+count
+put 145 n46 71.29
+put 1032 n179 54.3
+get 43
+put 1995 n707 9.05
+put 529 n429 48.89
+put 879 n639 83.09
+put 1274 n555 1.2
+put 763 n728 29.16
+del 726
+del 646
+put 1123 n252 56.48
+put 878 n960 32.08
+get 405
+get 525
+put 982 n634 67.42
+count
+put 579 n830 49.88
+get 396
+get 1626
+put 435 n826 63.7
+put 1309 n33 49.38
+put 1969 n601 83.53
+put 1300 n467 97.56
+get 1030
+count
+get 565
+get 1040
+put 1445 n302 57.03
+del 1748
+put 994 n674 80.66
+put 91 n129 45.69
+put 1568 n830 65.73
+del 1651
+get 640
+put 310 n801 22.71
+put 1294 n194 52.63
+put 284 n478 65.69
+put 483 n373 97.38
+get 1665
+put 1188 n27 86.81
+get 1098
+get 1634
+get 806
+del 678
+del 1170
+put 55 n200 78.62
+put 1303 n853 60.83
+get 682
+del 1670
+get 449
+put 1115 n484 26.99
+get 405
+get 1356
+put 1521 n51 85.04
+get 1500
+put 487 n358 18.19
+put 68 n169 76.98
+get 829
+put 701 n590 39.46
+get 388
+get 1888
+put 486 n389 89.35
+get 877
+count
+put 1164 n219 11.1
+del 878
+get 1263
+del 1482
+put 167 n193 81.77
+get 599
+put 1061 n256 51.79
+get 1324
+get 1161
+get 991
+get 133
+put 1207 n557 97.4
+put 312 n590 18.64
+get 1276
+get 845
+get 1821
+del 54
+get 219
+put 541 n29 41.77
+del 1479
+put 1088 n731 78.44
+put 275 n566 46.51
+put 1104 n474 49.98
+get 58
+del 1168
+put 1915 n380 29.68
+get 1160
+put 1600 n406 10.08
+get 1846
+del 794
+put 1433 n171 6.48
+put 790 n912 14.2
+put 159 n859 6.36
+get 109
+put 737 n907 83.38
+get 162
+put 591 n373 96.17
+put 205 n678 95.7
+count
+put 1583 n349 60.02
+put 748 n83 18.22
+del 1834
+put 1991 n84 22.21
+count
+get 913
+put 427 n54 5.1
+get 520
+get 146
+get 1136
+put 1614 n611 6.43
+get 291
+count
+put 1588 n175 49.09
+del 1546
+put 1516 n212 81.15
+get 373
+put 882 n266 25.52
+get 789
+get 1434
+get 1766
+get 406
+put 81 n245 31.27
+get 1069
+put 613 n185 88.67
+get 1153
+put 1830 n39 50.85
+put 35 n408 11.7
+del 1118
+del 1130
+get 120
+del 838
+del 1876
+get 1136
+get 1647
+get 1030
+get 334
+get 1525
+get 362
+put 1745 n635 45.68
+put 1732 n474 58.37
+del 647
+get 1168
+get 864
+get 977
+put 757 n127 26.56
+get 538
+del 1633
+put 1413 n580 59.41
+del 677
+put 379 n925 42.36
+put 304 n581 8.53
+put 1807 n816 19.03
+put 1841 n38 48.13
+del 1395
+del 954
+put 1204 n143 80.77
+put 376 n967 39.63
+del 467
+del 1590
+get 637
+del 100
+put 1597 n863 67.53
+get 34
+count
+put 645 n30 21.36
+put 55 n577 25.41
+get 592
+put 1465 n44 34.95
+get 537
+put 250 n181 87.94
+put 512 n339 7.69
+del 692
+put 370 n898 71.6
+del 1373
+put 1150 n507 30.86
+put 1406 n43 94.34
+put 601 n406 96.2
+get 1185
+get 1595
+put 820 n345 29.65
+get 471
+put 422 n787 78.86
+put 1509 n625 7.95
+get 83
+put 1524 n607 17.39
+del 1605
+del 592
+count
+put 1576 n845 12.52
+put 664 n307 47.29
+put 913 n889 16.54
+put 1428 n903 93.56
+del 388
+put 1516 n945 18.46
+get 1070
+put 1136 n345 28.88
+get 1830
+get 622
+get 271
+get 1385
+put 686 n11 93.15
+get 1542
+get 1681
+del 1591
+put 1955 n592 52.84
+get 676
+get 1999
+put 1813 n814 33.68
+del 646
+get 1069
+del 42
+put 1475 n893 13.61
+get 860
+del 21
+put 285 n124 57.34
+put 1922 n657 28.91
+put 23 n754 8.23
+put 570 n711 17.95
+del 1409
+get 1162
+get 1369
+del 812
+get 1133
+get 1786
+put 1593 n546 17.52
+del 1830
+get 95
+put 1514 n197 1.44
+put 533 n603 78.98
+put 59 n201 1.84
+get 1993
+put 1277 n223 31.99
+del 991
+put 1964 n776 11.21
+put 1707 n951 94.85
+get 219
+del 238
+put 1964 n688 71.65
+get 485
+put 1982 n646 83.29
+put 1240 n626 81.6
+put 1486 n417 66.06
+put 128 n337 36.43
+get 1848
+get 910
+put 707 n208 2.46
+del 1095
+get 1397
+get 79
+put 719 n854 42.07
+put 30 n39 78.71
+count
+get 1596
+put 1778 n844 72.66
+del 942
+del 23
+put 1949 n299 14.42
+put 1062 n617 50.31
+put 718 n899 49.14
+get 1849
+put 782 n801 41.98
+put 540 n709 86.35
+get 288
+put 1670 n628 54.91
+put 1876 n756 67.89
+get 1682
+put 1839 n870 26.73
+count
+put 1768 n360 17.53
+put 608 n680 43.5
+put 1716 n69 58.4
+put 293 n322 83.07
+put 1456 n206 54.79
+get 340
+del 1459
+get 1922
+put 721 n911 26.34
+put 863 n93 25.17
+get 630
+put 1697 n270 56.95
+get 1936
+put 408 n749 89.57
+get 1952
+put 402 n116 13.37
+put 924 n456 39.92
+put 1491 n823 38.45
+del 1034
+put 1203 n35 14.14
+put 865 n251 9.57
+get 1604
+put 1215 n620 40.68
+put 1101 n884 43.7
+get 1377
+count
+get 526
+put 1772 n583 72.65
+put 394 n617 8.96
+get 1856
+put 122 n881 42.59
+put 1467 n304 18.01
+get 1644
+get 1160
+count
+put 1659 n587 44.03
+get 1426
+put 856 n103 45.97
+put 1666 n595 0.96
+get 289
+get 609
+get 747
+put 1281 n659 87.45
+put 892 n175 33.32
+get 622
+get 616
+put 227 n45 26.1
+put 1355 n999 58.95
+get 1234
+put 1047 n220 41.23
+count
+put 1966 n337 77.26
+del 200
+del 1790
+get 1187
+get 1288
+put 1953 n621 4.1
+count
+put 1728 n717 30.05
+get 1827
+get 248
+put 490 n697 62.22
+count
+put 661 n600 64.95
+put 492 n767 17.29
+put 59 n440 98.42
+put 418 n290 52.74
+put 906 n206 33.36
+put 1998 n405 69.46
+put 734 n553 59.68
+count
+del 1787
+del 1512
+get 1404
+put 1245 n529 54.22
+put 1536 n274 19.55
+put 696 n834 93.69
+put 261 n388 33.95
+put 1836 n857 79.59
+put 910 n167 98.56
+count
+put 1458 n589 62.08
+get 1206
+put 1561 n228 99.62
+get 1351
+get 351
+get 1999
+get 199
+del 1538
+get 41
+get 344
+put 270 n31 87.11
+del 816
+get 1860
+put 1800 n596 10.61
+put 1308 n71 35.1
+get 1663
+put 1868 n409 87.83
+put 1530 n372 32.58
+del 9
+put 275 n124 33.75
+del 1827
+put 190 n657 25.74
+put 1120 n335 4.18
+del 1938
+get 971
+put 1455 n391 0.43
+put 1324 n114 58.11
+put 1613 n377 28.91
+get 1524
+put 820 n118 98.3
+put 1799 n993 60.01
+get 1532
+put 273 n264 31.82
+get 1679
+put 222 n210 96.22
+put 198 n575 26.59
+put 1775 n57 69.93
+put 210 n0 5.78
+put 524 n31 56.52
+put 1062 n688 60.72
+put 1528 n962 67.84
+count
+get 300
+count
+put 1158 n143 33.99
+put 213 n909 63.85
+get 1024
+put 167 n736 55.2
+put 742 n900 81.23
+del 1684
+put 99 n843 50.25
+put 1199 n844 87.58
+put 149 n553 43.12
+get 700
+put 1601 n247 30.86
+put 113 n449 92.48
+del 1301
+del 97
+get 679
+del 1734
+put 344 n616 6.36
+get 1096
+put 681 n753 90.75
+get 1257
+put 1700 n547 83.62
+put 347 n567 18.33
+put 356 n651 33.92
+get 489
+get 52
+del 969
+get 236
+put 1474 n929 10.86
+get 1612
+get 42
+put 1597 n246 44.73
+put 1742 n979 98.85
+put 25 n183 88.6
+put 408 n296 13.07
+del 590
+get 1074
+get 1910
+count
+get 1356
+get 478
+put 683 n424 55.51
+del 1120
+count
+put 118 n292 22.14
+put 964 n231 84.79
+del 845
+get 1460
+put 216 n598 13.25
+del 1274
+put 278 n904 48.33
+get 938
+get 1316
+del 165
+put 1919 n170 4.45
+del 1316
+put 358 n354 46.91
+get 1353
+put 234 n109 27.77
+get 502
+get 1759
+put 893 n450 28.94
+put 1112 n115 36.11
+get 1731
+del 1434
+put 1335 n827 15.95
+put 352 n765 2.5
+get 1593
+put 1907 n867 88.26
+put 1456 n833 74.89
+get 149
+get 75
+get 375
+put 843 n121 68.71
+del 1219
+get 721
+put 1922 n796 64.64
+put 1196 n198 38.21
+put 169 n43 73.0
+count
+put 1650 n980 1.1
+put 228 n673 63.95
+put 638 n581 93.68
+get 387
+get 1828
+put 1433 n620 63.73
+get 1400
+del 1617
+get 1367
+put 204 n380 86.42
+get 556
+get 621
+put 848 n711 20.97
+count
+put 1808 n694 83.88
+put 1915 n29 16.1
+get 1713
+put 1399 n624 81.54
+put 1920 n601 70.22
+get 1711
+put 1783 n324 67.53
+del 84
+put 1440 n489 94.41
+del 37
+put 301 n992 71.82
+put 1281 n826 61.62
+get 427
+put 1972 n830 35.13
+put 1354 n887 23.71
+put 46 n111 98.8
+put 1001 n38 69.93
+del 1572
+get 311
+put 1891 n7 36.12
+del 885
+get 1862
+get 1076
+get 1929
+get 837
+put 1981 n500 5.68
+put 1759 n172 26.4
+put 479 n444 9.5
+put 643 n83 51.12
+del 1630
+get 72
+put 1660 n285 13.6
+get 1301
+del 288
+put 882 n563 79.08
+get 927
+del 1304
+put 1803 n707 73.1
+get 359
+del 1546
+del 1926
+get 553
+get 1018
+put 170 n758 76.6
+put 188 n727 45.19
+del 1527
+put 171 n793 91.71
+get 238
+put 172 n933 94.14
+put 1784 n525 14.34
+put 1082 n124 11.94
+get 233
+del 1277
+put 1142 n196 12.52
+get 127
+put 111 n129 51.46
+del 650
+get 752
+get 1213
+put 1109 n555 43.71
+del 1031
+count
+get 1454
+put 923 n675 56.11
+get 729
+del 308
+put 2000 n0 51.76
+get 754
+get 1489
+get 1680
+put 1310 n991 40.85
+put 1916 n207 84.16
+put 989 n677 42.41
+get 1333
+put 1985 n729 2.08
+put 1808 n963 99.85
+put 630 n646 67.55
+put 492 n363 34.72
+get 778
+get 1017
+put 1607 n278 22.53
+put 1584 n112 13.32
+put 399 n450 76.63
+put 268 n164 51.41
+get 1906
+get 665
+put 1049 n714 36.18
+put 1124 n141 53.27
+put 393 n163 80.49
+put 678 n572 16.24
+put 1890 n325 51.91
+del 526
+get 1492
+del 642
+get 1408
+get 155
+get 1290
+put 1367 n448 17.24
+put 1338 n273 94.29
+put 157 n171 53.34
+put 293 n705 8.73
+del 61
+put 1776 n357 67.28
+del 1023
+del 874
+put 910 n816 55.57
+put 1726 n644 0.07
+del 833
+put 1970 n900 43.63
+count
+del 1707
+put 742 n857 55.63
+get 1493
+get 1677
+put 1097 n232 43.91
+count
+del 1053
+put 1470 n296 0.83
+get 1152
+del 1423
+put 1067 n709 12.6
+put 1577 n871 82.42
+get 1541
+put 723 n787 33.56
+del 1556
+get 232
+get 172
+del 1108
+del 182
+get 1664
+get 287
+get 820
+get 444
+put 308 n696 27.83
+get 1194
+put 1702 n325 38.95
+del 1977
+get 1292
+put 502 n626 82.0
+del 1450
+get 181
+get 1068
+put 252 n455 50.89
+put 910 n810 61.32
+get 1834
+put 1961 n971 54.77
+put 120 n165 96.98
+count
+put 1567 n384 26.95
+put 1805 n75 30.99
+put 225 n72 41.57
+count
+put 860 n611 80.71
+count
+put 1683 n434 80.63
+get 142
+get 389
+put 1480 n570 46.29
+put 1855 n460 43.06
+put 1037 n6 67.86
+put 452 n5 59.04
+put 1584 n757 14.31
+put 876 n605 47.02
+put 1130 n758 39.2
+put 370 n720 55.81
+put 1550 n498 90.9
+put 1545 n351 54.43
+del 1337
+get 1320
+count
+put 1457 n511 87.39
+del 586
+put 948 n756 4.25
+count
+put 1821 n114 50.19
+get 179
+put 136 n824 9.88
+del 1516
+get 657
+get 1002
+del 1557
+get 840
+put 923 n798 70.89
+put 1365 n665 93.46
+del 726
+put 300 n303 83.93
+put 1651 n782 96.8
+get 1025
+get 1609
+get 566
+get 971
+put 1573 n939 99.64
+put 1513 n109 68.79
+get 925
+put 1242 n388 27.37
+get 1208
+get 1272
+count
+put 1243 n763 68.85
+get 360
+put 637 n673 51.21
+put 1004 n386 33.98
+get 596
+get 1864
+del 1930
+put 145 n480 0.17
+put 155 n954 97.88
+count
+put 699 n257 96.22
+get 329
+put 502 n731 82.81
+put 228 n603 2.22
+put 1005 n838 80.54
+put 1718 n883 41.46
+put 915 n818 66.02
+put 534 n941 49.71
+get 811
+get 1429
+get 1805
+del 668
+get 776
+put 1835 n674 84.33
+get 1822
+put 853 n12 86.31
+get 1934
+put 703 n26 32.75
+put 1720 n23 16.46
+get 1579
+count
+put 474 n208 47.85
+del 392
+del 1898
+put 1890 n530 67.15
+get 84
+put 216 n448 95.55
+get 773
+put 318 n875 88.79
+get 513
+del 1525
+put 1030 n761 2.12
+put 183 n397 18.83
+del 1037
+put 656 n775 85.36
+put 1139 n356 98.56
+put 1083 n849 8.08
+get 231
+put 1019 n493 53.31
+put 740 n856 1.66
+put 1934 n888 88.76
+put 1496 n466 83.47
+get 896
+get 1698
+put 669 n460 1.89
+del 445
+count
+count
+get 1638
+get 1383
+get 1770
+put 1902 n709 7.89
+put 1528 n114 72.9
+put 975 n308 31.97
+put 341 n289 5.24
+put 1720 n432 83.37
+get 1178
+del 1219
+del 1832
+put 1826 n528 18.05
+put 1121 n864 74.74
+put 39 n500 44.44
+get 1242
+put 707 n157 89.11
+put 1696 n703 54.14
+put 885 n200 2.79
+get 161
+del 1989
+put 260 n998 62.31
+put 1121 n16 43.21
+put 1861 n954 34.12
+get 1916
+put 1732 n851 95.82
+get 380
+put 59 n49 13.84
+put 322 n431 25.38
+put 1843 n621 50.76
+put 391 n141 40.12
+put 526 n191 19.4
+del 1193
+get 470
+put 1373 n43 38.9
+del 229
+put 45 n934 9.51
+put 882 n306 61.03
+put 1516 n87 65.94
+count
+get 1097
+del 1529
+del 1708
+put 1900 n612 78.78
+put 166 n2 1.22
+del 103
+get 208
+get 17
+put 285 n981 95.97
+put 1643 n219 34.55
+put 1066 n101 10.21
+put 285 n451 90.78
+get 877
+del 314
+put 1902 n399 98.69
+get 909
+get 1707
+put 317 n967 6.49
+put 901 n415 71.67
+put 1194 n491 36.14
+get 1479
+get 35
+put 944 n786 54.29
+count
+put 1895 n948 26.35
+put 556 n348 52.51
+get 958
+del 144
+put 69 n317 85.31
+del 536
+del 1294
+get 288
+del 1195
+put 1488 n754 91.42
+get 443
+get 950
+get 1555
+put 412 n239 28.39
+put 629 n902 79.87
+count
+put 1980 n295 16.65
+get 19
+put 433 n580 43.18
+del 1413
+put 1173 n211 86.45
+del 448
+put 1711 n673 66.88
+put 26 n585 10.56
+put 1394 n105 72.2
+get 1841
+get 912
+put 1826 n330 77.75
+put 596 n250 98.28
+put 461 n773 97.75
+get 1008
+put 290 n648 48.76
+get 1100
+put 1535 n439 59.69
+get 1829
+get 1874
+put 1124 n995 61.14
+put 62 n204 33.51
+put 1462 n874 85.23
+del 937
+put 1550 n335 76.74
+get 941
+get 1589
+get 738
+put 1290 n475 39.2
+count
+get 1578
+put 805 n58 6.64
+count
+put 542 n631 18.05
+put 627 n788 88.94
+put 1557 n600 18.27
+put 534 n445 80.6
+count
+get 1303
+del 776
+put 1973 n522 97.37
+put 778 n43 8.93
+put 1719 n946 76.54
+put 639 n792 53.56
+put 397 n139 33.17
+get 1053
+get 409
+get 532
+put 1582 n636 48.91
+put 1618 n468 78.38
+get 339
+del 1172
+get 914
+count
+put 799 n411 61.39
+del 1839
+get 1977
+get 1568
+get 1472
+get 1240
+get 1480
+count
+get 519
+get 144
+put 1025 n648 68.4
+put 1628 n58 67.92
+put 1815 n876 26.62
+put 1452 n235 32.2
+put 454 n716 95.72
+put 1080 n813 26.37
+get 1550
+put 737 n132 60.73
+get 916
+put 125 n744 22.98
+get 1459
+put 880 n922 69.84
+get 988
+get 299
+put 707 n600 97.32
+del 1545
+put 595 n719 16.9
+put 123 n488 32.3
+put 732 n636 60.08
+get 806
+put 982 n627 24.05
+get 541
+put 842 n916 51.65
+put 997 n240 86.37
+get 1819
+put 862 n861 58.48
+put 1600 n29 7.4
+put 1029 n764 77.55
+put 937 n652 96.91
+put 574 n644 40.24
+get 1161
+put 613 n50 81.78
+get 647
+put 1181 n649 11.22
+get 1170
+put 821 n619 17.19
+get 1158
+put 1342 n362 39.09
+put 533 n51 88.5
+put 1312 n300 81.86
+put 1157 n756 50.52
+put 1864 n990 95.83
+put 1982 n210 19.63
+put 1786 n517 4.45
+get 437
+get 353
+get 1870
+put 1427 n596 15.56
+put 1216 n813 2.04
+get 1006
+put 1963 n282 49.67
+get 620
+del 1310
+put 1277 n805 34.54
+del 1864
+del 1825
+put 1675 n949 22.87
+get 364
+put 798 n89 9.08
+get 1331
+get 1537
+del 1027
+del 1383
+del 1591
+del 729
+put 1135 n493 34.69
+put 1371 n561 7.99
+put 404 n977 5.47
+get 736
+put 1907 n35 64.4
+del 1885
+get 618
+put 387 n672 55.43
+get 596
+get 623
+get 274
+put 65 n614 28.53
+count
+count
+put 1145 n414 49.75
+put 1386 n237 64.42
+get 309
+put 438 n927 37.08
+put 353 n426 19.18
+get 1195
+get 12
+put 739 n547 45.91
+get 1127
+get 1492
+put 461 n275 65.2
+get 1962
+get 1239
+put 853 n892 21.62
+put 221 n280 41.77
+count
+get 1788
+put 60 n367 88.96
+put 608 n611 5.58
+put 820 n225 71.87
+put 1339 n596 81.19
+put 809 n451 49.37
+put 265 n891 60.69
+put 511 n486 33.07
+put 336 n715 66.33
+get 51
+put 1516 n425 18.95
+put 1525 n888 66.05
+get 720
+put 494 n944 9.52
+put 113 n371 17.96
+put 872 n308 41.22
+del 84
+get 1622
+get 1446
+put 1352 n344 53.21
+count
+put 39 n719 68.29
+count
+put 1763 n956 95.41
+put 24 n924 8.82
+del 144
+put 568 n795 91.62
+get 744
+put 288 n450 79.78
+put 602 n947 63.28
+put 1249 n555 60.69
+put 263 n201 8.24
+del 821
+put 1124 n849 33.04
+put 1245 n959 97.71
+del 365
+get 432
+get 665
+get 1922
+put 159 n53 69.7
+put 1928 n869 36.26
+put 149 n74 52.19
+del 140
+del 57
+put 635 n552 56.1
+del 275
+put 433 n666 5.35
+put 643 n853 88.96
+put 6 n467 49.98
+put 946 n188 31.96
+put 1512 n479 87.95
+put 144 n366 35.51
+del 312
+put 1759 n245 50.6
+put 1784 n572 59.2
+del 1221
+put 683 n55 36.07
+put 251 n80 19.23
+put 1421 n485 50.49
+put 634 n163 84.1
+put 1623 n546 89.39
+get 916
+put 1736 n701 5.17
+get 202
+get 195
+put 1790 n921 37.74
+get 281
+put 1173 n80 61.39
+put 593 n253 8.33
+put 1275 n263 50.58
+put 1556 n832 81.68
+put 991 n480 19.0
+put 1385 n765 16.09
+del 1681
+put 1832 n198 21.54
+del 182
+put 1077 n558 40.35
+get 1260
+get 1930
+put 89 n594 46.62
+get 643
+get 829
+count
+del 1262
+del 1894
+put 212 n395 61.13
+put 1715 n520 75.7
+put 371 n233 54.76
+put 501 n883 86.22
+put 1548 n815 83.75
+put 1850 n579 69.37
+put 332 n65 2.61
+put 584 n627 44.32
+put 251 n486 90.19
+put 450 n342 81.67
+put 452 n347 22.28
+put 285 n672 26.62
+get 1345
+del 949
+get 136
+get 36
+get 1346
+del 1235
+get 1874
+put 1758 n905 80.29
+put 1732 n26 87.44
+del 820
+get 1888
+get 1857
+put 1525 n859 98.29
+put 1398 n883 61.51
+put 1266 n7 97.16
+put 1135 n941 15.3
+get 1877
+get 1567
+put 1168 n890 31.69
+put 1578 n41 32.6
+del 619
+put 1367 n494 89.28
+get 558
+put 851 n821 72.84
+del 733
+get 99
+put 1736 n346 56.98
+put 543 n343 7.13
+del 1367
+put 333 n483 99.58
+put 1098 n707 49.96
+get 575
+put 114 n910 88.16
+del 1602
+get 423
+del 263
+put 1450 n379 2.73
+put 1737 n25 21.92
+get 1965
+put 257 n922 31.11
+get 1480
+put 109 n577 69.62
+del 1663
+put 997 n713 88.42
+del 1044
+get 1124
+get 1679
+get 1525
+put 1705 n15 38.69
+put 461 n817 93.74
+count
+put 1189 n521 93.35
+get 1335
+put 1155 n496 16.95
+put 1 n485 40.55
+count
+put 223 n673 18.04
+put 397 n206 59.04
+put 619 n664 66.31
+put 122 n195 82.6
+put 102 n12 42.64
+put 192 n512 96.5
+put 25 n947 74.65
+put 926 n901 62.98
+put 1297 n572 4.38
+del 454
+get 228
+put 823 n262 64.85
+get 239
+put 1916 n219 73.42
+get 1749
+count
+del 1125
+count
+put 625 n317 25.86
+get 1485
+put 1521 n866 98.27
+get 1697
+get 256
+del 1985
+count
+put 1783 n616 36.15
+get 1601
+put 226 n131 32.46
+put 573 n636 79.23
+get 1872
+del 386
+get 1792
+get 702
+put 894 n415 95.47
+del 426
+put 1994 n514 80.47
+put 1133 n423 99.05
+get 378
+put 862 n854 96.38
+del 1649
+get 1021
+put 748 n40 34.86
+put 1577 n325 13.74
+get 1049
+del 1745
+del 112
+put 539 n489 61.1
+del 1951
+put 399 n706 3.35
+del 139
+get 155
+put 1693 n256 77.83
+put 1952 n627 71.95
+get 1215
+put 79 n563 48.71
+put 1777 n886 93.7
+get 1257
+get 761
+put 713 n702 55.1
+get 631
+get 1208
+put 387 n796 76.47
+put 1369 n733 76.62
+put 594 n17 67.21
+get 1490
+get 693
+put 1062 n846 97.88
+get 1945
+put 981 n220 0.44
+get 87
+get 424
+put 1296 n484 67.93
+put 298 n772 55.7
+put 1836 n501 96.34
+del 754
+put 125 n875 31.18
+del 1802
+put 349 n676 93.41
+count
+put 1210 n413 60.21
+get 1452
+get 516
+count
+put 344 n335 46.56
+put 402 n897 36.86
+get 411
+get 1080
+put 1093 n794 82.68
+del 1982
+count
+del 1540
+get 859
+del 1539
+put 1739 n556 45.88
+put 1264 n937 16.17
+del 197
+put 573 n871 0.98
+put 392 n458 80.39
+del 742
+count
+put 486 n176 83.86
+get 1329
+put 1387 n519 70.04
+put 70 n379 22.0
+del 1186
+put 239 n28 8.84
+put 685 n276 8.02
+get 942
+get 646
+put 618 n394 36.13
+get 1668
+get 1376
+del 1076
+put 206 n38 28.9
+put 1883 n389 14.97
+get 349
+del 1788
+put 669 n270 53.27
+put 329 n339 71.96
+put 1104 n390 45.3
+put 839 n686 99.79
+put 1293 n39 21.62
+put 1840 n995 92.59
+get 1562
+put 201 n77 98.37
+get 1441
+get 1200
+get 680
+del 1688
+put 1975 n285 15.34
+put 774 n89 77.57
+get 298
+put 1431 n362 75.25
+get 644
+put 1296 n1 35.97
+del 784
+del 947
+put 144 n304 87.63
+count
+del 543
+put 331 n995 71.57
+put 1174 n90 57.97
+get 1631
+put 374 n622 88.2
+put 288 n330 69.86
+del 1421
+put 669 n332 98.62
+put 1726 n118 83.29
+count
+get 1983
+get 1823
+count
+get 1280
+del 1380
+del 163
+del 267
+get 977
+del 8
+put 171 n520 72.81
+put 1169 n96 91.92
+get 1764
+put 922 n17 39.25
+get 717
+get 491
+del 794
+del 188
+put 880 n969 27.6
+put 1083 n522 2.0
+get 186
+put 1327 n195 26.61
+put 1971 n335 33.47
+get 1048
+put 666 n517 64.28
+put 837 n747 82.19
+put 1362 n895 89.0
+count
+count
+put 169 n773 10.06
+get 1091
+put 87 n557 13.94
+get 821
+del 1668
+put 523 n754 7.27
+del 345
+get 1433
+put 380 n693 61.1
+put 257 n834 99.99
+put 786 n945 58.3
+del 1372
+get 907
+put 888 n980 84.38
+get 1317
+put 930 n899 87.6
+put 93 n804 49.48
+put 1970 n22 29.98
+put 412 n594 67.86
+del 1775
+put 591 n204 65.18
+put 998 n740 88.65
+get 1345
+del 92
+get 946
+put 755 n779 57.72
+put 1896 n191 34.09
+del 261
+put 1730 n554 1.27
+put 1510 n371 89.8
+get 461
+put 24 n203 43.79
+put 1838 n698 24.39
+put 1882 n532 43.36
+del 1647
+del 675
+put 1700 n828 25.6
+get 710
+put 807 n630 44.46
+count
+get 1791
+get 623
+put 1654 n109 42.66
+del 253
+put 1433 n428 42.04
+get 1178
+get 1045
+get 1047
+get 312
+get 1235
+get 814
+put 1730 n914 64.38
+put 407 n159 63.19
+get 1343
+del 1152
+get 1939
+put 1594 n470 68.11
+put 1322 n249 8.55
+put 1161 n427 20.12
+put 305 n664 61.09
+put 1195 n739 8.32
+get 1162
+get 1881
+put 1644 n305 48.45
+put 1353 n522 64.63
+get 651
+put 1194 n825 98.54
+get 1906
+put 1458 n333 48.81
+put 1798 n859 56.15
+put 439 n82 4.01
+put 18 n736 14.84
+put 108 n382 75.11
+put 1217 n813 74.22
+get 292
+put 1505 n710 78.91
+put 1462 n632 71.51
+put 1453 n988 87.4
+get 957
+put 904 n805 68.32
+get 1876
+put 70 n458 22.13
+put 680 n873 40.88
+put 779 n162 47.89
+get 770
+put 959 n149 5.78
+put 864 n560 84.43
+get 110
+put 1382 n826 6.19
+del 293
+get 814
+get 1779
+get 479
+del 1232
+del 208
+count
+put 926 n832 33.47
+put 1546 n656 28.3
+put 1746 n198 20.88
+put 1915 n582 9.41
+get 47
+put 1291 n228 79.67
+get 1027
+put 882 n413 83.85
+put 1943 n362 27.23
+put 1323 n963 48.67
+get 664
+put 1518 n705 92.77
+get 280
+get 408
+del 1262
+put 422 n625 28.24
+put 311 n736 36.1
+count
+put 101 n853 21.25
+put 1774 n977 52.8
+put 1109 n253 15.78
+del 1268
+put 1114 n924 49.21
+put 90 n427 88.89
+get 1659
+put 1857 n514 50.74
+get 706
+get 1128
+get 1150
+put 763 n425 51.19
+del 1779
+get 895
+get 340
+put 1353 n777 4.84
+put 340 n222 9.65
+get 1099
+put 659 n356 76.91
+get 1012
+get 689
+del 106
+get 1489
+put 1437 n449 25.02
+put 1466 n983 10.52
+put 1608 n867 19.9
+get 1535
+get 1103
+get 701
+get 1260
+put 675 n295 31.39
+put 51 n960 24.9
+put 379 n738 90.32
+get 1500
+get 679
+put 833 n91 27.93
+get 54
+put 494 n632 27.61
+put 1435 n880 42.15
+count
+del 1857
+get 1779
+get 1262
+put 255 n676 14.6
+put 1414 n262 26.1
+get 1274
+put 387 n337 82.25
+get 622
+put 798 n843 24.91
+put 936 n313 51.65
+put 34 n257 26.67
+put 1483 n217 91.27
+del 1039
+put 271 n570 80.55
+put 1832 n715 43.59
+put 530 n136 94.46
+get 1035
+del 1849
+del 290
+put 350 n678 75.22
+get 677
+put 1625 n302 41.54
+del 374
+get 60
+get 1466
+put 716 n581 4.11
+get 261
+get 1153
+get 1739
+put 1916 n107 74.46
+get 830
+put 1114 n629 30.78
+get 546
+put 255 n887 76.28
+del 1441
+put 1736 n907 30.5
+put 1436 n59 5.39
+get 858
+get 1654
+get 935
+put 511 n716 84.43
+del 1903
+put 696 n934 61.24
+put 1834 n561 31.1
+put 1778 n438 27.54
+get 542
+get 99
+del 1176
+del 472
+get 1339
+put 1987 n403 24.29
+put 143 n678 20.2
+put 98 n763 87.04
+put 1828 n936 0.97
+put 715 n462 37.62
+get 304
+put 1482 n187 93.74
+put 92 n521 17.43
+put 1052 n96 36.49
+get 1377
+del 1276
+get 1152
+get 70
+del 632
+put 62 n349 48.28
+put 1156 n410 83.3
+del 1907
+count
+put 1974 n705 51.22
+put 1753 n141 34.36
+get 1134
+del 735
+put 618 n679 53.16
+get 1964
+put 1342 n645 17.75
+get 519
+get 1469
+put 1873 n283 1.84
+put 312 n679 71.86
+put 345 n578 31.0
+put 1617 n774 3.28
+put 216 n283 79.36
+put 1607 n840 42.98
+count
+put 1551 n200 43.05
+put 51 n203 29.14
+get 827
+put 1697 n964 46.64
+del 1314
+put 1521 n972 44.97
+put 1342 n950 56.25
+put 514 n87 11.9
+get 1681
+put 1613 n265 9.39
+put 1782 n429 40.14
+get 647
+put 1574 n323 88.23
+get 1628
+put 1408 n672 52.29
+del 1284
+put 408 n484 52.75
+get 341
+put 1074 n764 61.21
+put 293 n523 93.05
+put 1526 n18 37.68
+del 1893
+del 153
+put 1969 n907 12.09
+get 1295
+put 1043 n883 93.48
+get 725
+put 1395 n416 12.18
+get 118
+put 1480 n51 36.26
+put 506 n440 97.65
+get 233
+put 518 n523 36.06
+put 639 n341 29.5
+put 1940 n410 19.23
+put 1366 n115 58.42
+del 612
+del 586
+get 825
+put 1655 n169 86.39
+count
+get 1764
+del 1557
+put 778 n150 13.29
+put 1137 n961 26.27
+put 1989 n795 28.32
+put 1126 n161 53.2
+put 1867 n88 86.56
+put 1440 n648 60.71
+put 361 n360 35.16
+get 899
+put 1875 n70 99.26
+put 1066 n884 9.32
+put 1818 n493 74.02
+put 964 n560 73.33
+get 1374
+count
+del 563
+put 758 n726 92.18
+put 214 n70 5.13
+put 614 n323 26.37
+put 1573 n450 52.39
+put 310 n860 33.89
+get 1008
+put 847 n594 75.54
+get 809
+get 1727
+get 1709
+del 1326
+del 586
+get 926
+put 1748 n590 88.92
+del 1665
+put 1988 n14 23.12
+put 1922 n915 10.73
+del 51
+put 1970 n928 94.65
+del 242
+put 634 n127 98.72
+put 833 n329 67.55
+put 1786 n237 1.69
+get 581
+get 1910
+put 769 n136 80.28
+del 185
+get 1350
+get 211
+put 1128 n556 71.89
+get 506
+put 1811 n462 89.14
+get 651
+del 740
+count
+put 114 n338 59.69
+put 1153 n378 42.0
+put 1176 n230 57.14
+get 428
+del 1143
+get 573
+put 418 n474 93.79
+del 378
+get 1357
+put 89 n487 3.21
+del 1695
+get 1468
+count
+put 1668 n62 42.75
+count
+put 1171 n845 40.89
+del 1949
+get 1753
+get 309
+get 47
+put 1910 n979 86.51
+put 178 n859 90.1
+put 1636 n775 41.49
+get 900
+get 817
+del 927
+get 488
+put 1774 n680 74.14
+del 1918
+put 1970 n371 49.35
+get 846
+put 878 n56 53.13
+put 1280 n855 4.93
+put 1878 n892 42.9
+del 1348
+put 92 n488 71.02
+put 297 n870 32.85
+get 1613
+put 326 n742 13.55
+get 1500
+put 437 n265 59.3
+put 1452 n193 99.89
+put 362 n510 73.51
+put 1161 n658 17.09
+put 66 n466 47.65
+put 608 n523 59.51
+del 604
+del 1754
+put 1300 n761 12.04
+put 1981 n846 15.66
+put 1311 n124 3.32
+get 222
+put 1351 n261 49.74
+get 640
+del 739
+put 205 n371 72.21
+put 1763 n142 29.97
+count
+get 1996
+del 1291
+get 748
+put 381 n331 3.54
+del 429
+get 1177
+del 509
+get 1616
+put 246 n772 9.37
+get 1702
+get 1635
+get 572
+del 1555
+put 182 n550 13.69
+get 1672
+put 1904 n570 77.18
+get 1379
+put 1008 n533 66.66
+put 1487 n640 61.96
+put 986 n861 18.76
+get 1403
+put 1480 n581 40.49
+get 1888
+put 1828 n480 62.27
+put 769 n239 64.13
+count
+put 1735 n86 41.89
+put 1746 n845 48.02
+put 1450 n226 99.37
+get 1329
+del 1090
+put 902 n282 63.98
+get 1115
+put 84 n351 71.71
+del 1459
+del 294
+put 1741 n681 5.4
+put 1424 n235 85.88
+put 1017 n662 27.6
+del 1039
+count
+put 79 n958 48.31
+put 1050 n580 29.66
+del 1178
+put 515 n612 44.71
+get 1469
+put 678 n220 92.29
+put 1092 n965 82.82
+del 1510
+put 739 n757 76.14
+put 1425 n633 25.94
+get 470
+get 1316
+put 1377 n213 41.68
+put 30 n364 22.65
+get 1495
+put 615 n629 33.67
+put 294 n650 26.83
+put 925 n559 84.3
+del 1414
+get 687
+put 969 n65 41.11
+put 1670 n754 99.46
+put 599 n347 88.31
+del 65
+put 208 n277 15.17
+del 999
+get 1240
+put 1591 n449 57.48
+put 1135 n190 42.25
+put 1159 n982 92.51
+count
+put 920 n962 39.81
+del 1667
+get 711
+del 1438
+del 1086
+get 331
+del 1709
+put 1969 n958 49.3
+put 199 n428 17.27
+count
+put 486 n528 21.55
+get 220
+put 1176 n963 84.82
+put 87 n890 63.2
+del 1930
+put 1090 n384 67.79
+get 263
+get 676
+put 1416 n584 46.87
+get 381
+put 422 n503 1.71
+get 1837
+put 702 n192 42.47
+del 910
+del 329
+put 499 n617 37.16
+put 603 n58 11.18
+del 787
+del 1465
+del 1946
+put 1105 n484 1.41
+put 392 n165 56.06
+put 673 n49 28.5
+count
+get 1913
+put 1933 n151 62.88
+put 1007 n173 4.56
+get 323
+put 1006 n615 6.7
+del 354
+del 1212
+put 1155 n55 45.29
+get 1309
+put 1774 n879 8.64
+put 1654 n198 20.92
+put 1777 n938 84.61
+put 1370 n164 35.38
+put 1598 n744 98.76
+put 771 n6 64.76
+get 1061
+put 1115 n891 22.03
+put 1703 n78 46.22
+put 1046 n985 73.26
+put 404 n157 11.09
+del 386
+put 1058 n460 78.16
+put 1573 n347 53.72
+get 1917
+put 735 n773 4.49
+put 348 n299 70.24
+get 17
+get 574
+put 291 n589 0.38
+put 1049 n716 75.24
+put 85 n75 56.92
+get 1425
+del 1873
+del 1706
+get 991
+put 967 n898 57.14
+put 340 n722 52.16
+put 409 n270 66.55
+get 1042
+get 800
+put 1335 n310 37.91
+get 1186
+get 1250
+get 964
+put 810 n69 45.62
+get 725
+get 1917
+del 1702
+put 1725 n999 73.77
+get 1726
+del 1286
+put 1929 n58 16.02
+put 818 n351 6.61
+put 376 n30 85.97
+get 1165
+count
+put 602 n29 28.19
+get 1937
+get 253
+get 567
+get 166
+get 724
+put 1334 n913 61.24
+put 752 n352 99.21
+put 1757 n570 16.88
+del 1359
+get 1892
+put 908 n559 82.66
+get 1411
+put 639 n614 63.09
+put 1490 n444 21.84
+put 1952 n161 11.24
+put 1283 n358 19.75
+put 373 n612 12.18
+get 1312
+put 1370 n452 94.41
+put 1879 n288 36.85
+put 1496 n204 79.64
+get 233
+get 1652
+put 75 n930 74.62
+put 277 n406 2.82
+put 381 n162 53.58
+get 507
+put 699 n83 39.58
+put 634 n205 8.12
+del 1473
+put 1197 n483 71.2
+put 427 n346 62.01
+get 1121
+put 1179 n814 20.48
+put 289 n55 12.17
+count
+put 1368 n424 65.81
+get 1412
+get 957
+del 934
+get 1903
+put 185 n480 42.98
+put 1081 n19 86.32
+del 1825
+put 371 n691 46.75
+put 323 n51 9.2
+put 250 n752 43.39
+put 333 n729 41.86
+put 466 n5 70.12
+get 1704
+get 387
+put 522 n49 4.73
+get 1043
+get 1763
+put 452 n991 54.43
+del 383
+put 1588 n542 72.42
+count
+del 1638
+put 1396 n690 67.2
+put 1512 n242 67.55
+put 837 n655 93.5
+get 96
+count
+del 1270
+put 925 n383 38.72
+put 139 n620 11.72
+put 998 n177 61.23
+get 492
+put 356 n304 35.73
+count
+del 1188
+put 1315 n612 89.22
+put 1749 n755 35.86
+put 1755 n179 76.84
+get 159
+del 912
+put 1609 n739 21.22
+del 1197
+del 890
+get 880
+get 461
+put 839 n145 58.91
+put 906 n801 59.73
+put 1976 n943 89.07
+put 1219 n26 85.8
+del 289
+del 1223
+put 1972 n579 76.03
+get 1643
+put 880 n742 57.43
+put 1225 n840 18.5
+get 71
+put 59 n541 90.8
+get 227
+put 648 n73 47.49
+del 115
+get 1247
+put 749 n319 71.96
+put 1319 n252 69.27
+get 29
+put 160 n135 97.69
+del 1510
+put 234 n794 95.35
+put 1630 n715 9.69
+put 553 n498 65.8
+put 692 n786 95.79
+get 1635
+put 189 n94 1.45
+put 1081 n294 31.06
+del 475
+put 218 n492 82.72
+put 1371 n945 15.58
+put 1050 n728 95.66
+del 93
+put 1006 n264 66.22
+put 332 n8 38.86
+get 1258
+put 1959 n123 47.21
+get 1799
+get 1641
+get 565
+del 173
+put 1459 n131 63.26
+get 1562
+get 750
+put 1385 n707 69.39
+put 299 n978 2.53
+count
+put 699 n340 27.8
+get 614
+put 1298 n157 33.33
+get 862
+get 1536
+count
+del 1440
+put 1906 n405 88.77
+get 1436
+put 482 n329 80.87
+count
+put 1458 n283 30.11
+put 1357 n608 2.26
+get 624
+del 550
+count
+put 1139 n378 99.97
+get 1349
+del 1023
+del 72
+put 934 n146 56.5
+get 1556
+del 1733
+del 1252
+put 1572 n972 82.43
+put 1514 n954 38.47
+put 1069 n347 97.22
+get 1627
+put 863 n184 59.14
+put 947 n304 61.39
+put 51 n578 66.71
+put 1980 n318 9.24
+put 987 n341 37.42
+put 1856 n842 42.94
+put 883 n629 40.82
+del 1745
+put 559 n459 80.09
+count
+count
+get 993
+put 865 n656 80.58
+put 749 n158 2.04
+put 1157 n332 69.31
+get 1310
+get 531
+put 809 n809 45.09
+put 1674 n745 24.15
+get 345
+put 1191 n425 58.79
+put 1761 n849 23.83
+get 77
+put 115 n212 32.86
+put 1570 n247 41.44
+count
+count
+get 1759
+get 527
+get 1456
+get 1387
+put 746 n762 15.8
+get 1480
+put 1091 n881 90.4
+put 332 n276 19.82
+put 658 n25 18.23
+put 304 n717 3.35
+put 1648 n448 70.56
+put 1580 n493 82.67
+put 1112 n177 78.68
+get 1980
+get 198
+get 424
+put 342 n157 5.05
+put 1090 n631 29.87
+get 621
+get 1120
+get 1917
+put 198 n86 44.57
+put 317 n106 32.74
+put 153 n128 8.89
+del 1449
+get 1685
+get 1738
+put 918 n379 74.0
+put 596 n25 4.57
+get 132
+put 912 n713 40.61
+get 1273
+put 325 n595 47.26
+del 1094
+get 970
+put 1765 n761 73.0
+put 473 n823 51.55
+get 105
+put 1009 n191 46.09
+get 1041
+put 1059 n911 51.68
+get 1549
+put 733 n58 79.44
+put 1285 n579 91.5
+put 1266 n149 56.86
+del 580
+put 1946 n981 11.8
+put 819 n674 48.97
+count
+get 1485
+put 714 n485 73.68
+get 1727
+put 1227 n595 28.09
+put 1238 n485 13.96
+del 495
+put 116 n289 78.43
+get 503
+put 1059 n61 41.63
+put 1779 n896 9.85
+del 1037
+get 317
+del 609
+put 1136 n670 68.04
+put 869 n99 38.11
+put 1314 n170 95.25
+get 847
+get 71
+del 66
+put 11 n47 92.17
+put 462 n768 82.99
+put 1097 n143 62.51
+put 1242 n144 88.17
+get 1445
+del 248
+get 1810
+put 616 n662 16.2
+get 933
+put 1989 n483 31.16
+put 192 n534 37.16
+get 1818
+del 847
+del 1488
+put 1758 n705 44.76
+put 53 n183 49.05
+put 1560 n860 8.61
+put 1503 n799 70.64
+put 225 n856 98.7
+get 1157
+del 1438
+put 587 n871 57.2
+get 7
+put 1405 n923 76.2
+get 500
+put 1737 n285 24.82
+put 412 n849 17.37
+put 573 n521 7.49
+put 575 n697 15.96
+del 1180
+put 358 n937 69.75
+put 1546 n227 16.19
+put 752 n344 55.6
+get 39
+put 1584 n711 59.26
+get 1886
+put 1068 n925 20.2
+count
+get 1814
+get 1926
+get 1577
+put 1888 n214 74.24
+get 1261
+put 517 n363 56.49
+del 375
+get 737
+put 1424 n754 31.29
+get 736
+del 271
+get 1035
+get 441
+get 948
+del 1090
+get 1492
+put 1915 n343 55.6
+get 1092
+del 884
+put 261 n533 30.94
+get 291
+put 563 n877 95.17
+get 1995
+get 338
+put 409 n898 68.14
+del 528
+put 1006 n472 0.98
+del 1922
+put 1039 n849 42.65
+del 1083
+put 266 n322 92.64
+put 1013 n83 75.56
+get 1573
+get 1278
+put 190 n846 84.96
+count
+put 114 n545 9.46
+get 53
+get 1158
+del 1560
+put 114 n424 2.58
+put 499 n941 20.54
+del 1031
+del 1775
+del 751
+put 566 n866 24.96
+get 1610
+get 349
+put 1077 n816 99.62
+put 1704 n219 22.86
+count
+del 1589
+get 1740
+get 621
+put 1518 n724 47.2
+put 1054 n546 50.47
+get 296
+del 84
+get 636
+put 1896 n45 11.69
+del 56
+del 74
+get 1240
+count
+get 1360
+get 1686
+put 549 n405 30.34
+del 639
+del 1065
+get 534
+put 345 n810 90.89
+get 225
+put 1152 n931 86.81
+put 1236 n312 81.52
+put 1740 n326 60.01
+get 706
+put 1385 n968 42.18
+get 1548
+get 1922
+put 8 n692 32.4
+put 1189 n835 96.19
+del 1145
+put 1859 n325 89.35
+put 1453 n363 64.08
+put 1801 n531 94.31
+put 6 n231 96.49
+del 1791
+put 1895 n684 87.39
+del 617
+put 653 n406 68.78
+put 525 n435 38.81
+put 1591 n796 7.21
+put 912 n646 5.5
+get 852
+put 1298 n974 2.02
+put 1082 n167 47.51
+del 141
+get 1462
+put 2 n136 70.14
+get 338
+count
+put 191 n283 44.13
+put 865 n847 24.67
+get 1918
+put 1356 n745 58.31
+put 736 n154 61.72
+put 230 n170 94.55
+get 1839
+get 644
+del 1219
+put 705 n290 55.15
+put 1524 n670 41.04
+del 1919
+get 216
+put 439 n794 38.79
+get 498
+get 1097
+del 232
+get 162
+del 176
+put 924 n862 90.44
+put 430 n387 83.24
+put 1803 n4 47.99
+count
+del 457
+del 545
+put 119 n829 68.26
+put 1251 n932 56.41
+put 1708 n501 4.09
+put 212 n127 35.2
+put 1587 n265 22.58
+put 476 n562 92.55
+put 1007 n113 21.22
+get 552
+put 1467 n946 5.71
+put 1702 n994 74.78
+get 454
+put 663 n824 89.98
+get 1806
+del 1664
+get 484
+put 980 n606 29.63
+del 1991
+get 587
+get 298
+put 1567 n154 76.2
+get 1895
+put 565 n87 7.82
+del 1841
+get 636
+put 853 n180 58.68
+put 828 n551 58.7
+get 1933
+put 538 n827 15.03
+del 1237
+get 753
+get 1195
+get 914
+del 1120
+put 324 n647 77.1
+put 898 n25 22.58
+del 1907
+del 1235
+get 1381
+put 644 n846 70.97
+put 611 n676 90.75
+put 696 n190 46.15
+put 1063 n335 3.26
+del 190
+put 740 n325 97.41
+put 1353 n17 32.34
+get 1099
+del 1821
+count
+put 653 n617 26.14
+del 1987
+del 835
+put 108 n883 85.32
+put 1925 n644 42.83
+del 667
+get 1409
+del 807
+get 319
+put 1937 n769 21.99
+count
+put 1156 n236 94.75
+put 1920 n11 87.57
+del 892
+put 450 n485 56.32
+put 805 n599 70.07
+put 1567 n846 50.95
+put 419 n41 49.84
+put 1440 n333 11.64
+put 16 n614 51.56
+put 148 n610 8.16
+put 975 n836 37.69
+put 148 n47 48.56
+put 522 n637 9.01
+get 1667
+put 956 n121 69.65
+count
+get 950
+put 473 n670 13.62
+del 1480
+put 1501 n219 26.41
+put 523 n597 95.33
+put 1044 n650 45.7
+put 1423 n878 23.59
+get 1042
+put 174 n199 88.81
+put 1551 n686 84.53
+get 1128
+put 310 n521 92.41
+put 337 n718 62.3
+put 11 n548 91.86
+get 760
+get 273
+put 567 n874 59.75
+del 1287
+get 1914
+put 39 n326 93.76
+put 1462 n131 90.77
+count
+put 1002 n827 15.86
+get 1765
+get 1782
+put 1931 n251 82.69
+count
+put 1710 n704 46.86
+put 1177 n778 39.31
+put 1158 n240 52.25
+put 11 n460 86.74
+get 1705
+put 1835 n194 33.66
+del 779
+put 767 n553 22.88
+put 606 n858 68.1
+put 874 n972 58.37
+del 1402
+get 411
+del 1446
+get 1626
+put 332 n88 54.4
+get 1988
+del 418
+put 589 n817 89.81
+get 48
+get 63
+get 1804
+put 1446 n422 44.69
+put 765 n848 34.88
+get 714
+get 1826
+put 925 n275 37.49
+del 1527
+get 778
+put 589 n199 15.05
+put 725 n587 22.86
+put 1779 n388 27.71
+put 510 n803 27.41
+put 528 n411 72.31
+count
+get 1270
+get 986
+put 907 n377 84.27
+get 273
+put 1719 n21 36.68
+put 29 n514 19.7
+del 1587
+put 1897 n964 50.67
+put 1858 n612 52.15
+get 917
+put 1557 n995 36.7
+get 1484
+put 1681 n736 68.41
+put 287 n164 79.58
+put 847 n53 51.69
+put 653 n404 66.82
+put 625 n520 82.41
+put 1843 n951 34.99
+put 1519 n132 75.91
+get 378
+put 524 n111 19.32
+put 92 n896 1.51
+get 595
+get 160
+put 351 n94 62.77
+put 1994 n775 48.21
+put 532 n696 37.97
+put 1071 n301 35.36
+get 1755
+put 1574 n137 80.06
+del 1269
+get 241
+put 347 n218 44.67
+get 481
+get 833
+put 1531 n831 14.14
+get 696
+del 545
+put 1114 n442 42.62
+put 572 n523 74.87
+put 1844 n380 39.23
+put 825 n331 4.15
+put 800 n705 62.2
+put 597 n883 95.59
+del 1292
+put 1573 n657 2.48
+put 1711 n413 6.18
+put 307 n587 8.83
+get 283
+put 1781 n928 90.02
+put 1151 n341 34.39
+put 932 n416 14.29
+put 1881 n308 30.88
+del 222
+put 142 n388 67.7
+put 394 n933 8.44
+put 844 n28 64.68
+put 1937 n434 77.57
+count
+put 521 n126 47.86
+put 292 n867 34.01
+put 1533 n706 75.56
+del 1504
+get 1380
+put 830 n328 39.66
+del 1589
+get 1279
+put 1811 n624 19.95
+put 165 n205 36.61
+del 328
+put 97 n470 46.23
+put 25 n600 56.72
+put 361 n117 10.67
+put 1448 n886 39.87
+put 1946 n44 18.23
+put 515 n989 68.31
+put 598 n662 96.22
+get 817
+put 317 n546 5.98
+put 679 n559 1.74
+del 844
+get 13
+get 989
+get 627
+get 488
+get 344
+get 717
+put 162 n950 36.87
+get 1543
+count
+put 1203 n595 5.34
+get 119
+put 788 n194 59.18
+put 118 n723 70.53
+put 1310 n796 12.38
+put 391 n804 84.21
+put 579 n994 72.64
+del 816
+get 611
+put 1616 n873 44.87
+put 75 n215 68.53
+put 1318 n390 24.1
+count
+put 1140 n788 36.18
+put 488 n833 4.74
+get 179
+get 1048
+del 865
+put 1170 n745 33.91
+get 712
+put 1122 n144 48.74
+put 953 n187 63.92
+put 1805 n923 38.24
+put 1562 n890 54.08
+put 88 n41 71.51
+put 720 n590 23.71
+get 1424
+del 596
+put 496 n5 43.42
+del 537
+get 1470
+put 1124 n616 4.31
+put 1822 n163 62.87
+del 1652
+del 1950
+put 420 n229 53.59
+put 1610 n167 7.87
+put 1422 n555 62.28
+put 1440 n503 57.12
+put 181 n939 18.64
+del 1214
+put 777 n121 68.68
+get 51
+put 81 n91 8.8
+get 1786
+del 1923
+del 530
+put 845 n646 73.61
+put 1472 n723 34.9
+del 451
+put 376 n99 8.1
+put 119 n360 13.15
+get 1278
+put 1447 n881 43.93
+del 1182
+put 737 n730 7.93
+put 1921 n831 35.47
+put 1880 n584 32.43
+get 609
+put 975 n260 87.51
+put 1558 n710 74.52
+put 986 n225 74.04
+get 1529
+del 1751
+put 1867 n162 84.28
+get 739
+put 507 n791 86.76
+get 299
+put 1361 n27 72.22
+del 8
+put 1896 n838 11.54
+count
+get 617
+get 1773
+put 1670 n799 93.6
+put 1664 n710 76.22
+put 471 n799 83.36
+put 1262 n647 59.45
+put 1332 n759 88.86
+put 512 n292 62.56
+get 1947
+del 201
+put 556 n27 18.67
+get 243
+put 924 n388 52.06
+put 254 n569 77.69
+put 1081 n867 40.92
+put 576 n393 6.15
+del 865
+put 1125 n544 28.04
+put 1314 n494 28.83
+put 887 n196 30.84
+get 1728
+put 654 n435 83.21
+get 1347
+put 698 n51 14.11
+del 1690
+put 827 n412 5.33
+put 1474 n836 85.35
+count
+del 149
+put 827 n48 88.31
+put 1165 n740 24.48
+get 220
+get 532
+put 234 n751 14.65
+del 348
+get 131
+put 856 n530 2.55
+put 1762 n463 65.71
+put 616 n691 56.97
+get 656
+put 1206 n946 87.48
+del 1891
+get 574
+get 1941
+del 638
+put 1233 n783 61.02
+put 1408 n137 79.63
+del 816
+count
+put 468 n380 53.52
+get 428
+put 1387 n618 69.0
+put 726 n858 46.66
+put 106 n997 74.46
+get 61
+put 1502 n277 99.49
+put 50 n84 11.86
+del 167
+get 800
+put 445 n582 45.13
+del 399
+put 394 n222 14.26
+get 378
+put 441 n380 30.91
+put 1463 n722 26.87
+put 1289 n963 23.87
+count
+get 1338
+put 431 n352 2.79
+get 1729
+put 273 n256 60.65
+put 797 n199 62.77
+get 593
+put 998 n543 64.74
+put 275 n299 32.38
+put 1854 n521 37.82
+put 710 n703 33.88
+put 705 n178 0.82
+get 333
+get 1064
+put 203 n167 84.53
+del 1218
+get 953
+del 1087
+del 1646
+put 1301 n91 18.91
+get 375
+put 850 n889 33.68
+get 253
+get 1867
+put 1039 n726 56.1
+del 1625
+get 1067
+put 984 n876 24.69
+count
+get 1114
+get 356
+del 418
+del 820
+put 1609 n209 56.95
+get 1284
+del 272
+put 160 n421 5.11
+put 1529 n14 84.91
+count
+put 160 n132 6.91
+del 631
+put 670 n400 47.52
+put 345 n827 25.78
+put 294 n998 23.39
+put 73 n306 35.04
+del 1328
+count
+get 1915
+put 978 n587 73.32
+get 1022
+count
+del 27
+del 1540
+get 1227
+put 1673 n564 50.46
+del 1438
+put 308 n202 32.05
+del 609
+get 848
+put 1833 n784 51.65
+del 1765
+get 207
+put 1809 n651 99.74
+get 1120
+put 1690 n294 38.13
+get 1667
+put 61 n77 84.62
+del 1973
+put 1732 n397 62.38
+get 946
+put 667 n458 17.07
+put 1566 n333 51.58
+put 975 n85 95.68
+put 825 n51 35.8
+put 1214 n345 22.92
+put 1030 n338 97.56
+get 896
+del 1002
+put 1938 n304 50.28
+get 1632
+del 948
+del 1774
+put 609 n170 94.11
+del 802
+get 1881
+put 796 n804 99.9
+del 452
+del 101
+put 1397 n43 0.48
+put 1169 n357 65.61
+put 949 n986 46.78
+put 31 n190 5.27
+del 1472
+put 1016 n456 58.91
+put 50 n622 37.43
+get 1168
+get 778
+get 1410
+put 1047 n129 72.31
+get 1833
+del 1153
+count
+put 332 n370 59.14
+del 708
+put 106 n26 40.6
+del 1869
+put 1529 n160 17.47
+put 1493 n271 94.72
+put 1489 n839 13.86
+del 1909
+get 198
+put 586 n343 71.13
+put 1266 n407 18.47
+count
+put 897 n731 78.3
+put 664 n442 2.09
+put 564 n55 96.29
+get 1299
+put 1562 n282 56.82
+del 197
+del 1881
+get 107
+put 1209 n938 96.3
+put 386 n639 40.69
+get 1443
+del 1958
+put 1695 n770 12.98
+put 1782 n754 62.18
+count
+get 1490
+get 347
+put 1563 n978 11.04
+get 1971
+put 1016 n901 72.34
+put 486 n707 40.12
+put 1903 n779 63.75
+put 1946 n764 18.64
+get 1334
+del 412
+count
+del 1076
+get 87
+get 1650
+count
+put 1861 n24 13.44
+put 1462 n919 68.14
+put 743 n395 37.65
+get 1066
+get 1204
+put 1649 n583 64.0
+get 1323
+put 1597 n857 24.98
+count
+put 469 n446 38.7
+put 1968 n857 54.36
+del 1964
+put 1283 n282 35.82
+put 1497 n28 45.98
+get 597
+get 1559
+get 1041
+get 348
+get 299
+get 194
+get 1639
+count
+put 126 n612 87.17
+get 1320
+put 1860 n453 93.8
+get 1292
+get 926
+put 1228 n417 31.84
+del 587
+get 1728
+get 609
+del 207
+put 1780 n235 30.22
+put 53 n689 38.2
+put 68 n833 26.66
+put 221 n375 33.63
+get 116
+del 1256
+put 1428 n994 33.68
+put 452 n821 72.38
+put 1858 n289 48.26
+put 452 n778 57.04
+del 1570
+put 1334 n17 63.37
+put 1074 n865 49.53
+get 422
+del 1999
+get 967
+put 924 n786 59.66
+get 570
+put 1111 n781 53.03
+get 243
+put 1457 n593 64.83
+put 990 n601 86.57
+get 1625
+get 1573
+get 1991
+get 897
+put 559 n934 86.15
+get 1890
+put 725 n548 38.46
+put 283 n508 37.14
+put 661 n589 10.12
+put 1585 n124 97.26
+put 1053 n430 22.83
+put 1911 n790 82.4
+get 377
+put 851 n759 46.69
+put 1916 n364 99.44
+put 1051 n913 1.98
+get 627
+put 1457 n13 88.79
+get 309
+get 193
+put 1387 n570 98.31
+put 742 n853 89.33
+get 197
+get 1981
+put 363 n755 9.39
+put 1236 n785 97.24
+get 1005
+get 1306
+put 1318 n610 42.81
+put 616 n966 93.5
+del 556
+del 1639
+get 1685
+get 325
+get 889
+put 602 n164 42.92
+get 1296
+put 1198 n162 58.43
+put 1701 n993 73.27
+put 197 n492 22.52
+put 1276 n427 76.14
+get 1653
+put 1156 n632 2.03
+put 287 n839 17.9
+get 897
+del 1171
+get 908
+get 1877
+del 713
+put 1704 n715 48.01
+put 480 n103 76.09
+put 47 n551 69.8
+put 701 n69 47.03
+del 1760
+del 1682
+del 1096
+get 213
+put 1011 n14 48.39
+put 155 n215 85.65
+put 1683 n447 91.84
+put 1993 n75 36.57
+put 1516 n14 51.31
+get 644
+get 1012
+get 1093
+del 35
+get 1797
+get 1379
+get 619
+get 727
+del 1369
+put 343 n46 45.73
+del 435
+get 290
+get 1695
+count
+get 10
+del 1457
+put 1129 n352 95.41
+del 941
+del 833
+put 593 n237 60.46
+get 406
+get 1197
+get 454
+put 584 n499 3.25
+put 454 n157 74.45
+count
+put 1759 n425 35.25
+get 1425
+put 1481 n850 5.84
+put 1812 n324 2.12
+get 1140
+count
+put 473 n896 69.26
+del 1237
+put 226 n670 84.67
+get 1672
+put 1320 n415 27.43
+get 1537
+get 107
+get 227
+get 1696
+put 1829 n781 58.47
+put 883 n133 51.16
+put 424 n901 24.63
+put 1464 n265 42.22
+put 1017 n119 0.64
+put 755 n506 86.78
+put 208 n493 46.31
+put 1323 n961 58.35
+del 144
+get 1315
+del 1017
+put 407 n644 57.5
+get 639
+put 1942 n778 79.23
+put 1287 n640 56.57
+put 344 n3 36.55
+put 1959 n21 36.69
+put 798 n696 77.12
+put 1049 n165 34.47
+put 1879 n742 96.92
+get 718
+put 1486 n94 59.59
+put 45 n58 61.32
+del 811
+put 1983 n326 64.16
+put 1529 n407 69.22
+del 883
+get 582
+get 1368
+get 138
+put 1010 n643 96.3
+put 1651 n884 32.39
+put 1803 n455 21.81
+put 989 n984 43.29
+del 1428
+put 530 n816 66.29
+put 1150 n563 34.69
+del 1224
+get 1613
+put 190 n771 18.99
+put 1142 n588 74.63
+put 614 n555 92.47
+del 166
+get 176
+del 1453
+count
+put 788 n235 11.59
+put 1634 n394 38.78
+del 1813
+get 1382
+get 843
+del 1014
+put 1916 n95 91.28
+put 301 n799 56.76
+put 396 n364 7.45
+del 37
+put 1327 n983 7.21
+get 1766
+get 506
+put 1761 n608 90.4
+put 434 n380 56.38
+get 1720
+put 603 n188 64.59
+del 87
+get 1192
+put 990 n559 2.45
+put 755 n856 94.32
+put 1911 n474 97.64
+put 757 n573 60.01
+put 510 n671 69.46
+del 1546
+get 1061
+get 1145
+put 235 n561 39.01
+del 346
+put 150 n521 69.53
+count
+get 270
+get 410
+put 1115 n747 66.63
+put 568 n848 74.68
+put 231 n739 2.14
+count
+put 1144 n569 64.7
+get 1907
+put 1018 n548 27.76
+put 1687 n456 3.86
+put 1091 n65 3.67
+put 226 n218 96.56
+put 1852 n204 5.59
+get 985
+get 1091
+put 239 n13 32.91
+put 1537 n328 2.09
+put 1699 n144 57.17
+count
+del 614
+get 1854
+put 34 n678 65.73
+put 1243 n244 89.05
+put 1247 n495 28.44
+get 1447
+put 637 n950 84.41
+put 152 n650 39.74
+put 1231 n891 80.09
+del 1019
+del 110
+get 26
+put 393 n151 79.27
+put 576 n323 75.21
+get 732
+get 1743
+put 173 n798 69.45
+put 1423 n406 12.87
+get 474
+get 924
+count
+put 1474 n477 87.66
+put 462 n973 64.66
+put 886 n54 50.02
+get 1095
+put 1707 n717 42.58
+put 915 n799 95.41
+get 1011
+count
+del 646
+put 138 n42 26.68
+put 1816 n277 19.92
+put 1271 n148 3.69
+get 1319
+get 252
+get 1082
+get 253
+put 617 n362 85.46
+put 1985 n753 39.06
+get 1573
+put 1638 n110 68.82
+get 1459
+get 212
+put 1142 n448 9.83
+del 210
+put 535 n902 91.53
+get 833
+put 1632 n226 70.8
+get 1498
+put 1935 n573 45.46
+get 902
+put 630 n877 58.61
+put 1715 n37 3.29
+put 505 n562 6.23
+del 150
+get 479
+get 1719
+get 1778
+put 1390 n316 39.63
+put 1035 n965 74.39
+get 1443
+put 626 n831 29.34
+put 103 n125 66.82
+put 1139 n392 7.28
+get 1540
+put 767 n896 96.34
+del 1166
+get 490
+put 1 n920 54.64
+put 1036 n627 7.92
+get 231
+get 340
+get 1452
+put 1441 n389 91.46
+put 53 n947 67.02
+put 1094 n468 74.22
+get 1722
+get 1662
+get 1380
+get 335
+del 856
+put 1350 n69 92.0
+put 1431 n915 17.58
+put 1604 n733 7.37
+get 135
+put 634 n14 39.97
+get 53
+put 1517 n629 86.23
+put 592 n543 21.01
+get 1908
+put 55 n967 53.71
+put 293 n720 6.72
+del 1510
+put 1880 n837 23.39
+put 235 n93 73.31
+del 1589
+get 29
+put 936 n926 41.83
+put 1669 n290 6.87
+get 1178
+get 1063
+put 656 n352 83.75
+put 1552 n182 25.57
+put 1653 n766 16.08
+put 744 n860 58.11
+get 197
+put 1602 n493 16.48
+put 1085 n222 68.11
+put 666 n781 31.08
+put 597 n146 38.63
+put 724 n199 59.84
+put 1973 n283 31.44
+get 1803
+put 1129 n768 61.1
+put 141 n888 14.91
+put 1562 n255 35.9
+get 1799
+put 1365 n191 30.94
+put 1785 n417 31.91
+get 443
+put 1347 n78 28.59
+del 1520
+put 328 n771 41.49
+put 1614 n813 68.61
+put 1967 n797 72.6
+put 1560 n118 5.3
+put 1526 n362 24.54
+get 968
+put 96 n747 27.94
+del 1801
+get 1896
+del 1141
+put 208 n249 4.81
+del 297
+put 536 n67 31.02
+get 1347
+get 1981
+put 1548 n175 33.48
+get 1001
+put 1583 n286 41.14
+del 1261
+del 1863
+del 1598
+put 618 n907 61.23
+put 837 n26 77.65
+put 1040 n251 84.48
+get 239
+del 746
+put 1158 n224 4.71
+get 466
+get 917
+del 231
+put 1417 n496 30.35
+put 710 n987 40.29
+put 741 n579 57.09
+get 1600
+put 1886 n968 92.23
+put 1282 n799 29.47
+put 578 n776 89.78
+get 195
+put 726 n897 13.32
+del 982
+get 1403
+put 422 n870 84.7
+del 878
+del 1168
+del 1427
+del 482
+get 687
+get 861
+get 594
+get 1932
+get 344
+put 211 n365 49.2
+del 444
+get 93
+del 1751
+get 1119
+get 1047
+put 1375 n680 59.03
+put 1302 n350 39.62
+put 1687 n988 98.53
+get 94
+get 132
+del 584
+del 357
+get 1357
+put 163 n511 8.03
+put 1666 n997 70.09
+put 738 n394 34.3
+put 583 n243 38.1
+put 1430 n271 72.65
+get 1116
+del 395
+del 665
+del 321
+put 1772 n324 22.26
+put 481 n898 96.31
+put 936 n588 86.58
+put 658 n383 24.37
+count
+put 846 n336 56.48
+get 629
+get 402
+count
+put 1537 n268 70.56
+put 1729 n96 25.03
+put 1978 n23 96.0
+put 1425 n704 31.0
+put 179 n302 84.12
+get 1509
+del 699
+put 1388 n691 20.67
+get 1645
+del 1760
+put 1959 n755 46.69
+del 1685
+put 393 n424 61.71
+put 263 n536 18.96
+get 680
+put 1263 n414 38.7
+del 1343
+put 984 n125 47.89
+put 1251 n100 58.56
+put 443 n260 26.41
+get 1125
+put 754 n269 59.75
+del 285
+del 1561
+get 1550
+put 1868 n721 92.53
+del 300
+get 1131
+get 1023
+get 504
+put 321 n140 61.67
+count
+put 528 n871 39.98
+put 19 n59 58.85
+get 1444
+put 1699 n987 52.57
+put 1826 n363 13.95
+put 154 n594 12.91
+del 258
+get 783
+put 1522 n693 97.64
+put 1262 n977 38.53
+del 1644
+put 1717 n377 91.76
+put 1036 n143 32.68
+del 1429
+del 1145
+count
+put 1440 n716 33.15
+put 567 n41 32.96
+put 1992 n689 1.95
+get 242
+put 1956 n494 40.76
+get 1650
+put 1662 n829 55.05
+get 631
+del 1631
+put 491 n770 51.91
+put 755 n576 76.42
+put 1841 n536 94.87
+put 569 n596 37.38
+put 1250 n166 97.68
+put 1554 n143 41.41
+put 1502 n399 85.27
+put 1237 n220 37.06
+get 443
+put 1156 n300 44.07
+put 97 n537 6.58
+put 709 n976 10.68
+put 1638 n696 66.76
+get 242
+del 998
+get 1467
+put 1501 n704 8.76
+get 166
+put 1603 n380 63.57
+put 1407 n247 62.39
+del 496
+put 1099 n15 60.74
+put 190 n547 37.29
+put 1543 n421 74.09
+put 1779 n547 71.19
+get 1268
+get 1917
+del 235
+del 1755
+get 341
+get 1406
+get 923
+put 1683 n37 73.38
+del 1672
+put 439 n693 46.28
+put 1272 n705 56.64
+put 1589 n568 26.58
+put 101 n935 82.28
+put 1568 n780 77.89
+get 1007
+get 1634
+del 1985
+get 694
+put 1245 n945 51.42
+put 1313 n272 65.09
+del 519
+get 126
+put 1555 n520 74.21
+get 172
+count
+get 895
+put 1102 n968 38.71
+del 523
+count
+put 1219 n354 47.08
+del 1752
+put 686 n421 34.92
+put 1054 n176 64.52
+get 1318
+get 967
+put 1413 n845 96.24
+get 549
+put 295 n343 18.65
+get 1808
+get 1961
+get 1214
+put 1811 n854 86.61
+get 1209
+put 1206 n315 51.04
+put 1133 n942 40.43
+put 1325 n818 25.06
+del 1506
+put 815 n988 66.95
+get 929
+put 1952 n686 96.36
+put 1187 n314 66.82
+del 336
+put 1779 n432 41.31
+put 784 n603 56.07
+get 880
+put 1679 n356 52.33
+count
+put 730 n290 89.15
+put 316 n758 46.94
+get 1883
+put 1048 n350 24.8
+put 936 n959 92.42
+get 233
+get 665
+put 207 n967 26.65
+del 1814
+put 1446 n853 96.78
+del 643
+del 1841
+put 1999 n341 84.22
+count
+put 1310 n863 7.89
+count
+put 140 n872 39.52
+put 838 n663 62.26
+count
+put 1056 n263 27.79
+get 1816
+del 234
+del 715
+get 1895
+put 987 n695 61.39
+get 1604
+get 1236
+put 547 n943 36.46
+put 805 n274 35.27
+put 813 n522 42.18
+put 406 n727 74.9
+put 957 n140 24.73
+del 1257
+get 493
+get 408
+put 1474 n663 83.61
+put 9 n342 11.57
+put 884 n524 27.9
+put 663 n704 1.3
+put 1808 n707 74.81
+get 522
+put 1404 n420 42.49
+get 1217
+get 955
+put 1367 n174 80.42
+del 1334
+del 541
+get 1715
+put 863 n750 25.53
+get 1478
+put 29 n237 51.83
+put 1179 n660 61.48
+del 1941
+get 1799
+put 883 n536 21.86
+put 64 n851 44.92
+put 360 n185 97.68
+put 1752 n451 3.41
+put 1200 n726 24.02
+put 1367 n55 16.8
+get 1296
+count
+del 829
+count
+put 959 n150 66.3
+get 495
+get 252
+get 1719
+put 1726 n443 51.63
+put 1492 n53 87.17
+put 1831 n696 73.21
+put 1055 n694 17.9
+get 614
+put 1997 n262 35.67
+get 1417
+put 1600 n330 45.73
+del 247
+get 1437
+put 1057 n496 47.43
+get 1824
+get 1502
+put 1361 n111 96.72
+get 1257
+put 686 n245 10.31
+get 499
+put 1021 n469 59.86
+put 252 n815 90.82
+put 437 n875 51.97
+put 252 n406 28.88
+del 841
+del 1743
+del 1792
+get 1908
+put 148 n689 32.22
+del 967
+get 1243
+get 204
+count
+del 1248
+put 539 n662 47.34
+del 1262
+del 1352
+count
+put 1092 n808 72.0
+del 245
+get 1966
+del 709
+put 821 n335 47.27
+put 1324 n644 59.21
+get 530
+get 1491
+get 1324
+get 1171
+del 1101
+put 1344 n966 16.17
+put 518 n483 58.79
+get 549
+put 9 n526 59.33
+put 1973 n129 97.17
+del 754
+put 1023 n379 44.05
+put 938 n939 65.45
+put 432 n423 27.2
+put 954 n474 35.41
+get 725
+get 186
+put 1005 n229 26.52
+put 539 n796 62.89
+get 263
+put 642 n498 19.75
+put 1557 n889 62.04
+get 1520
+count
+get 1858
+del 1478
+get 1644
+get 707
+get 1630
+get 126
+del 1086
+put 1052 n526 14.22
+put 1873 n955 5.79
+get 1021
+get 703
+put 1418 n376 95.94
+get 1709
+get 1272
+del 1063
+put 844 n682 19.91
+count
+del 1144
+put 902 n885 92.07
+get 305
+count
+put 1606 n846 12.62
+get 1430
+put 397 n170 61.72
+put 1019 n97 45.87
+put 1965 n858 19.49
+put 1598 n322 0.58
+get 1444
+get 1423
+get 1137
+put 140 n198 28.55
+del 1517
+del 276
+put 342 n421 99.77
+get 1247
+get 553
+put 1213 n812 70.31
+count
+put 1832 n68 42.39
+get 1576
+put 483 n132 47.83
+get 66
+put 1430 n327 11.15
+count
+del 1411
+put 1712 n524 34.77
+put 1556 n120 42.82
+get 804
+put 1889 n945 40.71
+get 1138
+get 750
+put 1373 n519 9.51
+del 1933
+put 1623 n821 22.22
+put 679 n839 82.3
+put 989 n744 56.65
+del 1897
+get 1211
+del 1533
+del 7
+put 1151 n771 92.82
+del 1675
+del 48
+del 1161
+put 1832 n138 69.1
+put 503 n188 35.57
+put 1215 n431 47.42
+put 1819 n703 58.72
+put 836 n716 86.66
+get 1619
+get 1940
+put 1121 n23 71.33
+put 1273 n155 97.52
+get 1635
+put 245 n492 28.47
+put 1554 n890 25.05
+get 702
+put 1232 n321 29.33
+put 354 n731 48.96
+del 879
+del 584
+del 850
+put 1799 n705 8.31
+del 730
+get 907
+get 1945
+del 1633
+get 1578
+count
+put 115 n651 31.49
+put 405 n916 59.85
+put 1463 n138 85.21
+put 1410 n421 62.32
+get 349
+put 914 n717 97.43
+del 1757
+put 182 n244 44.23
+put 229 n613 68.46
+put 1095 n391 0.14
+put 930 n666 26.58
+put 1464 n668 5.5
+put 1578 n793 10.37
+put 1759 n904 51.29
+put 1842 n510 71.71
+get 292
+count
+put 1982 n346 48.31
+put 357 n466 58.46
+get 672
+del 230
+put 1664 n527 60.62
+get 1642
+put 383 n884 0.99
+put 1936 n118 25.08
+get 935
+del 143
+put 1497 n972 39.35
+put 319 n226 8.34
+del 1771
+del 1657
+put 32 n967 72.0
+get 201
+get 830
+put 810 n80 98.87
+put 1923 n616 96.21
+put 1266 n778 17.74
+put 556 n604 1.04
+get 1571
+put 828 n95 82.61
+put 1009 n305 6.16
+put 204 n867 79.95
+put 1583 n750 95.17
+get 1090
+get 1367
+put 1385 n16 73.34
+put 1989 n105 47.02
+put 1330 n992 80.34
+get 1495
+get 85
+get 136
+put 969 n993 8.97
+put 409 n633 92.32
+put 943 n927 32.5
+get 373
+get 322
+count
+get 1860
+put 486 n351 81.3
+put 1858 n382 24.37
+get 97
+del 1120
+put 1444 n577 20.95
+del 1177
+put 48 n799 51.25
+put 619 n878 35.48
+del 1238
+put 925 n745 67.41
+del 940
+put 680 n235 64.82
+put 1169 n484 78.21
+put 198 n350 81.69
+put 1749 n909 81.85
+put 1268 n368 37.51
+put 1419 n699 96.75
+put 1389 n323 17.47
+put 714 n823 0.24
+get 1329
+get 1116
+put 967 n628 41.57
+put 191 n774 15.84
+put 1149 n302 3.95
+put 1545 n184 48.99
+get 1439
+put 1457 n391 84.14
+get 94
+put 649 n443 31.92
+put 912 n94 89.1
+del 1916
+put 1547 n230 12.78
+get 1833
+get 1451
+put 362 n809 68.2
+put 134 n748 86.36
+put 1595 n411 27.08
+put 1658 n902 64.65
+put 1594 n515 86.38
+put 462 n358 29.1
+put 1217 n311 53.77
+put 1781 n40 37.4
+get 207
+put 1652 n461 74.31
+get 421
+put 1996 n757 65.96
+get 328
+get 1987
+put 660 n9 19.93
+del 1901
+get 235
+put 1496 n580 67.24
+del 456
+get 940
+put 1742 n677 60.68
+get 192
+get 814
+put 436 n80 74.66
+put 1813 n860 72.19
+get 1466
+get 1493
+put 793 n7 22.15
+del 1060
+get 906
+put 1749 n517 0.15
+put 1445 n652 6.49
+put 1699 n573 22.91
+get 1559
+put 1959 n885 7.48
+put 1099 n748 26.28
+del 1213
+put 29 n703 50.46
+get 111
+put 313 n401 19.88
+count
+get 1954
+get 1710
+put 1944 n540 79.47
+put 1788 n579 62.1
+put 62 n615 10.62
+put 524 n991 25.66
+put 1157 n345 61.82
+get 1776
+del 657
+get 1712
+put 1785 n986 93.91
+put 266 n531 60.44
+put 1092 n711 64.33
+put 805 n106 93.35
+count
+put 846 n393 72.99
+put 621 n849 83.02
+put 490 n585 69.0
+put 1359 n435 2.48
+get 1403
+count
+get 1002
+put 843 n360 1.82
+del 158
+get 402
+put 188 n105 72.26
+put 1244 n958 27.43
+put 1645 n367 38.78
+put 983 n890 6.09
+put 453 n62 16.94
+get 673
+get 1292
+del 1650
+put 525 n209 95.28
+put 1770 n957 60.26
+get 30
+put 1818 n430 99.01
+del 975
+get 236
+del 842
+get 1484
+get 246
+put 941 n203 35.59
+put 23 n98 6.91
+put 1017 n981 77.3
+get 343
+put 900 n111 4.57
+put 678 n476 28.79
+get 1529
+put 503 n886 57.64
+del 355
+del 1160
+get 1405
+put 533 n397 78.57
+put 1947 n903 97.7
+del 463
+del 508
+put 1108 n480 16.75
+get 1227
+put 213 n631 3.43
+del 1788
+get 453
+put 731 n188 56.25
+del 1800
+get 1378
+put 387 n389 17.59
+get 246
+count
+put 1257 n351 82.01
+put 800 n375 57.01
+put 1349 n74 72.85
+get 1998
+get 897
+put 1555 n700 22.98
+put 563 n274 18.04
+put 433 n731 66.66
+put 604 n577 79.39
+put 1622 n0 52.86
+del 635
+count
+put 12 n703 84.59
+del 234
+get 1516
+get 229
+get 815
+get 764
+put 1840 n171 63.13
+put 1221 n7 82.48
+get 1836
+get 705
+put 1874 n85 18.26
+get 792
+get 1339
+del 360
+get 66
+get 1999
+put 1325 n989 89.82
+get 638
+put 717 n439 11.71
+get 1449
+del 1221
+del 579
+put 1973 n935 69.79
+put 1455 n853 8.64
+get 211
+get 1489
+put 1562 n26 30.45
+put 1023 n513 58.93
+put 349 n95 63.02
+put 437 n139 53.19
+get 1632
+count
+put 1846 n617 26.92
+put 928 n250 53.19
+get 1076
+put 1130 n251 75.99
+get 398
+put 1065 n685 52.99
+put 1846 n447 91.37
+put 1590 n953 53.27
+get 1426
+put 1373 n981 69.43
+put 1265 n323 18.74
+get 1814
+put 193 n554 18.78
+put 515 n67 42.23
+put 121 n290 95.43
+put 824 n695 78.13
+get 319
+count
+put 1099 n846 80.49
+count
+put 1244 n34 53.86
+del 101
+count
+put 1629 n717 40.07
+put 842 n382 97.41
+put 1729 n967 52.46
+count
+put 1148 n187 98.68
+put 1173 n705 59.96
+put 461 n915 74.28
+get 1864
+get 509
+put 209 n268 3.46
+put 1651 n306 18.44
+put 652 n38 13.36
+del 1858
+count
+put 1848 n140 49.05
+put 664 n425 2.83
+get 933
+put 90 n616 34.7
+get 1665
+del 1794
+get 538
+put 1633 n348 6.74
+del 1279
+put 1064 n616 14.11
+put 582 n477 13.27
+put 670 n522 27.13
+put 5 n34 13.26
+get 624
+del 1632
+put 810 n806 73.06
+get 766
+put 1606 n820 78.02
+get 1229
+get 1204
+del 1998
+put 85 n379 52.61
+put 1112 n539 34.89
+put 1674 n275 94.74
+put 1741 n68 23.08
+put 644 n373 26.48
+put 1131 n562 39.28
+put 1679 n260 54.46
+put 355 n410 45.45
+get 868
+put 480 n85 35.59
+put 105 n210 63.46
+put 1348 n870 1.64
+put 1450 n759 80.98
+del 1158
+put 397 n160 99.23
+get 235
+get 1284
+get 658
+put 1023 n184 42.33
+get 857
+put 1391 n144 37.25
+put 1957 n735 57.34
+put 1062 n136 88.43
+put 1868 n650 24.11
+get 1568
+put 137 n533 71.93
+put 973 n167 23.17
+del 1075
+del 595
+put 1359 n34 6.61
+put 1075 n792 94.0
+get 1608
+get 629
+put 1572 n668 45.79
+put 111 n116 88.24
+put 1944 n545 87.04
+put 1650 n160 7.66
+get 125
+put 160 n857 63.94
+put 1658 n939 32.67
+put 330 n115 72.96
+get 737
+put 1222 n885 98.28
+get 375
+put 106 n807 8.56
+del 1818
+put 105 n547 26.23
+put 838 n982 34.99
+put 1165 n629 39.05
+put 1916 n176 87.93
+put 1268 n485 14.95
+del 146
+count
+get 1112
+put 927 n17 51.4
+put 1677 n916 54.6
+get 1223
+put 914 n499 11.81
+get 1788
+put 41 n193 47.17
+put 149 n372 68.01
+del 218
+put 1977 n44 50.2
+put 38 n405 78.46
+get 1339
+put 1051 n585 98.98
+put 171 n782 25.16
+get 1887
+get 162
+put 1344 n864 71.11
+del 47
+put 396 n757 17.59
+get 1757
+get 1894
+put 750 n633 97.08
+get 1671
+put 1792 n393 23.02
+count
+del 1406
+put 183 n486 9.31
+put 1079 n149 30.68
+get 1458
+put 513 n185 28.88
+get 1794
+get 578
+get 1436
+get 1064
+del 8
+get 467
+get 1888
+get 868
+put 86 n959 64.91
+put 53 n944 14.37
+put 1532 n10 47.26
+get 668
+put 1434 n754 78.38
+put 1369 n872 32.92
+put 415 n133 3.01
+del 1875
+del 1697
+put 184 n655 55.09
+put 158 n860 59.88
+put 1051 n782 23.03
+put 814 n442 80.7
+put 842 n569 68.36
+put 141 n845 58.77
+get 1346
+del 1174
+put 295 n46 42.1
+put 1774 n149 14.51
+del 1553
+put 734 n454 63.67
+put 815 n220 97.8
+get 568
+get 1858
+put 1444 n429 9.69
+put 275 n835 33.89
+count
+get 372
+put 1577 n455 76.71
+get 498
+get 549
+del 1925
+get 113
+get 1526
+get 54
+put 1387 n179 91.25
+put 1342 n645 11.45
+put 1171 n417 43.39
+get 1379
+put 20 n19 3.04
+put 1133 n299 32.98
+get 1790
+get 381
+put 283 n173 17.18
+put 811 n291 47.14
+get 1362
+put 1977 n463 51.65
+put 1059 n53 3.1
+del 1976
+put 1273 n217 41.24
+put 1896 n644 10.81
+get 854
+get 519
+get 1519
+put 1219 n539 37.02
+put 210 n153 48.16
+put 999 n818 13.52
+put 1390 n10 92.97
+put 761 n467 1.73
+del 315
+del 1334
+put 753 n410 75.12
+put 1782 n572 19.93
+put 1493 n878 31.89
+put 1833 n599 98.44
+put 716 n683 66.54
+del 1645
+get 677
+put 441 n502 0.93
+del 853
+put 801 n657 14.9
+get 138
+get 416
+get 1615
+put 93 n312 62.43
+get 364
+put 84 n230 36.92
+del 1523
+put 563 n201 33.96
+get 1336
+put 589 n648 84.76
+del 1921
+put 136 n166 12.34
+put 1180 n495 93.2
+put 30 n631 75.53
+del 1203
+put 1850 n299 34.2
+get 102
+del 1035
+get 1969
+get 60
+put 717 n232 81.76
+count
+del 226
+put 1657 n357 21.97
+put 1385 n936 61.4
+del 907
+put 1491 n75 35.34
+get 1982
+put 944 n767 27.17
+del 1500
+put 948 n375 98.0
+put 139 n469 47.11
+put 1050 n886 42.61
+get 266
+put 1174 n764 73.4
+put 967 n872 92.05
+put 992 n679 49.69
+put 993 n460 4.38
+get 1872
+put 559 n694 73.56
+put 1476 n851 90.15
+put 563 n158 99.98
+put 107 n551 49.68
+put 1704 n706 37.12
+del 870
+put 734 n381 61.72
+put 1635 n41 4.03
+put 1820 n69 7.08
+count
+put 1901 n987 33.56
+put 189 n966 75.07
+get 858
+get 733
+put 437 n154 46.61
+count
+put 806 n266 73.17
+del 1959
+get 1842
+put 1602 n21 23.56
+put 1040 n747 2.52
+get 1344
+put 1970 n946 4.61
+count
+put 691 n148 27.01
+get 1110
+count
+count
+del 913
+del 289
+del 1028
+put 1761 n733 60.65
+get 1512
+put 265 n41 17.63
+count
+get 1880
+put 1673 n5 62.07
+put 1597 n482 95.82
+get 940
+put 359 n368 90.74
+get 620
+get 923
+put 242 n222 78.45
+get 844
+get 1161
+put 1033 n687 72.19
+get 666
+put 117 n678 37.29
+get 1785
+put 1316 n66 81.11
+get 742
+del 1760
+put 986 n750 82.51
+del 1577
+put 1727 n766 45.54
+del 1639
+get 298
+del 101
+get 1594
+get 417
+put 214 n494 26.34
+get 414
+get 1117
+del 1272
+get 1846
+get 1944
+get 1454
+del 1229
+put 111 n849 3.85
+get 1220
+get 1026
+put 1512 n748 60.33
+count
+get 1303
+count
+put 179 n262 78.2
+put 184 n21 25.68
+put 456 n0 73.59
+put 1092 n35 46.25
+put 1886 n393 61.82
+del 714
+put 84 n109 58.72
+put 1721 n81 88.3
+get 1976
+count
+put 1983 n720 5.64
+put 193 n783 24.71
+del 1683
+del 1871
+put 167 n11 34.84
+put 1751 n581 38.0
+put 435 n857 12.47
+put 994 n119 76.95
+get 260
+put 157 n454 88.71
+get 4
+get 1725
+put 613 n706 74.61
+put 771 n621 10.96
+put 1642 n161 42.71
+put 206 n563 4.78
+get 39
+del 605
+put 1349 n989 98.0
+put 1811 n389 15.89
+get 1663
+put 1291 n586 25.48
+get 1415
+count
+put 1525 n815 79.23
+put 1303 n116 3.81
+put 500 n339 71.23
+put 762 n743 66.12
+get 998
+put 1326 n434 26.62
+put 1612 n486 95.28
+put 1158 n195 82.31
+del 1140
+get 1364
+del 1359
+del 849
+put 1311 n3 95.69
+put 709 n498 11.37
+put 467 n982 72.22
+del 876
+count
+get 1506
+del 786
+del 1036
+del 887
+del 358
+del 1301
+count
+put 493 n881 57.61
+get 1929
+get 1433
+put 266 n42 77.43
+put 409 n505 15.39
+put 1176 n624 51.99
+get 841
+del 1169
+put 1647 n574 0.78
+del 1469
+put 1882 n679 48.02
+get 1822
+put 223 n284 44.65
+put 80 n840 67.39
+get 1859
+put 1494 n217 74.62
+put 157 n157 99.58
+put 1972 n896 7.65
+put 1719 n166 33.97
+put 1742 n567 36.79
+put 1066 n456 6.83
+get 392
+get 1300
+get 262
+put 8 n954 25.07
+get 384
+put 885 n188 73.78
+put 567 n204 21.95
+get 1623
+put 152 n53 51.96
+put 1634 n328 51.05
+put 1036 n60 77.1
+put 1850 n826 69.63
+del 628
+put 322 n455 26.82
+get 77
+put 917 n277 72.7
+get 166
+get 1340
+put 1585 n973 19.66
+get 852
+put 403 n715 19.39
+get 156
+put 1987 n277 64.46
+put 1895 n205 48.01
+put 1165 n407 60.74
+put 73 n809 99.1
+del 1371
+put 1621 n220 53.96
+get 1370
+get 1834
+get 278
+get 1692
+put 856 n380 11.36
+put 663 n672 7.62
+put 711 n994 10.09
+put 595 n338 73.69
+del 493
+put 124 n992 55.02
+get 416
+put 1837 n964 15.83
+get 911
+put 991 n840 9.61
+get 1855
+put 1909 n52 48.61
+get 158
+put 1644 n649 22.28
+put 419 n757 60.97
+get 1700
+put 1287 n428 86.03
+put 16 n766 24.9
+del 1031
+del 365
+put 1603 n43 44.01
+count
+del 933
+put 1601 n629 92.73
+put 883 n373 68.16
+get 1629
+put 207 n267 2.01
+put 1648 n577 10.59
+put 1158 n151 53.37
+count
+put 1268 n915 69.35
+get 55
+put 1763 n443 12.53
+put 694 n528 45.38
+get 1019
+put 258 n616 73.16
+count
+put 915 n508 40.73
+del 1952
+count
+get 627
+get 1194
+get 572
+put 498 n422 13.77
+del 1310
+get 1145
+del 10
+get 418
+put 1891 n40 18.63
+put 711 n177 35.86
+del 346
+del 1207
+put 1701 n963 92.29
+del 547
+get 335
+put 1449 n489 21.23
+put 1680 n339 93.51
+get 1798
+put 1943 n657 29.28
+get 854
+put 960 n93 79.12
+get 1176
+put 1338 n271 45.62
+put 1333 n585 86.43
+get 848
+put 819 n756 68.62
+put 1473 n218 27.46
+get 899
+put 1129 n655 38.65
+put 46 n438 27.16
+put 1279 n384 69.92
+del 214
+del 1201
+get 902
+put 1406 n635 96.85
+del 169
+put 1009 n705 57.61
+put 156 n696 77.92
+put 1907 n41 85.61
+put 1134 n909 26.9
+get 263
+put 1546 n848 67.48
+put 1695 n254 80.58
+put 248 n964 77.51
+get 503
+put 389 n761 83.78
+get 465
+put 415 n713 54.32
+put 974 n987 44.55
+put 314 n706 34.01
+put 1241 n920 5.75
+put 678 n917 43.83
+put 1992 n429 52.49
+put 831 n557 57.98
+count
+del 1304
+get 1940
+del 791
+del 861
+put 250 n798 80.4
+put 1917 n541 79.41
+put 163 n808 59.46
+get 1568
+put 117 n423 29.55
+del 1700
+get 1946
+get 1039
+del 515
+get 1653
+put 683 n911 4.05
+get 501
+put 857 n17 81.19
+get 1331
+put 351 n228 8.94
+put 1743 n413 52.86
+get 115
+put 1098 n932 12.4
+put 410 n561 88.39
+get 1171
+del 1158
+get 1745
+put 1142 n555 19.54
+put 180 n705 69.87
+get 513
+count
+get 1112
+put 10 n978 49.72
+get 334
+get 1703
+put 1065 n42 18.95
+get 62
+put 1595 n176 19.1
+put 254 n919 94.14
+del 752
+put 1371 n680 95.47
+get 1432
+get 1186
+del 861
+get 1319
+get 561
+get 482
+put 983 n35 30.36
+del 1061
+del 1802
+count
+get 1693
+put 529 n305 98.01
+count
+put 477 n805 70.3
+put 275 n275 42.57
+put 147 n452 22.14
+get 560
+del 1922
+count
+get 1060
+put 496 n795 59.77
+put 623 n445 25.67
+get 990
+put 522 n854 0.88
+put 563 n491 54.97
+get 684
+get 109
+put 709 n487 63.4
+put 1988 n478 93.76
+get 473
+put 1650 n952 60.24
+put 412 n879 48.47
+put 1875 n677 98.26
+put 891 n400 75.52
+put 1390 n936 19.61
+get 1644
+put 1401 n422 45.99
+get 306
+get 483
+put 881 n752 6.04
+put 1722 n793 99.48
+put 988 n626 85.07
+get 584
+put 559 n655 15.56
+put 440 n474 57.32
+get 1593
+del 1060
+put 381 n882 13.72
+get 805
+put 88 n938 43.17
+put 756 n392 85.6
+put 306 n396 37.32
+del 1726
+put 1862 n877 85.8
+get 219
+del 4
+get 956
+del 858
+put 1762 n912 83.95
+get 1746
+del 1045
+put 1378 n505 93.43
+put 1015 n120 84.12
+put 1854 n158 51.99
+put 1708 n549 45.25
+put 1882 n644 27.27
+get 330
+put 210 n33 59.44
+put 919 n799 66.63
+put 1433 n936 94.27
+put 106 n860 37.28
+get 41
+put 231 n856 92.47
+get 126
+get 1170
+put 725 n185 61.82
+put 1769 n765 74.8
+put 661 n464 44.84
+get 1592
+del 1224
+get 1564
+get 1558
+put 1846 n742 8.89
+get 445
+get 227
+get 1562
+del 409
+count
+put 604 n965 14.31
+put 583 n618 34.53
+get 1428
+put 1478 n721 29.09
+put 330 n797 39.8
+put 1268 n786 44.41
+get 1449
+get 1594
+put 190 n978 79.03
+get 221
+put 989 n526 34.82
+get 1053
+get 1244
+put 517 n85 23.18
+get 335
+del 1354
+put 1768 n709 57.28
+get 743
+get 1361
+put 1287 n24 67.96
+put 834 n44 55.76
+get 874
+del 639
+put 564 n866 79.26
+del 1491
+put 1669 n153 1.66
+put 1819 n279 40.41
+del 751
+del 1039
+put 1168 n785 62.77
+get 1023
+del 737
+del 1891
+put 767 n835 61.85
+put 719 n583 25.28
+put 987 n282 21.65
+get 638
+put 850 n95 5.06
+get 417
+del 648
+put 163 n463 87.1
+put 1003 n543 15.83
+get 751
+put 145 n56 60.88
+get 1459
+put 1563 n534 98.02
+count
+get 1094
+put 378 n355 49.77
+put 1805 n437 10.77
+get 1992
+put 1491 n975 11.36
+put 135 n588 82.52
+count
+put 228 n771 4.06
+del 1962
+put 1403 n607 35.41
+put 466 n44 37.08
+del 1545
+put 797 n290 82.96
+get 189
+put 1375 n393 32.34
+put 1687 n294 89.8
+del 906
+put 1585 n500 29.92
+put 372 n558 8.9
+get 1066
+put 1168 n855 79.72
+get 1802
+put 1710 n615 99.74
+count
+get 1360
+get 752
+get 707
+get 1208
+del 808
+put 1875 n752 60.93
+del 1222
+get 713
+put 1498 n621 9.24
+put 572 n824 27.07
+put 1981 n897 96.47
+put 948 n112 50.87
+del 42
+get 893
+put 55 n996 1.79
+put 592 n231 74.97
+put 1291 n986 33.75
+get 1258
+put 230 n202 47.8
+get 463
+put 1240 n769 21.76
+get 215
+put 372 n567 25.23
+get 64
+del 1402
+count
+get 89
+put 1033 n246 3.91
+del 925
+put 728 n282 72.1
+del 169
+put 1926 n929 58.91
+del 1601
+put 203 n229 49.83
+put 1200 n960 37.12
+put 1765 n881 61.01
+put 1607 n12 72.32
+count
+put 889 n703 61.3
+put 752 n507 33.52
+put 257 n105 12.05
+put 145 n28 31.26
+put 990 n770 72.39
+del 745
+put 1268 n466 20.14
+del 309
+put 411 n281 71.57
+put 133 n163 88.42
+put 1539 n161 93.33
+put 520 n607 52.35
+put 1586 n506 23.8
+get 967
+put 281 n108 19.6
+count
+get 1814
+put 611 n215 71.99
+get 300
+count
+put 570 n614 70.04
+get 1345
+put 1686 n119 72.52
+get 805
+count
+put 1571 n212 34.8
+get 605
+del 1095
+get 1633
+put 146 n614 28.81
+del 1090
+put 1048 n201 37.64
+put 1004 n214 51.73
+put 771 n37 90.1
+put 1365 n921 97.28
+put 690 n986 46.25
+get 1075
+put 1733 n394 37.33
+put 191 n670 99.96
+get 493
+put 153 n138 54.2
+put 1953 n361 38.44
+put 1882 n877 53.49
+get 1103
+get 1762
+del 532
+put 881 n821 57.53
+put 1597 n302 28.88
+get 652
+put 317 n818 99.48
+put 982 n950 60.84
+put 72 n659 7.04
+get 638
+put 1233 n418 7.55
+put 1868 n898 97.07
+put 600 n138 96.74
+get 929
+put 1676 n442 9.04
+get 610
+put 463 n769 91.33
+get 1532
+put 1571 n185 18.6
+put 1870 n271 23.78
+put 1263 n808 91.24
+put 1064 n911 99.06
+get 1871
+get 193
+put 1080 n165 33.56
+put 207 n933 56.45
+get 1095
+get 868
+del 1640
+del 1379
+get 943
+count
+count
+put 1116 n100 1.33
+put 1955 n621 84.73
+put 989 n482 50.58
+count
+get 1806
+get 580
+put 45 n775 57.05
+get 1969
+put 299 n200 25.57
+count
+put 1333 n71 47.7
+count
+put 131 n311 12.08
+put 1859 n844 60.04
+put 1209 n212 91.66
+get 454
+put 669 n823 5.69
+put 331 n376 35.85
+put 1183 n812 94.83
+put 44 n456 72.82
+get 1429
+get 267
+del 397
+put 1728 n811 12.5
+get 552
+get 620
+del 1940
+del 664
+get 159
+put 1093 n54 98.88
+put 55 n885 73.83
+put 433 n516 63.88
+get 350
+count
+put 537 n350 41.66
+del 328
+put 152 n847 65.59
+del 1730
+put 720 n94 17.89
+get 1062
+get 1751
+put 1055 n949 12.99
+put 205 n684 84.97
+get 151
+put 445 n846 43.48
+put 239 n828 17.83
+get 413
+put 1960 n558 1.16
+put 286 n183 17.99
+put 104 n373 70.59
+put 828 n864 63.98
+get 759
+put 710 n351 86.75
+put 640 n207 94.4
+put 1018 n169 57.97
+put 1947 n475 2.46
+put 1637 n318 25.15
+get 183
+get 682
+del 1812
+put 668 n837 62.98
+put 176 n82 49.07
+put 775 n483 16.95
+del 733
+put 1849 n360 47.73
+put 1403 n390 62.15
+get 481
+put 995 n506 48.1
+put 244 n732 93.29
+get 1253
+get 789
+put 1980 n596 62.82
+del 1315
+put 1398 n734 33.01
+put 754 n627 56.22
+put 758 n406 6.2
+count
+get 933
+get 415
+put 1963 n248 92.76
+get 988
+put 1348 n36 84.32
+del 575
+get 944
+del 751
+put 1577 n263 84.85
+get 1883
+put 1210 n400 25.42
+del 150
+put 1555 n527 13.45
+put 1978 n82 67.92
+put 175 n916 0.56
+put 1660 n300 19.05
+put 1444 n526 53.17
+put 844 n574 54.45
+put 1113 n531 9.39
+get 276
+put 1371 n127 85.66
+put 1062 n450 68.11
+put 1247 n920 56.46
+put 301 n497 62.43
+get 1022
+put 1269 n61 10.65
+put 391 n662 5.0
+get 1693
+put 1652 n43 72.42
+get 638
+count
+get 53
+put 1467 n138 44.74
+get 530
+put 1947 n267 24.38
+put 1190 n116 67.72
+put 1836 n334 67.71
+put 1771 n354 56.51
+count
+get 1261
+del 1170
+put 519 n249 11.89
+put 1412 n183 25.0
+put 133 n735 30.78
+get 611
+del 46
+put 1390 n938 88.52
+put 1924 n52 74.5
+del 511
+put 393 n958 87.08
+put 1518 n177 61.79
+get 1279
+put 334 n82 28.33
+del 1046
+del 1230
+put 415 n772 2.37
+put 1835 n810 95.63
+count
+put 720 n921 48.62
+get 1387
+get 713
+get 100
+put 814 n458 52.49
+put 1168 n247 63.77
+del 302
+del 1547
+get 1745
+get 124
+put 494 n686 95.95
+put 1723 n139 7.66
+del 250
+put 1477 n657 0.15
+get 834
+put 1343 n832 31.45
+del 714
+put 1225 n385 32.43
+put 417 n88 54.04
+put 1432 n813 32.11
+put 1835 n340 58.83
+put 1157 n720 79.63
+put 159 n836 88.15
+put 1698 n544 0.68
+get 1562
+put 231 n170 68.17
+put 647 n748 42.41
+put 753 n455 48.94
+put 1831 n361 90.85
+get 1324
+put 1538 n705 57.47
+get 1977
+get 1719
+put 1201 n676 80.7
+del 1238
+put 505 n554 5.89
+put 1771 n39 74.4
+put 1015 n251 92.6
+get 1408
+count
+get 1587
+del 65
+get 1288
+put 1094 n341 55.33
+put 1046 n834 57.24
+get 1063
+del 348
+del 898
+put 1647 n595 89.89
+put 1918 n225 12.64
+get 815
+put 657 n197 97.99
+del 595
+del 590
+put 1759 n596 56.12
+put 748 n836 0.05
+put 620 n710 8.02
+get 1023
+put 1729 n443 31.24
+put 914 n959 80.32
+put 883 n943 12.53
+get 1121
+get 457
+put 424 n99 23.57
+get 501
+put 1276 n362 98.73
+put 1548 n788 97.42
+get 1426
+get 573
+del 1166
+put 1171 n45 95.37
+put 617 n873 68.23
+put 1845 n200 78.95
+put 1471 n261 4.02
+get 744
+put 140 n558 6.4
+put 1169 n486 43.84
+put 1318 n856 65.23
+put 1250 n860 99.45
+put 439 n362 64.17
+put 785 n995 93.43
+put 1843 n269 26.26
+get 1821
+get 464
+put 1877 n189 31.75
+del 1619
+del 1420
+del 703
+del 1838
+put 1510 n796 90.42
+del 1867
+get 837
+del 578
+count
+get 448
+put 321 n237 24.55
+get 1457
+get 1242
+del 495
+get 913
+get 1801
+get 427
+put 1134 n420 66.63
+del 520
+get 206
+put 1304 n373 50.33
+put 1570 n487 47.52
+put 606 n397 4.53
+put 1133 n572 19.65
+del 1052
+put 304 n675 40.03
+get 1019
+del 1647
+put 1185 n886 34.71
+get 723
+get 581
+put 312 n509 43.42
+get 688
+put 333 n426 6.44
+get 1473
+put 1704 n251 45.02
+get 1758
+get 1452
+del 536
+put 859 n968 80.43
+get 1273
+put 1099 n442 20.93
+del 1589
+put 866 n944 12.36
+get 1423
+get 1743
+get 144
+get 886
+put 426 n782 63.33
+del 1729
+put 2 n118 64.01
+get 1858
+del 961
+put 925 n539 60.9
+get 1329
+put 1345 n705 3.65
+get 605
+del 428
+put 86 n724 61.22
+put 394 n801 55.87
+put 1739 n24 96.15
+del 525
+get 1989
+del 866
+put 794 n628 76.45
+del 1801
+put 1465 n958 76.22
+del 1837
+put 1851 n164 69.6
+del 1869
+put 1014 n814 15.71
+get 710
+del 745
+put 730 n138 35.34
+put 47 n222 31.16
+put 459 n652 41.37
+put 1541 n202 75.27
+get 1950
+put 1516 n439 45.59
+get 243
+put 1199 n905 75.98
+count
+put 1303 n854 52.77
+del 537
+put 1084 n300 26.32
+put 1007 n685 28.87
+get 313
+del 230
+get 329
+del 1450
+del 1815
+put 1774 n535 84.64
+get 1256
+put 86 n438 80.28
+put 518 n947 28.87
+put 437 n566 38.37
+count
+put 393 n636 69.07
+count
+put 1216 n406 23.92
+put 1826 n942 0.76
+del 1164
+put 337 n241 43.63
+put 205 n940 0.02
+get 1298
+put 1355 n303 33.11
+get 1970
+put 1234 n713 30.8
+put 840 n426 62.06
+del 190
+del 966
+put 1388 n416 8.56
+get 359
+put 1263 n329 46.95
+get 1804
+count
+count
+get 35
+get 279
+put 256 n323 34.05
+get 413
+get 986
+put 542 n661 25.59
+put 304 n827 66.99
+put 1079 n243 54.62
+put 836 n621 5.81
+put 1610 n581 68.24
+get 1189
+put 733 n301 34.95
+put 1605 n557 35.68
+get 365
+count
+put 402 n338 26.22
+put 1664 n383 48.7
+get 33
+put 1116 n947 99.3
+get 517
+put 1477 n419 33.51
+get 1532
+del 1603
+put 1242 n510 56.51
+get 1443
+put 1215 n392 49.93
+get 1662
+get 255
+put 1030 n832 62.05
+put 1782 n935 83.97
+get 1885
+put 1045 n274 70.13
+get 1453
+put 35 n207 38.67
+del 940
+put 1780 n678 5.53
+put 1025 n603 71.45
+del 1115
+del 1265
+put 501 n854 90.64
+del 173
+put 1983 n360 76.27
+get 703
+put 914 n967 12.03
+get 798
+get 1867
+put 197 n628 20.27
+get 1205
+get 1225
+get 1873
+get 1084
+del 313
+del 1293
+del 488
+del 1547
+put 1823 n806 23.85
+get 1010
+get 1720
+put 396 n946 77.39
+put 1187 n2 86.29
+put 593 n949 69.78
+put 349 n331 79.88
+put 880 n14 62.48
+get 857
+put 1602 n288 46.28
+get 1896
+put 914 n974 81.31
+get 1524
+put 1277 n294 3.96
+put 1553 n256 81.9
+put 183 n744 63.6
+put 539 n945 45.21
+get 1915
+put 34 n110 61.26
+put 1157 n298 13.16
+del 1351
+put 1647 n927 65.34
+get 119
+del 1553
+get 806
+get 425
+get 406
+get 1422
+count
+put 1271 n851 53.37
+put 205 n6 65.68
+put 1756 n476 91.02
+put 423 n286 93.21
+get 884
+put 565 n757 58.28
+put 180 n795 69.91
+del 1430
+put 979 n539 3.36
+get 510
+put 1380 n382 76.97
+put 486 n928 52.96
+put 1499 n61 52.75
+get 700
+put 411 n518 82.1
+get 249
+put 254 n847 84.37
+get 278
+del 772
+get 1929
+put 1607 n103 11.7
+put 1525 n328 83.98
+put 1532 n130 76.46
+put 767 n26 38.17
+get 1539
+put 618 n641 13.35
+put 1070 n75 53.81
+put 551 n774 37.86
+del 727
+put 48 n133 29.75
+put 1522 n889 49.95
+del 1793
+get 132
+get 290
+put 920 n321 72.23
+del 175
+put 1968 n681 75.9
+get 1651
+put 1833 n834 77.2
+put 982 n654 21.3
+put 990 n565 76.95
+get 688
+get 43
+get 1734
+put 102 n116 90.28
+put 1217 n379 48.42
+put 1187 n817 17.96
+put 943 n73 80.76
+put 1967 n42 48.54
+put 686 n9 59.06
+put 1776 n852 65.67
+del 1319
+put 319 n323 30.68
+put 1354 n440 37.42
+put 1903 n5 35.64
+get 337
+del 1014
+put 877 n732 69.67
+put 1078 n480 98.41
+put 265 n382 90.2
+get 1122
+get 509
+put 157 n253 32.06
+del 1676
+put 1006 n6 50.44
+get 80
+put 1499 n210 38.24
+get 991
+del 1657
+del 371
+put 1841 n718 73.39
+put 1313 n483 60.44
+put 527 n165 32.28
+put 1946 n638 64.26
+put 1654 n35 56.83
+put 1991 n988 55.12
+get 1727
+put 1030 n870 57.84
+put 204 n271 2.98
+count
+put 4 n487 68.59
+put 919 n195 88.83
+get 1968
+del 1333
+get 757
+count
+get 643
+get 1937
+get 292
+get 1089
+put 1626 n291 0.8
+put 1089 n49 67.17
+del 1823
+del 961
+put 1023 n595 7.64
+put 1396 n447 93.93
+del 299
+del 170
+put 839 n513 84.53
+put 856 n842 83.29
+get 1357
+get 1493
+put 325 n605 65.24
+put 1847 n636 35.35
+put 629 n722 46.39
+get 911
+put 143 n993 27.44
+get 1224
+put 1073 n760 56.11
+get 430
+get 1827
+get 240
+get 395
+put 1645 n785 20.09
+get 1531
+get 951
+del 121
+get 756
+count
+put 161 n153 89.36
+count
+get 857
+put 1374 n130 8.34
+put 230 n389 34.81
+put 1754 n498 47.88
+get 676
+get 1833
+del 1821
+put 1237 n317 18.06
+get 394
+get 418
+get 1645
+del 981
+put 29 n568 82.36
+get 1028
+put 993 n855 72.82
+put 531 n185 61.47
+put 1305 n816 88.44
+get 1610
+put 1935 n14 14.76
+put 22 n890 58.17
+get 609
+put 1787 n308 55.32
+del 1244
+get 475
+del 1619
+del 688
+put 451 n681 64.51
+put 1044 n173 9.58
+put 1704 n955 60.38
+put 563 n540 23.26
+get 140
+put 374 n892 60.43
+get 430
+put 1963 n33 71.49
+put 746 n157 85.61
+get 923
+get 81
+put 768 n317 48.88
+put 1638 n880 3.68
+get 1690
+put 956 n153 60.03
+get 1039
+put 1927 n456 7.55
+get 274
+put 535 n216 10.77
+put 837 n594 63.79
+put 1924 n197 60.69
+get 1458
+count
+put 301 n907 8.31
+count
+del 658
+put 465 n563 97.51
+put 745 n564 62.08
+get 1326
+del 625
+get 1536
+get 1941
+del 518
+del 991
+put 1974 n545 76.58
+put 908 n860 76.57
+get 1624
+put 116 n93 96.34
+get 18
+put 242 n877 30.77
+put 1963 n276 23.4
+put 1954 n598 6.17
+get 1100
+put 514 n105 53.16
+get 322
+put 1352 n490 88.47
+count
+get 1283
+put 1447 n250 13.67
+get 1273
+put 11 n72 31.43
+del 221
+put 659 n247 75.15
+put 1060 n130 68.3
+put 1235 n894 79.12
+put 1171 n171 14.17
+del 1831
+put 1624 n413 15.04
+get 615
+put 953 n622 60.08
+count
+put 1963 n613 24.17
+get 253
+get 705
+count
+put 1038 n706 84.14
+put 1412 n808 71.04
+put 1831 n624 30.62
+put 1835 n161 3.83
+put 117 n878 61.07
+get 971
+put 802 n250 64.62
+del 86
+put 1647 n351 5.2
+put 301 n441 75.15
+put 1475 n964 97.65
+put 1580 n47 72.94
+put 884 n417 60.4
+get 1595
+get 1672
+get 769
+put 741 n138 5.78
+get 1385
+put 1079 n568 36.35
+get 700
+put 1226 n669 11.99
+get 213
+put 1728 n532 46.08
+get 1934
+del 680
+del 816
+put 761 n448 51.78
+get 1293
+get 792
+put 503 n820 11.88
+put 1259 n445 85.3
+get 694
+get 970
+put 1 n675 58.21
+del 347
+put 386 n974 87.79
+put 617 n539 42.36
+get 1994
+get 670
+get 679
+put 48 n573 3.57
+del 1453
+get 1766
+get 1341
+put 714 n598 22.29
+put 203 n991 89.48
+del 1480
+put 854 n0 51.25
+get 206
+del 87
+put 78 n470 87.47
+get 511
+get 1288
+put 3 n818 73.08
+get 950
+count
+count
+put 1802 n714 87.44
+count
+del 911
+put 1086 n336 48.82
+put 1610 n857 78.8
+put 1199 n473 79.86
+get 1770
+put 1966 n535 7.79
+del 1152
+put 592 n457 88.2
+get 88
+put 974 n54 42.24
+put 1869 n883 75.98
+get 1555
+put 783 n584 9.19
+put 1322 n140 68.08
+del 1411
+put 1225 n194 92.3
+get 499
+get 813
+get 498
+get 548
+del 1639
+put 1477 n888 76.97
+put 395 n46 71.16
+put 217 n256 76.12
+put 1773 n219 88.5
+put 1131 n947 59.52
+get 236
+put 683 n587 33.41
+put 1786 n130 43.7
+put 162 n485 90.12
+put 1250 n450 68.44
+get 389
+get 518
+put 1032 n805 21.82
+put 1547 n284 25.53
+del 1298
+get 1540
+get 25
+get 1653
+put 1345 n844 27.0
+put 1482 n652 10.27
+get 1979
+put 58 n367 87.12
+put 730 n922 22.22
+del 746
+del 284
+put 291 n234 39.24
+put 1064 n310 35.05
+get 285
+get 621
+del 1625
+put 1248 n433 29.23
+put 1473 n718 6.78
+get 699
+put 302 n324 31.94
+put 129 n376 54.22
+get 1454
+put 41 n847 77.85
+del 1806
+del 895
+put 190 n158 86.46
+count
+put 62 n101 86.58
+put 625 n350 50.42
+del 737
+del 1553
+del 1811
+get 1191
+get 745
+put 1543 n401 51.31
+get 1617
+get 90
+put 1984 n93 63.85
+get 642
+put 357 n800 27.28
+put 1021 n185 49.61
+del 606
+get 1750
+get 1936
+get 1437
+get 565
+del 487
+put 515 n723 4.61
+put 788 n158 18.38
+put 46 n398 44.82
+put 1712 n311 20.25
+put 1540 n609 67.01
+get 1072
+put 1584 n280 89.62
+get 1906
+put 342 n827 49.91
+get 1477
+get 1121
+get 1651
+del 1321
+get 1172
+get 1446
+put 818 n478 84.26
+del 778
+put 513 n795 68.79
+del 180
+get 1740
+get 1359
+get 386
+put 1079 n839 83.9
+put 792 n571 68.72
+put 1788 n528 53.13
+get 299
+put 783 n922 66.74
+get 694
+get 1423
+get 230
+get 304
+count
+put 1242 n431 10.4
+put 1229 n272 42.33
+put 173 n840 1.27
+del 1288
+put 1412 n471 35.4
+del 1529
+del 934
+put 1357 n475 52.38
+get 1794
+count
+get 1408
+put 1728 n899 16.79
+get 224
+put 191 n46 64.65
+put 1696 n650 74.45
+put 1244 n117 92.32
+put 615 n372 26.8
+get 1396
+put 9 n838 30.19
+get 1062
+put 1736 n143 46.9
+put 1357 n698 72.59
+put 920 n496 30.02
+put 243 n588 20.27
+put 1945 n717 27.53
+get 775
+put 425 n43 66.44
+get 1311
+put 1272 n343 64.59
+count
+put 1578 n396 61.44
+get 984
+get 1679
+get 562
+put 1890 n503 11.13
+get 1074
+put 1191 n786 0.8
+put 854 n33 26.3
+put 1193 n40 51.51
+count
+put 1172 n238 74.06
+put 540 n998 32.76
+del 1458
+get 279
+put 1758 n352 77.88
+put 783 n764 93.17
+count
+get 198
+del 63
+get 562
+del 1538
+put 1918 n87 19.99
+put 1183 n892 66.62
+put 1395 n834 85.57
+put 3 n975 69.98
+put 35 n259 92.85
+put 51 n665 66.29
+get 1705
+del 1185
+get 1434
+put 572 n991 97.91
+put 1976 n364 60.28
+get 610
+get 594
+put 113 n598 51.24
+put 1914 n11 45.69
+get 1368
+del 409
+put 1279 n683 82.1
+count
+put 1609 n129 6.13
+put 550 n812 97.78
+get 607
+get 262
+get 1758
+get 188
+put 1239 n969 59.29
+del 1622
+put 1005 n135 98.37
+count
+get 778
+put 1513 n765 17.2
+put 1968 n421 60.67
+put 1229 n735 41.74
+put 1445 n787 45.84
+get 1990
+put 1797 n668 77.06
+put 667 n474 22.88
+put 1663 n953 66.36
+put 490 n56 19.59
+put 981 n183 79.81
+put 1183 n139 88.01
+put 1539 n56 82.18
+put 1298 n150 50.77
+del 1333
+put 492 n529 28.76
+get 1467
+get 1129
+put 794 n206 81.44
+count
+put 1433 n197 90.83
+get 1193
+put 659 n968 75.9
+put 382 n631 17.7
+count
+get 1100
+get 1272
+get 723
+del 1283
+get 576
+put 1845 n689 94.89
+del 1919
+get 692
+put 616 n59 58.41
+put 1789 n329 23.82
+del 1631
+put 1596 n8 83.02
+get 1887
+put 431 n790 19.58
+put 1742 n555 3.12
+put 623 n92 92.0
+del 1734
+get 354
+put 1077 n103 42.3
+put 1432 n46 51.62
+put 1429 n816 95.24
+del 153
+put 842 n222 80.94
+get 1949
+get 64
+get 1872
+put 497 n240 49.81
+count
+put 1834 n557 11.73
+put 1916 n299 64.94
+count
+put 289 n149 10.58
+put 1237 n754 34.47
+put 215 n23 1.55
+del 1414
+put 1644 n735 8.49
+put 1277 n166 90.27
+get 72
+get 1622
+get 496
+put 64 n819 49.62
+del 1499
+put 1324 n230 3.19
+get 1860
+put 1444 n647 5.88
+get 645
+put 330 n859 52.25
+put 1516 n47 20.35
+get 1741
+get 1376
+put 1968 n897 5.38
+put 1346 n321 89.29
+get 1926
+del 1350
+put 149 n46 2.8
+get 330
+get 618
+del 243
+put 1978 n968 91.24
+del 1191
+del 1816
+put 1037 n375 53.32
+count
+get 953
+put 924 n607 32.44
+get 1920
+put 412 n636 90.29
+put 935 n572 50.09
+put 614 n215 1.86
+get 838
+get 1337
+del 149
+put 844 n599 7.94
+get 167
+get 1885
+get 1448
+put 1858 n423 34.76
+put 286 n919 69.76
+del 339
+get 643
+get 920
+get 1447
+get 1402
+put 532 n609 34.62
+put 1746 n720 3.39
+get 896
+get 1422
+put 1822 n915 94.55
+put 332 n50 70.31
+del 897
+get 1972
+del 393
+count
+count
+put 1040 n370 55.82
+put 370 n667 72.63
+get 1326
+put 1487 n203 0.6
+get 1449
+put 315 n683 24.37
+put 512 n112 90.0
+put 1565 n383 95.17
+put 776 n96 19.85
+put 940 n302 57.78
+put 994 n857 84.68
+put 1137 n254 22.79
+del 1474
+put 1292 n466 33.01
+put 527 n556 43.45
+put 1694 n297 24.75
+get 1830
+del 1206
+put 664 n80 42.83
+get 1737
+del 603
+del 786
+put 1275 n836 1.06
+put 779 n186 1.59
+put 335 n928 39.05
+del 106
+put 1106 n399 99.83
+get 1093
+put 324 n39 86.16
+put 1239 n435 19.77
+get 1177
+del 830
+get 1994
+put 1503 n135 68.74
+put 1251 n109 71.3
+get 1791
+del 1110
+put 1568 n781 0.17
+del 850
+count
+put 1778 n733 57.72
+get 633
+put 1301 n799 28.62
+put 1541 n785 16.31
+get 1783
+get 542
+put 1461 n287 97.22
+put 311 n933 21.71
+put 150 n795 28.67
+put 680 n953 95.87
+del 1163
+del 1956
+put 1708 n250 55.82
+count
+get 1383
+del 1402
+get 445
+get 1175
+put 495 n344 69.13
+get 1474
+put 1584 n574 4.72
+del 1699
+put 356 n993 30.04
+put 1329 n103 18.8
+put 1023 n975 55.87
+put 679 n816 29.53
+put 708 n660 27.76
+put 422 n148 0.46
+del 1903
+put 83 n721 87.2
+put 913 n440 83.38
+get 890
+put 906 n745 9.86
+del 1206
+put 633 n55 36.29
+del 1610
+del 1633
+del 1976
+del 1672
+put 1595 n452 97.4
+count
+put 1537 n78 95.31
+get 9
+del 1237
+put 286 n843 47.39
+put 1616 n283 44.42
+put 345 n913 47.8
+get 849
+put 1035 n561 43.47
+put 1799 n312 30.3
+get 1724
+get 240
+get 835
+put 1656 n471 72.11
+get 1
+get 605
+put 1691 n306 27.16
+del 1342
+get 1365
+get 455
+put 1459 n982 63.98
+get 272
+put 55 n521 72.8
+put 1584 n195 97.59
+get 1469
+get 1169
+get 405
+get 1545
+get 817
+put 1711 n689 94.84
+get 415
+put 478 n653 70.95
+count
+del 1270
+put 1792 n816 31.46
+put 15 n507 29.11
+del 76
+put 1470 n920 53.03
+put 1 n150 79.44
+put 1729 n707 88.32
+put 771 n131 50.99
+get 1054
+put 360 n198 77.6
+put 591 n283 15.31
+put 1372 n473 27.4
+get 981
+get 1246
+put 1612 n809 60.52
+get 1356
+get 1069
+get 1608
+put 1157 n175 34.29
+put 1900 n643 88.8
+put 12 n130 26.28
+put 1149 n460 74.69
+count
+get 133
+put 437 n69 52.55
+get 1862
+get 1921
+del 807
+get 32
+get 1751
+put 1991 n431 11.02
+put 1973 n798 37.81
+count
+get 1760
+count
+get 1054
+del 1796
+put 1275 n385 16.92
+put 71 n954 58.95
+del 265
+put 1975 n325 49.32
+del 330
+put 1876 n393 30.75
+get 1498
+del 1685
+get 1342
+del 414
+put 162 n147 28.53
+put 1089 n878 27.88
+put 1747 n593 90.55
+put 629 n158 38.54
+get 1038
+put 335 n968 62.72
+put 1889 n507 72.21
+put 1671 n828 84.47
+get 744
+put 183 n806 9.27
+put 1895 n336 35.44
+get 1502
+put 581 n652 33.95
+put 541 n628 94.25
+put 1755 n668 34.96
+count
+put 1006 n239 80.7
+put 126 n910 92.22
+put 1234 n348 39.69
+get 670
+get 222
+put 39 n398 75.49
+put 2 n124 94.84
+get 1420
+put 515 n816 54.06
+get 659
+put 1605 n55 2.65
+get 1928
+put 824 n895 85.21
+get 986
+get 623
+put 1211 n619 14.27
+put 1297 n706 5.84
+put 1311 n52 74.64
+get 796
+get 1063
+count
+put 385 n769 30.57
+del 1399
+put 836 n614 76.13
+del 1572
+put 49 n324 92.84
+del 1246
+put 603 n959 74.34
+put 1435 n608 18.57
+put 1912 n280 42.42
+put 830 n530 42.49
+put 1075 n876 56.82
+put 791 n119 78.95
+get 376
+get 926
+put 1222 n138 36.49
+put 1567 n877 18.79
+put 701 n808 38.14
+count
+put 305 n506 60.07
+put 875 n203 63.75
+put 1251 n160 97.38
+del 1843
+del 1421
+put 1222 n380 43.45
+put 820 n320 5.58
+del 1375
+get 1200
+get 1600
+put 1866 n365 64.08
+put 1198 n128 98.71
+put 315 n79 67.75
+count
+put 1740 n695 30.85
+del 42
+put 1344 n88 81.43
+del 412
+put 1661 n573 52.18
+del 1471
+put 502 n122 13.85
+get 556
+del 1370
+put 841 n571 53.57
+get 424
+del 705
+put 522 n231 55.48
+put 107 n524 36.13
+put 282 n961 51.47
+count
+get 1383
+put 1286 n481 91.52
+del 1856
+get 1382
+get 1694
+put 689 n50 44.8
+put 1622 n934 31.36
+get 232
+put 1141 n638 87.7
+del 1769
+put 965 n918 41.76
+get 1828
+put 1405 n208 44.66
+put 1766 n621 81.46
+put 94 n297 20.71
+put 1749 n787 27.23
+put 1214 n804 76.87
+put 1519 n544 76.42
+put 117 n144 66.86
+get 531
+put 883 n930 36.72
+del 542
+put 453 n317 86.13
+put 1565 n767 90.74
+get 1532
+put 390 n159 4.63
+put 430 n766 72.48
+get 1051
+del 873
+put 1798 n949 64.82
+put 1778 n993 21.72
+put 725 n38 26.0
+get 1485
+put 853 n807 78.92
+get 1041
+del 68
+put 498 n876 61.86
+del 1699
+del 576
+put 610 n177 29.41
+get 1292
+put 1264 n395 60.53
+put 511 n103 7.31
+put 106 n187 86.57
+put 1301 n632 53.57
+get 1951
+get 140
+del 617
+put 806 n262 57.98
+put 796 n9 37.64
+put 1268 n588 80.14
+put 747 n147 22.14
+put 2000 n745 76.26
+put 807 n244 70.99
+get 1685
+put 1615 n689 58.34
+put 1997 n601 38.27
+get 1343
+get 619
+put 1866 n664 78.68
+put 921 n868 58.88
+put 1380 n129 87.87
+del 414
+put 1577 n880 89.15
+del 230
+put 1879 n582 68.56
+del 1654
+put 1865 n353 62.72
+del 663
+count
+del 1609
+put 1345 n212 6.75
+get 425
+get 1476
+put 413 n794 31.68
+put 288 n982 67.61
+get 1188
+get 301
+put 480 n414 65.71
+put 1503 n917 16.03
+put 217 n283 8.76
+get 763
+get 558
+put 276 n731 0.71
+put 1094 n929 3.77
+put 1500 n483 84.43
+count
+get 903
+get 1321
+del 688
+put 363 n333 77.85
+put 997 n749 1.74
+get 1567
+get 1813
+get 1810
+get 1813
+put 1194 n305 40.0
+put 719 n535 43.29
+put 291 n443 95.0
+del 1360
+get 1419
+get 1302
+del 1698
+count
+count
+get 93
+get 1581
+put 641 n638 84.67
+get 528
+put 238 n854 9.05
+get 1414
+get 590
+del 896
+get 61
+get 1051
+put 1048 n249 28.98
+del 1353
+put 625 n336 54.98
+del 1726
+put 1422 n906 73.36
+put 852 n653 3.26
+get 107
+del 169
+get 1054
+put 1300 n908 83.92
+put 491 n600 49.1
+get 946
+get 802
+get 251
+get 1162
+put 1670 n704 26.17
+put 457 n266 58.81
+put 1606 n48 83.98
+get 311
+put 875 n183 44.73
+put 690 n432 24.57
+put 1248 n53 68.02
+put 1566 n849 87.73
+put 1891 n225 7.53
+get 521
+put 646 n392 55.34
+del 618
+del 854
+put 663 n414 53.24
+put 1220 n63 77.75
+put 1435 n688 21.25
+put 1707 n404 10.39
+del 1656
+put 1811 n312 28.65
+get 1402
+get 442
+put 756 n249 64.84
+get 1237
+get 985
+put 1220 n502 98.86
+put 371 n832 14.05
+del 1871
+get 1814
+get 1458
+del 1361
+put 1463 n482 79.54
+put 1783 n338 22.47
+del 987
+get 10
+put 1942 n964 88.34
+get 1968
+put 1604 n779 88.76
+get 1791
+get 367
+get 1933
+del 1035
+get 38
+put 812 n29 50.52
+put 597 n547 11.47
+put 854 n58 51.2
+get 1249
+put 1029 n685 45.05
+put 1379 n33 0.51
+put 599 n171 33.15
+put 250 n880 82.55
+get 1230
+get 1925
+get 1571
+put 698 n298 96.62
+del 1266
+put 847 n306 37.89
+del 581
+put 541 n577 82.91
+put 1096 n362 90.64
+get 1887
+put 224 n923 48.79
+del 151
+put 1593 n141 9.34
+put 1154 n532 60.16
+get 547
+put 1493 n439 45.73
+get 1880
+count
+put 1729 n632 1.88
+del 895
+del 1278
+put 1148 n1 23.59
+put 1604 n851 91.9
+put 870 n24 73.43
+put 12 n571 1.95
+get 106
+put 869 n233 68.05
+put 145 n440 65.41
+get 937
+get 794
+put 1783 n290 28.29
+count
+get 1523
+put 365 n32 94.73
+put 718 n654 92.08
+put 581 n941 21.72
+put 1476 n77 39.79
+put 102 n585 98.18
+put 26 n264 65.31
+put 669 n306 79.89
+get 464
+put 1454 n125 56.29
+get 1581
+get 1559
+put 92 n400 48.04
+put 1376 n683 95.26
+count
+put 993 n646 57.6
+del 1160
+del 1346
+get 1141
+del 1721
+put 1750 n487 41.32
+put 1749 n763 82.87
+put 738 n119 52.57
+put 1163 n893 86.68
+del 1521
+del 1567
+put 1591 n181 9.1
+get 958
+get 218
+get 1347
+get 1237
+put 1463 n882 37.82
+del 1744
+put 36 n866 59.44
+get 151
+get 1298
+put 1707 n643 96.44
+put 898 n817 89.55
+put 1618 n659 63.48
+put 1188 n336 27.26
+get 1149
+del 409
+put 748 n379 76.06
+del 1135
+get 1700
+put 607 n960 38.73
+put 49 n179 74.97
+put 487 n291 13.59
+put 939 n788 33.19
+del 461
+put 1699 n742 68.85
+get 1686
+put 453 n663 75.13
+del 503
+get 1184
+del 562
+count
+count
+put 1348 n372 0.64
+put 636 n532 95.64
+put 9 n773 67.8
+get 1236
+put 708 n112 91.48
+get 1624
+get 1673
+get 1911
+get 1925
+get 1188
+del 1374
+del 838
+put 1037 n660 38.17
+get 1044
+put 431 n645 89.51
+put 109 n136 77.72
+get 1406
+put 840 n229 23.82
+put 423 n180 6.98
+put 490 n887 29.39
+get 915
+put 762 n767 85.04
+del 1873
+put 76 n24 2.4
+del 384
+put 364 n425 87.79
+get 1522
+put 1011 n773 69.53
+put 1197 n845 33.77
+del 1800
+put 1098 n238 97.45
+put 1098 n220 37.33
+put 1211 n249 46.61
+put 692 n601 59.44
+put 414 n291 40.46
+get 883
+del 27
+put 1343 n553 62.86
+put 1774 n481 55.33
+get 1922
+get 995
+get 1830
+put 135 n11 91.51
+put 594 n756 72.32
+del 532
+put 152 n661 10.6
+get 1028
+put 534 n712 99.12
+get 556
+del 1440
+del 54
+put 952 n732 16.48
+get 566
+put 1733 n171 33.58
+put 1403 n807 1.97
+put 1478 n40 31.95
+put 927 n80 90.71
+del 464
+put 1883 n648 15.67
+count
+put 1958 n271 74.67
+del 1262
+put 1427 n577 38.7
+del 756
+del 1532
+get 248
+del 830
+put 573 n361 11.81
+count
+del 1880
+del 1801
+del 929
+get 729
+put 950 n660 87.03
+put 816 n887 56.36
+put 403 n275 5.18
+put 1928 n466 64.22
+put 367 n238 10.02
+del 1002
+get 981
+put 1502 n249 88.39
+get 1781
+get 1054
+put 1497 n975 45.42
+put 1096 n485 80.38
+put 1365 n500 77.33
+put 604 n390 21.58
+get 1512
+del 592
+count
+get 963
+put 599 n984 25.51
+put 73 n220 64.98
+get 1634
+put 223 n765 68.81
+put 1039 n225 18.01
+put 522 n469 47.13
+get 1090
+put 1125 n804 76.13
+get 1250
+get 50
+del 1117
+put 154 n272 23.99
+del 573
+count
+get 1476
+put 793 n964 5.18
+put 605 n447 40.82
+count
+del 321
+get 1612
+count
+put 1397 n560 8.75
+count
+put 608 n406 71.96
+put 1299 n633 39.63
+get 1440
+put 1041 n683 58.81
+put 1400 n401 94.15
+put 1283 n92 49.64
+count
+put 1855 n297 72.49
+del 190
+put 1433 n433 72.92
+get 1786
+get 1639
+put 1874 n911 56.76
+put 246 n105 25.41
+put 1661 n224 82.46
+get 1141
+put 482 n351 61.44
+put 465 n884 85.92
+del 1969
+put 1739 n52 28.55
+get 1714
+get 974
+get 451
+put 621 n337 20.9
+put 1531 n711 89.34
+del 615
+put 899 n48 87.02
+del 1263
+get 1931
+put 438 n715 68.48
+put 1333 n715 43.09
+get 1597
+put 1678 n942 78.38
+get 1293
+get 135
+del 760
+get 154
+put 1726 n780 37.27
+put 1079 n902 24.67
+del 489
+put 944 n648 42.9
+put 1145 n576 53.21
+del 55
+put 997 n572 53.91
+del 934
+put 1674 n186 57.08
+put 523 n870 76.57
+del 1827
+count
+count
+put 209 n950 14.76
+put 1174 n589 34.59
+put 1556 n50 40.34
+del 140
+put 1136 n834 14.6
+del 569
+del 1307
+put 1423 n805 88.41
+put 489 n871 27.47
+put 647 n888 22.02
+get 125
+put 1939 n479 82.64
+get 1667
+put 20 n792 2.95
+get 627
+count
+put 686 n820 69.07
+get 1409
+get 1422
+del 316
+put 1428 n281 26.57
+get 1159
+del 323
+del 635
+put 1066 n847 85.49
+put 724 n681 56.36
+put 8 n590 31.44
+get 1386
+put 6 n798 58.56
+del 1500
+del 1838
+get 910
+get 1444
+get 46
+get 1464
+put 1666 n433 41.11
+get 1093
+get 1583
+put 1446 n803 63.51
+del 772
+get 1609
+put 200 n235 4.37
+put 1516 n738 54.08
+put 154 n37 46.14
+put 1956 n722 13.48
+del 1603
+put 1009 n48 38.78
+put 647 n921 70.11
+put 1322 n886 56.0
+del 1209
+put 1116 n676 39.13
+put 346 n918 66.49
+put 560 n974 76.19
+get 778
+put 402 n449 85.95
+get 956
+put 733 n34 39.58
+put 997 n797 90.75
+count
+put 376 n57 24.04
+put 526 n609 42.6
+get 437
+put 1193 n835 22.93
+put 1962 n266 25.14
+get 1718
+get 150
+get 992
+put 773 n461 19.11
+put 518 n201 27.46
+count
+put 439 n341 99.12
+get 675
+get 743
+get 784
+get 1067
+get 1144
+put 102 n814 12.59
+put 1553 n672 16.95
+put 242 n538 97.84
+get 1931
+put 626 n547 36.08
+count
+count
+put 1490 n886 26.78
+put 1573 n727 21.5
+put 1562 n897 4.56
+del 193
+get 1157
+put 400 n995 81.45
+del 859
+get 1519
+put 1848 n888 43.09
+put 1645 n585 45.98
+get 946
+put 1353 n316 60.15
+count
+del 1793
+put 1074 n545 95.9
+del 1714
+put 1395 n967 1.35
+put 889 n451 75.72
+get 619
+put 1217 n146 75.56
+put 743 n818 28.27
+put 1179 n9 83.57
+put 1099 n784 77.05
+put 104 n595 68.52
+get 466
+put 1133 n769 47.98
+put 647 n379 86.47
+put 886 n954 71.67
+put 458 n92 40.15
+get 504
+put 321 n602 92.4
+put 640 n795 52.41
+count
+put 500 n291 69.17
+get 1271
+get 1009
+get 687
+put 1457 n284 1.97
+put 1949 n44 81.75
+del 1439
+put 24 n200 45.13
+put 356 n178 18.84
+put 984 n225 8.46
+del 496
+get 1637
+del 189
+put 484 n563 79.89
+put 112 n757 79.01
+del 217
+del 1911
+get 669
+put 937 n884 82.12
+get 1162
+get 554
+del 1693
+put 1842 n26 81.3
+put 1190 n253 93.75
+get 1630
+count
+put 1660 n223 54.52
+get 1904
+put 1249 n360 18.89
+put 360 n525 56.39
+put 1083 n797 92.04
+put 1744 n233 80.78
+put 1880 n849 15.38
+get 1150
+put 753 n241 88.04
+put 1252 n353 69.64
+get 1319
+put 1893 n526 77.02
+put 1839 n94 77.31
+put 1979 n90 79.53
+put 1826 n86 45.63
+get 898
+put 372 n332 31.78
+put 1348 n404 18.35
+put 1138 n451 46.53
+put 44 n272 26.87
+get 1106
+put 568 n985 64.11
+get 1881
+count
+count
+del 1338
+count
+get 1070
+put 1617 n516 81.49
+count
+get 1614
+get 1356
+put 515 n600 43.96
+put 763 n675 53.07
+put 426 n73 12.47
+count
+put 145 n537 44.37
+del 597
+count
+put 1521 n739 94.73
+del 1905
+put 939 n569 12.31
+get 922
+put 1761 n363 41.96
+put 1868 n683 31.29
+get 1143
+put 63 n826 72.8
+del 1971
+put 227 n352 99.18
+get 585
+del 1337
+put 1709 n665 91.22
+put 733 n717 1.31
+put 95 n465 39.41
+put 90 n927 48.29
+put 394 n960 17.1
+count
+del 529
+put 343 n560 21.55
+put 180 n828 41.69
+get 1941
+put 750 n216 87.12
+put 1183 n352 95.13
+put 1747 n148 96.07
+put 976 n224 84.89
+put 371 n990 9.67
+put 1307 n827 1.92
+get 68
+put 783 n681 69.95
+get 966
+put 1341 n553 50.26
+del 1612
+get 500
+put 1197 n572 26.74
+del 732
+put 1381 n149 88.55
+put 42 n945 86.56
+put 482 n465 69.29
+get 32
+put 838 n322 31.75
+get 65
+put 983 n200 58.74
+put 1060 n542 10.84
+get 546
+get 1069
+put 351 n776 67.18
+put 1231 n408 82.89
+put 786 n511 50.95
+put 1408 n162 46.18
+put 1111 n944 41.68
+del 1590
+put 954 n925 47.92
+count
+put 1003 n116 45.23
+put 1520 n577 70.22
+get 1849
+count
+get 1836
+put 1377 n609 20.17
+put 35 n116 31.1
+get 796
+get 405
+count
+del 1690
+get 1280
+count
+put 520 n521 18.37
+put 1563 n190 90.94
+put 1806 n107 43.33
+get 1648
+del 1235
+get 299
+get 1319
+get 1525
+put 166 n422 51.71
+put 1870 n372 71.63
+del 1512
+get 1667
+get 1389
+get 452
+put 981 n388 82.71
+del 1921
+put 1888 n489 51.56
+get 524
+get 1942
+put 206 n184 35.98
+put 1308 n74 66.19
+put 1507 n216 9.11
+put 162 n156 17.8
+get 509
+get 102
+get 308
+put 698 n477 1.94
+put 449 n683 30.58
+del 1530
+get 869
+get 704
+get 877
+del 1961
+put 1339 n289 49.27
+get 1703
+put 1845 n391 57.72
+get 904
+put 294 n781 14.56
+get 159
+put 982 n125 43.45
+get 1344
+count
+get 595
+get 266
+get 594
+del 852
+put 1817 n590 16.17
+get 395
+put 549 n95 83.74
+put 507 n491 16.46
+put 1273 n154 82.72
+put 524 n27 62.03
+put 907 n996 72.0
+put 1064 n565 54.61
+put 8 n850 46.45
+put 331 n308 58.83
+get 1859
+del 935
+put 1755 n547 1.91
+del 1973
+put 814 n812 28.08
+put 731 n729 70.81
+put 262 n324 19.56
+put 1529 n553 64.55
+get 312
+del 1805
+get 330
+count
+get 257
+put 1964 n854 5.94
+put 117 n5 79.13
+get 1454
+del 312
+put 1655 n76 51.17
+get 517
+put 1397 n84 16.57
+count
+put 755 n710 14.71
+put 862 n420 3.04
+put 1269 n220 40.78
+get 243
+put 1380 n53 92.68
+put 213 n160 40.88
+put 706 n976 2.83
+put 1919 n9 32.25
+del 1324
+get 741
+get 1793
+get 1616
+get 1128
+get 648
+put 1775 n176 57.39
+put 1127 n171 71.22
+put 1294 n513 3.29
+put 1958 n709 50.32
+put 1837 n531 84.2
+del 1555
+del 241
+get 1004
+get 1584
+count
+get 1027
+get 1894
+put 1293 n12 74.0
+get 166
+put 232 n912 61.06
+put 1865 n958 9.69
+get 1415
+get 1443
+put 1832 n618 67.48
+put 1320 n912 50.68
+get 1691
+put 406 n938 59.57
+put 701 n321 21.69
+put 693 n669 68.55
+del 1493
+put 443 n371 47.2
+get 812
+put 1161 n621 27.38
+get 455
+put 634 n9 58.65
+put 877 n656 75.76
+del 680
+get 1130
+put 1482 n599 5.67
+put 656 n624 46.95
+put 554 n141 10.84
+del 255
+put 43 n89 62.0
+del 1059
+put 1745 n218 91.6
+del 617
+put 729 n297 17.71
+get 377
+put 73 n348 42.62
+count
+get 182
+put 1474 n589 44.39
+put 1027 n16 6.78
+put 1477 n856 33.7
+get 507
+put 1855 n222 99.6
+get 579
+del 846
+del 1063
+get 845
+put 1989 n134 77.7
+put 446 n518 50.12
+put 1467 n401 51.93
+get 1652
+put 1354 n115 59.3
+del 61
+put 252 n140 27.71
+put 1327 n109 56.65
+del 1524
+get 41
+put 1239 n866 3.35
+del 1790
+get 1504
+del 1213
+put 981 n19 89.72
+put 1776 n205 11.08
+put 1458 n851 97.63
+get 1398
+put 1203 n660 80.44
+count
+put 35 n8 60.85
+del 1874
+put 392 n760 32.01
+put 201 n415 22.34
+get 514
+put 1732 n836 7.62
+del 1330
+put 609 n985 68.37
+del 1870
+put 1077 n771 52.38
+get 631
+del 942
+get 1197
+get 1756
+put 881 n648 69.06
+put 88 n668 68.24
+get 1575
+put 1994 n413 56.94
+get 1942
+put 1602 n217 83.34
+get 530
+put 936 n81 68.25
+get 798
+put 735 n490 11.24
+put 919 n307 74.72
+get 482
+put 1423 n346 21.91
+get 1943
+get 221
+get 590
+del 1188
+count
+get 1451
+del 598
+put 34 n987 54.1
+put 143 n729 57.41
+get 1491
+get 395
+get 1490
+put 1928 n516 91.37
+put 383 n983 78.33
+del 1687
+put 163 n109 50.79
+get 603
+get 1823
+get 1442
+get 894
+get 399
+count
+get 822
+get 611
+put 178 n170 72.68
+get 1350
+del 1831
+get 731
+del 1824
+get 1951
+put 989 n261 82.0
+put 1073 n90 20.69
+get 1723
+del 1329
+put 1267 n489 46.26
+put 1080 n983 68.37
+put 1914 n726 52.27
+get 1194
+put 559 n940 96.17
+get 1981
+put 827 n92 27.12
+put 1473 n302 94.41
+put 1189 n157 86.55
+put 1703 n289 35.78
+get 1784
+count
+put 1606 n969 63.0
+put 1726 n713 61.17
+count
+put 1897 n170 23.14
+put 62 n668 49.07
+put 1751 n183 94.16
+get 1919
+del 228
+get 466
+put 1716 n854 38.1
+get 61
+put 1338 n671 19.04
+put 138 n529 68.77
+del 933
+del 1023
+put 508 n716 89.58
+del 1971
+put 415 n252 62.32
+put 1864 n858 41.02
+get 256
+get 1390
+put 1639 n673 23.05
+del 632
+put 1171 n505 66.22
+put 497 n89 65.08
+get 1067
+put 1268 n410 80.79
+put 972 n618 55.03
+put 1406 n61 64.81
+put 624 n123 7.31
+count
+put 1403 n373 22.38
+get 923
+put 268 n658 63.58
+put 392 n818 20.2
+count
+del 302
+put 622 n521 73.11
+del 217
+get 1158
+put 775 n44 40.07
+put 1752 n313 16.36
+put 629 n916 74.45
+get 1642
+put 1511 n339 40.77
+put 272 n523 85.19
+put 224 n136 85.12
+put 657 n878 32.21
+del 1288
+get 589
+put 1797 n677 28.95
+del 977
+del 921
+get 1673
+get 498
+put 1223 n281 34.39
+del 1612
+put 1761 n322 25.7
+del 432
+put 1046 n546 0.96
+put 1936 n85 66.46
+count
+get 372
+get 226
+get 1070
+put 1455 n930 37.83
+del 1792
+get 1069
+get 612
+get 1510
+get 78
+get 586
+del 867
+del 507
+put 1219 n504 52.7
+put 1060 n254 78.83
+count
+get 1411
+put 1546 n712 63.19
+put 1196 n422 18.41
+get 1417
+get 1719
+put 1025 n168 11.07
+put 667 n932 23.41
+get 1874
+put 1006 n442 34.83
+del 1465
+put 702 n544 72.19
+put 145 n463 30.4
+put 718 n292 61.21
+del 1614
+get 791
+put 627 n202 67.0
+del 480
+put 1513 n680 8.39
+del 822
+put 188 n458 33.33
+del 1582
+put 1735 n127 0.04
+put 1262 n470 30.16
+get 27
+del 1103
+put 103 n449 82.31
+put 972 n958 81.19
+del 547
+put 919 n312 37.43
+put 1376 n44 90.77
+get 337
+del 1082
+put 399 n268 25.0
+del 1858
+put 563 n151 32.19
+get 136
+put 1735 n833 87.63
+del 90
+put 1678 n786 45.4
+del 1629
+del 829
+count
+put 1464 n878 50.49
+get 270
+put 436 n584 31.69
+put 1745 n787 70.92
+get 1880
+del 995
+put 1717 n91 12.09
+put 1703 n453 36.1
+get 463
+put 214 n239 1.09
+put 104 n562 36.6
+put 919 n960 55.05
+put 1341 n767 39.01
+get 1271
+put 212 n922 82.52
+get 403
+put 1725 n858 46.9
+get 590
+put 1826 n160 7.44
+put 1361 n242 43.4
+del 579
+put 1208 n507 19.64
+del 911
+put 1088 n108 95.47
+put 1999 n753 32.65
+put 882 n860 4.99
+get 1939
+put 1177 n836 4.14
+put 43 n941 68.47
+put 1015 n483 4.79
+put 734 n30 90.56
+get 1875
+put 761 n592 51.53
+put 1743 n64 84.38
+get 674
+put 392 n367 68.71
+get 109
+get 1266
+del 161
+del 1913
+put 339 n570 39.96
+put 1489 n574 59.96
+get 1696
+del 1242
+get 744
+get 1139
+put 910 n636 66.16
+put 276 n968 75.15
+get 963
+put 338 n55 96.47
+put 642 n728 49.75
+get 355
+put 1046 n65 8.24
+put 584 n500 60.91
+del 1661
+get 1133
+get 1168
+get 445
+put 1326 n658 22.18
+get 1487
+put 1206 n89 0.04
+get 1397
+put 657 n119 74.33
+del 168
+get 745
+put 885 n432 40.0
+get 125
+get 690
+get 1326
+get 1410
+put 841 n628 60.11
+put 1949 n187 36.35
+put 789 n792 9.83
+put 1374 n863 87.65
+put 374 n735 63.35
+put 1426 n456 43.31
+get 1701
+put 475 n448 76.5
+put 1607 n202 49.78
+get 885
+put 1140 n683 6.23
+get 1942
+put 710 n82 19.68
+get 1899
+get 218
+put 611 n774 0.43
+get 214
+put 1109 n721 68.14
+put 953 n753 5.95
+put 343 n121 56.62
+del 549
+get 621
+put 1940 n451 59.04
+put 1716 n893 77.75
+put 871 n401 66.6
+put 1303 n466 73.44
+put 1665 n929 32.5
+count
+put 1987 n35 33.28
+put 1098 n98 43.83
+del 867
+get 1229
+get 1459
+get 77
+put 1154 n349 69.51
+put 989 n31 33.59
+put 12 n582 41.6
+put 799 n413 65.53
+put 306 n691 10.02
+get 1606
+put 1866 n974 13.65
+put 1694 n770 53.64
+del 970
+put 1492 n318 36.33
+get 1102
+get 1812
+put 1710 n65 3.66
+put 657 n416 41.44
+put 157 n387 65.56
+count
+put 1130 n284 43.26
+put 394 n218 30.38
+del 1218
+get 796
+put 52 n100 20.46
+put 915 n188 36.16
+get 1190
+get 1532
+count
+put 1506 n942 88.9
+put 1929 n997 49.25
+get 1013
+get 1636
+put 1277 n546 70.52
+put 600 n897 57.83
+put 476 n904 28.17
+put 1983 n642 81.89
+put 14 n497 45.01
+put 793 n326 58.29
+put 435 n963 72.16
+del 494
+get 1549
+put 999 n527 1.02
+del 1924
+put 980 n360 4.12
+put 1445 n809 1.54
+get 716
+put 240 n30 83.29
+put 1259 n98 85.67
+put 1660 n907 76.27
+put 1411 n251 89.34
+put 966 n42 10.44
+get 317
+get 383
+put 1314 n685 67.01
+put 595 n564 4.87
+get 950
+del 1325
+put 1189 n538 18.06
+get 1397
+del 1791
+put 314 n308 64.71
+get 1999
+put 1237 n392 20.91
+del 1557
+get 286
+put 1664 n477 60.01
+put 1209 n421 24.43
+put 717 n589 46.88
+put 1899 n97 12.29
+put 1243 n222 34.88
+put 791 n140 96.6
+get 441
+put 1920 n578 17.88
+put 1193 n281 73.79
+put 1217 n115 6.65
+get 111
+put 220 n575 1.83
+get 1782
+put 1447 n511 0.66
+get 1069
+count
+del 1614
+put 869 n678 75.03
+get 1372
+put 175 n222 78.41
+put 1438 n446 54.49
+put 1593 n426 86.2
+put 1262 n96 33.92
+count
+get 298
+put 1578 n690 6.98
+put 1520 n657 72.77
+put 1139 n49 60.39
+get 851
+put 701 n525 68.54
+get 1010
+put 1821 n681 5.0
+get 431
+del 279
+put 428 n373 42.54
+del 911
+del 388
+put 319 n15 51.11
+put 1443 n799 74.8
+put 904 n867 60.39
+del 684
+put 660 n599 32.37
+put 536 n614 49.33
+put 1310 n532 82.36
+put 1011 n293 59.6
+put 593 n684 81.92
+del 1859
+get 1521
+del 851
+del 1812
+put 1314 n156 2.22
+put 1823 n326 52.24
+put 251 n99 2.47
+get 329
+put 924 n142 7.89
+put 1200 n665 66.59
+put 464 n649 47.61
+put 656 n40 72.75
+put 1698 n923 76.99
+put 1695 n596 54.27
+del 684
+del 1158
+put 342 n755 50.86
+put 708 n780 29.29
+put 855 n20 27.24
+get 1235
+put 869 n144 53.76
+put 1281 n382 51.89
+del 1823
+del 1220
+put 1462 n406 24.58
+put 919 n473 17.58
+put 1142 n267 60.5
+put 1583 n271 95.17
+get 1342
+put 1607 n389 12.96
+get 864
+put 1065 n396 1.78
+put 1515 n326 42.11
+put 828 n45 69.09
+put 1583 n904 60.33
+put 1139 n472 92.26
+get 286
+put 422 n401 34.45
+del 1799
+put 1455 n38 91.93
+del 1781
+get 754
+del 1125
+del 1214
+get 482
+put 1264 n545 76.81
+put 843 n75 50.39
+put 783 n772 61.97
+put 147 n569 38.57
+get 1559
+put 1112 n586 68.6
+put 1587 n87 82.56
+get 1679
+put 1399 n810 81.22
+put 600 n753 34.95
+put 741 n104 90.75
+get 668
+del 757
+put 1815 n256 48.64
+get 1373
+put 313 n859 49.63
+get 1861
+put 289 n962 65.1
+get 473
+del 1205
+put 1389 n768 81.51
+put 1644 n147 34.49
+put 1080 n790 52.06
+put 701 n131 99.49
+get 838
+put 596 n753 34.78
+get 1586
+del 1759
+del 1433
+get 665
+get 1770
+put 1245 n986 21.07
+put 1028 n472 24.38
+get 1888
+del 1476
+put 924 n323 4.52
+put 208 n246 87.46
+get 1303
+put 129 n568 65.32
+put 1065 n384 91.73
+del 1203
+put 1771 n193 62.13
+put 835 n966 7.06
+put 609 n594 11.86
+put 1736 n778 88.34
+get 1283
+get 69
+get 823
+get 1375
+put 127 n192 29.2
+put 403 n245 43.23
+get 58
+get 681
+put 443 n593 55.16
+get 1647
+del 864
+put 753 n154 45.07
+put 472 n957 61.13
+put 727 n204 1.89
+get 327
+put 42 n978 84.47
+put 1711 n644 9.92
+del 149
+put 597 n204 81.1
+put 995 n638 78.96
+put 424 n718 48.0
+get 1280
+put 598 n335 64.12
+put 556 n115 25.99
+put 1033 n292 6.14
+put 101 n258 98.56
+put 1986 n492 8.13
+put 217 n571 41.09
+put 1440 n702 62.6
+put 962 n284 98.17
+del 467
+count
+del 72
+del 1998
+put 1456 n52 60.81
+get 1480
+get 1794
+put 1264 n486 18.72
+put 1075 n386 91.46
+put 305 n544 27.45
+count
+count
+put 21 n778 65.49
+get 1356
+count
+put 286 n279 38.7
+put 184 n230 42.84
+put 1338 n40 78.57
+put 694 n601 40.44
+get 1215
+get 1570
+del 1008
+get 1284
+put 741 n391 76.04
+put 755 n308 53.6
+get 527
+get 982
+put 1827 n408 82.96
+del 1739
+get 1148
+count
+get 919
+put 964 n500 65.04
+get 1219
+put 612 n469 2.9
+put 1881 n885 15.35
+del 1060
+get 483
+del 704
+put 839 n946 69.15
+put 1466 n134 37.95
+get 1665
+del 66
+get 1403
+del 1084
+get 1578
+get 505
+put 1411 n479 42.64
+put 188 n532 27.67
+put 870 n879 64.82
+put 342 n743 77.91
+get 190
+del 50
+put 536 n370 61.36
+get 1489
+get 193
+del 368
+put 1405 n945 11.53
+get 406
+put 598 n339 22.46
+put 471 n737 22.25
+put 877 n799 3.87
+count
+put 1146 n645 59.99
+del 510
+put 1475 n924 11.74
+put 1061 n476 31.59
+put 770 n946 86.42
+get 1466
+del 73
+put 1153 n737 18.52
+del 438
+put 650 n64 49.11
+put 1974 n18 54.55
+del 798
+get 198
+put 1320 n137 28.39
+get 856
+put 2 n269 46.02
+get 76
+put 352 n607 72.46
+put 1717 n713 42.21
+put 1639 n628 60.55
+put 46 n746 82.83
+del 47
+get 440
+put 1450 n299 79.08
+put 1654 n826 4.54
+put 1281 n764 77.34
+get 486
+get 56
+put 988 n350 55.29
+get 210
+put 1005 n863 3.43
+del 406
+put 1846 n339 20.13
+del 890
+count
+get 1687
+del 1104
+put 489 n837 25.32
+put 1188 n300 9.15
+count
+get 940
+count
+del 1934
+get 795
+get 1135
+put 1354 n722 28.45
+count
+get 274
+put 235 n966 76.38
+get 590
+del 961
+put 1683 n602 6.23
+put 1324 n748 32.63
+put 1011 n617 55.5
+get 1589
+del 687
+put 325 n594 76.2
+get 537
+del 488
+get 877
+put 1360 n236 62.17
+get 1998
+put 1001 n804 10.9
+put 466 n170 4.47
+get 722
+get 1628
+del 1312
+put 1644 n22 83.81
+get 1338
+get 808
+get 156
+get 540
+put 1066 n555 81.65
+get 1391
+put 1419 n94 58.63
+del 722
+put 1102 n77 85.18
+del 304
+put 775 n701 63.8
+get 767
+put 1087 n929 78.23
+put 1515 n849 26.96
+put 1759 n909 39.4
+put 269 n910 17.27
+put 1575 n258 82.35
+get 1306
+del 333
+put 305 n760 94.48
+put 1063 n97 78.89
+put 1275 n444 27.52
+put 172 n827 83.44
+put 1520 n347 86.28
+put 1998 n284 50.66
+put 1416 n442 12.13
+put 840 n657 62.33
+del 1387
+put 1078 n81 55.85
+put 1548 n947 7.9
+put 1866 n843 24.27
+put 1035 n343 77.95
+get 98
+get 685
+put 166 n879 84.72
+put 1981 n998 84.64
+put 290 n49 37.65
+put 98 n340 36.49
+count
+put 174 n532 21.76
+get 1974
+get 1198
+get 412
+put 342 n39 12.1
+put 234 n595 44.77
+put 693 n815 16.81
+get 1695
+get 720
+put 1186 n663 47.26
+put 804 n930 10.35
+put 1163 n556 90.75
+put 1846 n799 83.85
+get 1665
+put 1461 n157 20.19
+get 1774
+count
+get 438
+put 986 n473 94.91
+del 1300
+put 101 n88 58.19
+count
+del 1062
+put 640 n838 46.76
+put 1230 n886 74.3
+del 363
+del 1054
+get 1806
+get 888
+get 1807
+put 1607 n284 18.3
+put 334 n452 51.7
+get 395
+get 1627
+del 1805
+put 409 n818 82.63
+get 1788
+put 653 n717 49.13
+put 32 n776 16.47
+get 302
+get 469
+put 991 n951 51.29
+put 938 n644 74.78
+put 1429 n215 20.87
+get 1259
+get 783
+get 930
+put 1718 n733 29.63
+put 1034 n594 9.21
+count
+get 561
+get 849
+count
+del 230
+del 365
+put 905 n182 37.64
+put 1432 n571 19.56
+put 20 n947 59.56
+del 1320
+put 1361 n527 92.56
+put 423 n46 81.0
+get 1437
+put 284 n731 29.57
+put 1753 n485 54.37
+get 1485
+put 1834 n838 18.11
+del 584
+put 459 n931 33.35
+del 1082
+put 1183 n937 86.77
+get 1271
+get 1426
+get 1431
+put 1405 n523 81.61
+get 474
+del 1184
+del 714
+get 173
+put 613 n259 42.83
+get 521
+get 708
+put 971 n423 4.64
+count
+get 486
+put 1541 n580 65.33
+put 1863 n918 68.25
+put 1453 n450 1.13
+put 1915 n835 39.5
+put 1618 n344 51.27
+del 995
+put 774 n933 61.44
+put 1464 n543 21.92
+get 1561
+put 839 n144 21.28
+get 68
+get 1470
+put 1391 n862 47.8
+del 553
+put 1831 n905 54.22
+put 447 n304 97.11
+put 665 n450 97.1
+put 691 n821 48.64
+put 711 n402 41.57
+del 1547
+put 1355 n981 73.47
+put 1707 n485 43.67
+put 1709 n814 56.45
+count
+put 417 n91 54.74
+get 594
+put 1968 n409 23.33
+del 1179
+get 1515
+get 1593
+get 1788
+put 1674 n828 40.46
+put 1538 n906 56.58
+get 1230
+count
+put 409 n921 30.63
+put 1206 n287 75.95
+put 1600 n953 3.65
+put 622 n848 40.56
+put 128 n352 0.94
+put 1282 n770 36.42
+get 804
+get 1439
+put 18 n399 81.84
+get 620
+put 1677 n890 7.28
+put 1276 n459 48.75
+put 1770 n760 94.38
+put 867 n62 54.71
+put 1618 n774 3.7
+get 1904
+put 1839 n850 49.13
+put 1821 n460 63.18
+put 1803 n256 98.83
+get 1605
+put 363 n789 8.17
+del 1319
+get 1088
+get 1887
+put 149 n423 28.04
+del 2
+put 301 n144 32.34
+del 373
+put 1055 n944 55.27
+count
+get 194
+get 75
+del 1992
+get 1436
+put 1668 n257 60.47
+get 1642
+get 1986
+del 93
+put 1389 n696 75.52
+get 1189
+put 914 n502 72.15
+put 110 n580 75.25
+del 1352
+put 231 n866 94.09
+get 299
+count
+put 842 n755 71.48
+del 1883
+get 1023
+put 975 n102 31.86
+get 503
+put 1641 n3 72.38
+get 1780
+get 993
+put 448 n877 8.2
+put 1120 n270 7.0
+get 1905
+del 960
+get 1193
+del 890
+get 1882
+get 1135
+put 531 n241 84.89
+put 815 n954 61.66
+put 1454 n498 9.12
+get 400
+put 309 n502 49.34
+get 1494
+put 644 n119 34.68
+put 717 n50 64.79
+count
+put 541 n645 59.21
+del 1996
+del 50
+put 309 n462 78.24
+put 1316 n287 50.46
+put 1637 n750 38.54
+get 45
+del 790
+put 1795 n414 77.39
+put 771 n574 23.99
+put 780 n332 67.0
+put 1982 n547 50.14
+get 817
+put 392 n788 92.01
+get 1447
+put 1891 n440 52.24
+put 3 n128 68.84
+put 365 n452 48.07
+get 1656
+put 1795 n686 73.74
+put 885 n377 90.97
+put 1487 n427 46.33
+get 1868
+get 299
+get 642
+count
+put 219 n1 96.64
+get 10
+get 756
+get 434
+put 65 n242 5.22
+del 664
+get 1400
+get 636
+del 1513
+count
+put 752 n836 80.92
+put 239 n849 43.94
+del 1710
+get 1967
+count
+del 451
+get 119
+put 130 n439 23.97
+del 1698
+get 681
+put 1914 n394 68.71
+put 148 n10 40.41
+get 1427
+put 1989 n322 9.34
+get 1721
+del 448
+put 1445 n798 37.82
+del 1224
+put 906 n875 65.9
+del 1331
+get 1005
+get 141
+put 1807 n487 37.52
+get 1991
+put 67 n284 80.91
+del 1984
+get 707
+get 912
+get 481
+put 506 n8 39.55
+get 1417
+get 1971
+put 799 n985 67.33
+get 469
+put 1203 n574 65.76
+put 929 n177 97.72
+put 27 n786 51.06
+put 1624 n968 35.31
+put 1789 n838 91.35
+put 133 n103 12.13
+del 303
+put 361 n874 34.81
+count
+get 306
+put 1315 n426 4.73
+get 183
+get 103
+put 228 n711 66.66
+put 1602 n717 80.29
+put 207 n251 54.36
+put 365 n330 28.05
+get 932
+get 49
+put 1947 n965 88.69
+put 785 n890 41.41
+put 170 n789 93.7
+put 1942 n194 82.45
+put 1362 n816 27.32
+put 585 n239 20.48
+get 1506
+get 21
+count
+del 1866
+put 1784 n771 54.42
+put 168 n715 71.36
+put 778 n876 44.66
+count
+put 489 n812 45.95
+put 598 n41 22.38
+get 1194
+put 1652 n230 25.97
+get 675
+put 426 n202 67.73
+put 1087 n25 63.99
+put 179 n488 61.79
+count
+put 300 n73 47.18
+put 1391 n512 95.36
+del 1336
+put 129 n34 79.0
+put 1156 n104 65.68
+put 1809 n659 23.09
+put 562 n76 55.18
+get 1233
+put 977 n559 7.65
+put 1450 n680 12.86
+put 354 n44 3.56
+put 739 n923 79.55
+put 1230 n63 72.71
+get 1613
+get 1559
+del 657
+del 1168
+put 289 n306 0.08
+get 264
+put 1556 n113 57.87
+get 1549
+put 386 n638 1.02
+put 489 n325 90.56
+put 115 n713 72.16
+put 430 n53 4.43
+put 568 n656 34.49
+del 1102
+put 918 n270 12.3
+get 603
+get 1557
+get 1520
+get 468
+put 644 n495 60.9
+get 1668
+put 653 n172 31.36
+del 1425
+put 1290 n649 1.55
+put 1099 n541 50.75
+get 227
+put 1533 n223 74.94
+put 1483 n613 80.96
+get 214
+del 683
+del 326
+put 1059 n732 91.63
+put 1869 n916 44.65
+put 1292 n66 85.67
+get 1700
+put 1095 n171 26.29
+get 452
+put 1977 n344 81.0
+put 1022 n697 10.69
+get 1147
+put 1290 n324 45.3
+put 16 n154 24.83
+put 267 n470 6.4
+get 1740
+del 1102
+del 1120
+del 640
+get 1246
+get 485
+put 1604 n387 66.47
+put 1142 n80 57.6
+put 789 n706 71.22
+get 228
+get 1144
+get 1376
+get 1135
+del 276
+del 1875
+put 425 n550 58.85
+get 544
+del 581
+del 216
+del 1716
+put 659 n207 84.32
+put 232 n894 85.94
+put 1959 n75 85.49
+del 415
+del 676
+put 573 n70 31.75
+put 1652 n687 88.11
+put 687 n953 80.96
+del 1831
+count
+get 131
+put 1533 n118 38.91
+del 1806
+get 1185
+put 742 n863 94.37
+put 527 n334 43.49
+put 1552 n178 97.77
+put 209 n875 27.14
+count
+put 1008 n396 39.07
+del 1830
+get 1519
+put 341 n522 23.72
+count
+get 1086
+del 1487
+put 361 n481 35.59
+put 1086 n788 81.89
+put 117 n43 51.83
+get 1734
+put 274 n616 45.98
+get 1287
+get 1440
+del 1456
+get 198
+put 107 n372 6.72
+put 757 n972 92.03
+put 1782 n864 30.98
+put 576 n361 62.81
+get 1596
+put 418 n747 36.11
+del 1603
+put 1299 n880 49.73
+count
+get 1084
+put 1727 n884 15.21
+put 93 n583 2.3
+get 1912
+put 299 n802 6.75
+put 390 n916 61.38
+put 538 n532 4.13
+del 502
+get 123
+put 1299 n560 77.95
+put 267 n449 44.62
+get 1439
+put 369 n298 16.03
+put 590 n473 37.38
+get 1263
+put 1690 n813 82.06
+put 1250 n37 63.87
+get 232
+put 1401 n271 59.14
+count
+get 483
+put 730 n777 60.94
+del 1596
+put 499 n780 9.99
+put 746 n797 98.25
+put 7 n527 95.21
+put 2 n965 65.06
+put 227 n379 54.67
+count
+put 510 n900 68.73
+put 734 n277 47.41
+put 1453 n76 28.04
+put 393 n555 60.08
+put 1492 n615 53.32
+put 617 n277 47.85
+put 347 n776 97.14
+put 1922 n494 4.32
+get 1299
+get 1323
+del 1510
+put 1476 n744 13.41
+del 1060
+put 1575 n32 20.42
+get 761
+get 121
+put 338 n2 65.27
+del 1936
+del 6
+put 669 n366 57.41
+get 1599
+put 1982 n29 38.17
+put 490 n821 26.78
+put 956 n169 74.83
+get 865
+del 19
+put 116 n288 15.89
+get 161
+put 113 n742 22.08
+get 1118
+del 868
+del 1217
+put 1741 n812 30.03
+get 1413
+del 799
+del 1034
+get 654
+put 110 n721 22.14
+get 1677
+del 1876
+get 1532
+get 864
+put 1687 n767 29.57
+put 1891 n313 93.44
+put 310 n912 71.25
+del 461
+del 849
+count
+put 887 n577 12.51
+get 1753
+put 1685 n710 43.45
+get 1422
+get 292
+put 1316 n809 40.91
+get 693
+get 44
+put 1393 n748 40.66
+put 1825 n231 24.55
+del 454
+put 1484 n963 58.11
+put 1175 n542 35.61
+get 1458
+put 329 n434 20.42
+get 1540
+put 1500 n132 9.83
+put 1696 n371 15.08
+del 1805
+put 645 n368 59.87
+get 1020
+del 1991
+del 1506
+put 958 n475 41.99
+put 584 n375 7.16
+put 599 n312 78.07
+get 319
+del 1466
+get 432
+count
+get 1455
+del 1078
+del 259
+get 1426
+put 594 n290 42.84
+del 1358
+put 245 n700 32.58
+put 1231 n576 0.71
+put 1131 n603 79.69
+put 827 n759 92.16
+get 702
+put 51 n743 92.24
+put 829 n708 80.37
+get 908
+get 553
+put 1204 n452 21.82
+put 907 n618 57.85
+count
+put 205 n521 80.71
+get 847
+del 1740
+put 960 n405 84.43
+get 1115
+put 1686 n538 16.68
+del 1349
+get 1108
+del 927
+put 1823 n97 98.9
+put 676 n554 81.04
+put 1943 n431 92.56
+get 965
+get 557
+del 1153
+put 1300 n474 51.93
+get 503
+get 1962
+get 943
+put 877 n86 12.81
+count
+get 1523
+put 1188 n122 6.69
+put 390 n897 41.38
+put 1976 n871 12.45
+get 571
+del 1812
+get 828
+put 1741 n915 90.8
+put 1922 n93 34.71
+put 1381 n28 97.75
+put 1206 n311 55.81
+get 856
+put 1356 n576 28.84
+get 299
+get 2000
+put 1041 n730 79.55
+del 1233
+get 252
+get 1223
+put 841 n683 21.19
+put 1194 n172 76.07
+put 1386 n696 85.04
+get 376
+del 1497
+get 405
+put 1797 n656 4.06
+del 384
+put 1096 n85 34.57
+put 1998 n109 90.94
+get 1800
+get 1664
+put 116 n544 11.69
+put 833 n226 61.42
+put 1442 n914 98.5
+get 1662
+put 895 n277 42.36
+get 217
+put 1917 n282 21.65
+get 1488
+get 232
+put 1961 n768 54.84
+get 1595
+put 1443 n663 8.0
+put 536 n258 50.4
+get 928
+del 1849
+get 585
+get 1181
+put 401 n531 51.78
+count
+get 1964
+get 1712
+put 167 n401 11.58
+put 371 n767 78.71
+put 1923 n904 35.83
+put 1477 n918 71.75
+get 751
+put 1154 n90 30.87
+put 754 n311 61.1
+put 562 n327 14.24
+put 515 n256 44.97
+put 1836 n608 57.55
+put 720 n10 5.44
+put 1342 n31 56.5
+put 1242 n379 45.17
+get 956
+del 205
+del 1208
+del 1312
+put 1718 n563 24.83
+get 792
+get 761
+put 1922 n523 63.39
+get 1077
+put 1180 n765 67.69
+get 128
+put 201 n328 95.39
+del 1558
+get 509
+get 179
+put 1005 n220 6.49
+get 963
+get 812
+get 495
+put 1272 n960 14.44
+del 1428
+put 1520 n432 33.56
+put 13 n66 10.67
+del 1437
+get 1614
+del 735
+put 782 n720 56.94
+put 1574 n811 24.2
+get 1618
+put 622 n445 85.44
+del 898
+put 1253 n330 74.22
+put 1871 n338 25.68
+put 872 n785 81.18
+get 216
+put 29 n995 96.62
+put 70 n287 92.67
+put 803 n690 0.62
+get 256
+count
+del 684
+put 460 n197 4.02
+get 1484
+put 80 n681 99.8
+get 269
+put 1141 n89 49.62
+put 115 n751 74.94
+put 1809 n587 9.59
+del 1426
+count
+get 1040
+del 806
+put 1461 n658 36.41
+put 1916 n485 46.57
+put 44 n580 88.32
+del 568
+count
+get 1941
+get 1532
+del 749
+put 1347 n727 14.44
+get 1439
+del 710
+del 720
+del 1477
+get 1653
+put 218 n561 87.03
+put 282 n856 65.48
+get 694
+put 1115 n625 3.3
+put 452 n308 15.8
+get 1350
+put 1492 n513 45.17
+count
+get 666
+get 161
+del 602
+del 227
+get 1934
+put 387 n775 32.54
+put 527 n695 35.9
+count
+count
+get 1273
+del 1731
+count
+put 248 n440 19.23
+del 474
+put 1453 n893 73.42
+get 1600
+get 667
+get 1220
+get 589
+put 833 n992 19.34
+put 682 n917 14.1
+put 1248 n110 92.33
+get 1765
+del 1889
+get 39
+put 721 n776 65.03
+put 1761 n497 53.01
+put 1911 n424 55.77
+get 405
+put 1574 n723 3.43
+del 729
+del 937
+get 1743
+get 1537
+put 300 n252 21.23
+del 1554
+put 1397 n732 36.1
+put 1609 n146 46.46
+put 1040 n992 83.13
+get 1044
+put 746 n666 9.4
+get 1499
+count
+del 766
+put 1170 n682 26.51
+put 1730 n838 97.78
+get 1027
+del 1136
+put 15 n764 16.97
+put 1576 n849 29.95
+get 1181
+del 1253
+get 227
+put 731 n305 32.18
+get 1056
+put 1020 n294 54.1
+del 247
+del 876
+count
+put 1596 n704 78.08
+get 642
+del 483
+put 82 n382 12.88
+get 758
+del 215
+get 74
+del 270
+put 1577 n72 28.82
+get 1687
+get 752
+put 111 n24 1.21
+get 145
+get 707
+get 480
+put 181 n566 63.76
+get 1722
+del 1089
+get 1585
+put 397 n972 86.68
+put 398 n360 28.37
+del 1187
+get 917
+get 1093
+put 62 n267 52.72
+put 829 n475 74.38
+put 1862 n892 65.25
+put 1356 n188 40.99
+count
+get 950
+del 1487
+get 355
+put 1082 n101 32.64
+get 646
+get 1363
+count
+put 102 n14 28.5
+del 843
+put 979 n223 53.91
+del 1859
+get 278
+get 1915
+put 193 n682 65.17
+get 490
+put 1979 n433 86.08
+put 439 n717 88.08
+get 277
+count
+get 904
+put 1955 n350 41.56
+put 1710 n320 82.5
+get 1896
+get 465
+del 453
+put 784 n480 70.0
+put 771 n632 45.77
+get 924
+get 161
+put 446 n289 13.89
+put 857 n655 80.33
+put 19 n399 7.75
+put 1373 n643 1.22
+get 956
+put 1210 n800 92.48
+put 548 n932 41.0
+get 204
+put 1290 n639 44.64
+put 1957 n167 92.56
+put 488 n260 91.21
+get 782
+get 620
+count
+count
+put 1967 n694 61.22
+put 929 n292 58.97
+put 859 n420 96.1
+del 50
+get 888
+get 245
+get 1404
+put 1800 n768 43.75
+put 876 n479 52.85
+get 114
+put 1414 n381 90.66
+get 1011
+put 1347 n875 75.96
+get 1807
+put 282 n937 74.05
+get 312
+put 810 n701 71.49
+get 655
+put 1942 n803 97.23
+put 1251 n819 25.71
+get 264
+get 1807
+put 416 n236 56.03
+put 1233 n170 83.51
+put 1505 n645 92.94
+get 1543
+del 1083
+get 1172
+put 1391 n56 54.6
+put 893 n538 63.76
+get 858
+put 1797 n390 64.97
+put 1525 n490 97.52
+put 662 n247 94.58
+get 909
+put 763 n361 4.47
+put 1901 n150 80.33
+get 147
+del 1550
+count
+put 1409 n482 47.8
+put 764 n166 24.78
+put 254 n636 77.78
+put 1700 n209 1.62
+del 384
+del 247
+get 1378
+put 1835 n605 62.12
+get 179
+put 1218 n577 9.95
+put 1891 n141 42.32
+get 342
+put 1588 n583 4.9
+put 575 n547 57.34
+del 1202
+put 578 n349 23.08
+put 685 n1 46.66
+get 1343
+put 25 n744 80.85
+get 418
+put 1401 n477 21.05
+put 86 n330 1.42
+put 1339 n684 53.49
+get 1327
+count
+put 1758 n392 46.93
+del 116
+put 1705 n161 13.55
+put 1731 n904 10.62
+get 1817
+put 1625 n250 42.79
+count
+put 907 n895 93.28
+put 925 n952 9.11
+put 166 n961 16.45
+put 56 n598 44.06
+del 805
+get 1583
+put 1777 n687 80.69
+put 1244 n844 83.01
+get 1869
+del 1350
+put 937 n538 94.26
+put 1399 n454 85.47
+put 601 n846 57.71
+put 852 n835 71.92
+put 171 n974 82.18
+put 1332 n196 78.96
+del 256
+put 38 n741 57.16
+del 1984
+put 571 n225 59.78
+get 968
+put 780 n345 56.55
+get 428
+put 1404 n494 15.53
+put 1598 n434 8.56
+put 1514 n333 32.16
+get 1580
+put 156 n124 33.85
+get 411
+get 205
+del 1290
+get 947
+get 1126
+get 467
+get 330
+count
+get 1768
+put 1611 n881 77.73
+get 1565
+put 1144 n42 15.24
+put 1148 n599 51.05
+get 107
+del 237
+get 568
+count
+get 55
+put 1928 n159 68.31
+put 479 n321 78.86
+get 948
+put 104 n987 18.41
+put 174 n436 18.24
+put 787 n921 66.4
+get 1650
+del 1976
+put 1120 n277 15.42
+get 922
+put 1839 n445 72.35
+count
+put 1056 n545 50.16
+get 765
+put 468 n691 76.49
+put 160 n384 10.4
+get 900
+get 474
+put 1355 n196 32.6
+put 1132 n522 20.84
+get 1217
+get 1068
+put 1530 n872 46.9
+put 194 n80 67.21
+put 1453 n451 69.28
+del 1605
+put 1696 n531 96.74
+put 1662 n856 10.14
+get 1665
+put 1311 n184 92.54
+count
+del 306
+put 363 n546 26.34
+del 675
+put 830 n85 43.78
+get 1115
+put 893 n439 74.48
+put 1634 n348 23.79
+put 1065 n39 4.89
+del 204
+put 675 n288 42.21
+put 1939 n937 78.52
+put 618 n991 91.86
+put 618 n291 11.58
+put 157 n373 27.85
+put 1086 n960 33.37
+put 816 n870 41.12
+get 1764
+get 1916
+put 1609 n14 74.32
+put 644 n75 73.3
+put 1881 n65 82.09
+put 1525 n161 66.85
+put 33 n484 31.21
+del 9
+put 702 n394 83.24
+get 1836
+put 784 n39 32.01
+put 147 n69 20.19
+put 1531 n593 48.51
+count
+put 106 n926 96.05
+put 1865 n274 70.98
+put 1813 n726 15.23
+get 664
+get 600
+get 1647
+put 1646 n12 29.2
+put 642 n210 94.73
+get 133
+get 995
+put 1560 n744 38.7
+get 513
+put 1796 n956 78.06
+del 1930
+del 954
+put 679 n965 61.97
+del 1183
+put 1047 n337 2.44
+get 1625
+put 1264 n214 34.22
+put 1854 n945 45.5
+count
+put 843 n154 48.15
+put 1896 n930 74.2
+put 454 n112 20.04
+put 328 n561 73.42
+put 672 n347 57.78
+put 1405 n945 91.52
+put 1350 n420 71.0
+put 535 n10 97.51
+put 1086 n421 93.28
+put 1266 n912 28.44
+put 1421 n708 68.88
+get 367
+put 365 n683 13.13
+get 77
+put 1186 n413 87.56
+put 15 n122 27.01
+put 1543 n973 89.41
+get 601
+put 835 n190 39.93
+put 1297 n842 81.1
+put 88 n406 99.15
+put 1580 n930 90.21
+put 729 n701 95.0
+put 257 n783 20.58
+del 1943
+put 959 n117 86.42
+del 1994
+get 516
+get 186
+get 1582
+get 1648
+get 1628
+del 246
+put 906 n775 12.42
+put 1599 n381 42.53
+get 64
+get 372
+del 1876
+get 36
+get 1018
+put 88 n974 11.7
+put 1910 n338 5.97
+put 55 n35 0.67
+get 1424
+get 1146
+put 1816 n738 23.19
+get 1085
+put 857 n104 13.92
+get 191
+get 1868
+get 1762
+put 1462 n521 86.07
+put 20 n940 22.96
+get 298
+get 403
+count
+put 1972 n446 38.75
+put 290 n26 41.83
+get 1950
+put 251 n438 23.48
+put 898 n90 55.29
+del 105
+del 1048
+put 345 n303 64.22
+put 894 n132 9.26
+put 809 n110 49.35
+del 86
+put 1160 n44 97.36
+put 377 n61 40.39
+put 538 n325 28.78
+get 576
+get 1944
+count
+put 1913 n779 80.3
+put 44 n366 64.06
+put 962 n406 92.61
+del 1125
+put 76 n221 74.18
+put 237 n127 98.37
+get 1130
+get 1564
+put 1012 n773 62.34
+get 203
+get 636
+put 361 n87 63.61
+del 1247
+put 963 n802 7.99
+del 544
+get 1073
+put 882 n508 30.15
+put 1288 n99 20.52
+put 1989 n233 38.44
+del 1201
+get 1917
+put 1998 n493 82.75
+put 1618 n148 98.39
+del 245
+put 271 n506 21.36
+get 1848
+del 13
+get 6
+put 402 n156 86.23
+del 1049
+get 164
+del 1025
+put 1574 n596 18.18
+put 103 n198 26.31
+put 791 n721 34.48
+del 491
+del 1713
+put 1001 n200 39.75
+get 242
+get 646
+get 1142
+get 1397
+get 199
+get 27
+get 3
+get 22
+put 364 n153 48.58
+get 707
+get 1793
+get 565
+put 1955 n285 43.47
+put 1051 n304 97.07
+get 1352
+put 1298 n414 4.23
+put 1587 n477 46.37
+put 734 n279 13.4
+get 1284
+get 274
+put 1807 n660 75.63
+put 760 n296 24.11
+put 452 n667 34.42
+del 177
+get 428
+put 890 n228 62.03
+del 1577
+put 81 n437 3.04
+put 630 n208 96.82
+count
+put 929 n426 21.57
+get 917
+put 1871 n782 29.02
+del 1133
+del 1137
+put 1666 n141 88.13
+del 273
+put 1843 n49 5.57
+del 419
+put 1993 n638 60.64
+put 466 n941 46.75
+get 1317
+put 1347 n504 49.31
+put 1422 n294 21.97
+get 827
+del 1517
+put 1404 n547 44.61
+put 318 n457 17.82
+get 1013
+del 728
+count
+put 949 n466 81.28
+put 564 n613 31.98
+put 1847 n540 84.71
+get 924
+put 464 n941 21.59
+del 1304
+del 1775
+put 1151 n295 63.24
+put 291 n683 21.74
+put 1329 n324 58.97
+del 98
+put 594 n325 54.38
+put 1942 n525 23.99
+del 809
+put 1990 n830 62.53
+put 426 n303 99.45
+del 816
+get 406
+get 809
+put 1386 n106 19.19
+put 535 n961 0.42
+get 813
+get 477
+del 740
+get 139
+put 1938 n281 98.85
+del 1103
+del 356
+put 26 n670 83.79
+get 602
+get 1524
+get 1058
+del 1511
+put 1746 n105 47.35
+put 707 n510 8.64
+put 659 n638 33.63
+get 97
+put 1776 n243 31.71
+get 412
+put 540 n856 32.87
+del 1262
+put 1511 n710 11.59
+put 1914 n932 80.14
+get 1825
+put 1394 n331 41.3
+get 1399
+get 1124
+del 1102
+count
+get 206
+put 1031 n150 32.87
+get 1547
+put 39 n697 86.33
+put 545 n182 71.61
+put 1159 n183 90.16
+get 532
+put 1037 n181 36.94
+del 384
+get 1906
+put 1786 n487 31.28
+put 1465 n163 27.33
+put 1913 n329 7.54
+put 966 n961 38.44
+put 696 n337 29.31
+put 565 n218 57.2
+get 678
+count
+count
+del 1552
+put 276 n989 48.93
+put 1426 n337 70.24
+del 1135
+put 1647 n361 15.08
+del 1072
+del 1466
+count
+get 922
+put 563 n65 95.57
+put 572 n775 38.94
+get 865
+del 752
+get 1732
+put 1256 n870 37.39
+del 797
+put 1431 n71 90.92
+get 330
+put 1922 n677 42.99
+put 1963 n1 2.79
+get 1323
+put 1014 n419 98.88
+get 1588
+get 1802
+put 1129 n665 22.01
+put 513 n838 52.07
+put 569 n42 28.94
+put 1437 n765 50.17
+del 392
+put 953 n399 95.12
+count
+get 266
+put 798 n928 33.52
+put 222 n368 58.28
+put 1014 n478 5.64
+get 1423
+get 1195
+put 1196 n95 57.7
+put 569 n912 97.79
+put 383 n204 59.8
+put 55 n735 15.92
+get 1459
+put 1950 n386 14.55
+put 1878 n197 93.17
+get 1905
+del 1704
+get 285
+get 1947
+put 1422 n316 86.71
+put 1285 n471 1.0
+put 1681 n455 27.39
+put 1744 n91 18.25
+get 382
+del 87
+put 444 n205 5.36
+count
+get 592
+get 1842
+del 138
+del 1807
+get 1991
+count
+get 656
+get 1283
+put 720 n637 76.77
+get 910
+put 628 n59 6.81
+get 132
+get 940
+get 1210
+put 570 n923 14.26
+del 1714
+del 1004
+put 1654 n309 56.58
+put 866 n554 79.27
+put 1115 n509 34.22
+put 467 n52 69.9
+get 715
+count
+put 521 n676 41.62
+put 415 n889 55.49
+put 1799 n287 82.28
+del 984
+put 804 n358 96.86
+put 1687 n0 67.81
+get 549
+get 1345
+put 1646 n906 60.26
+put 1946 n30 44.98
+put 547 n439 30.65
+del 1783
+count
+get 1373
+put 1453 n193 10.94
+count
+get 1218
+put 938 n247 60.16
+del 329
+get 431
+count
+get 794
+put 1374 n739 93.48
+put 1802 n303 72.5
+del 765
+del 1163
+put 895 n928 10.83
+get 1294
+del 954
+get 428
+put 31 n566 14.95
+put 472 n899 39.2
+put 1313 n669 18.26
+put 823 n668 6.39
+del 1323
+put 535 n989 9.3
+get 1697
+put 459 n134 23.18
+del 1559
+put 1341 n408 67.36
+put 1021 n484 14.87
+put 1816 n945 3.48
+get 800
+put 233 n696 29.69
+put 1975 n552 25.27
+del 1676
+put 1856 n731 54.3
+put 1306 n350 74.59
+get 1989
+put 765 n521 83.62
+del 855
+del 724
+del 1577
+del 1460
+put 1704 n823 25.18
+put 905 n191 34.23
+del 1525
+put 1930 n546 50.97
+get 768
+put 1643 n858 21.2
+del 1343
+del 127
+put 1102 n125 79.89
+put 1779 n30 69.6
+put 618 n112 42.63
+get 1781
+put 1927 n175 66.59
+get 1917
+put 373 n82 65.58
+del 1207
+get 1222
+get 840
+del 1014
+put 1012 n906 47.71
+put 546 n374 89.58
+put 141 n19 76.85
+get 1188
+get 19
+get 39
+count
+get 889
+get 113
+put 1859 n279 23.91
+put 71 n121 22.65
+put 1889 n40 41.73
+put 1238 n146 61.19
+get 1288
+put 1295 n284 5.54
+put 597 n300 45.16
+put 128 n83 39.4
+get 422
+del 1935
+get 248
+put 126 n418 42.09
+put 1136 n265 99.32
+put 1025 n114 77.85
+put 832 n958 46.83
+put 1885 n357 96.94
+del 100
+get 1618
+put 160 n964 93.25
+get 822
+put 1871 n700 97.56
+get 1831
+get 532
+put 1934 n78 0.86
+del 1590
+put 1862 n218 49.23
+put 1538 n330 61.06
+put 183 n339 81.44
+get 669
+put 831 n32 63.24
+get 1665
+put 1913 n787 63.98
+put 1811 n121 63.84
+put 1207 n14 59.02
+put 598 n550 20.02
+put 1331 n930 8.6
+get 1313
+put 1418 n719 77.87
+put 748 n847 95.69
+put 1073 n916 9.17
+del 23
+put 909 n673 76.07
+put 310 n190 16.07
+put 1209 n281 55.02
+put 1400 n170 84.98
+get 1079
+get 163
+put 850 n317 6.97
+del 911
+del 955
+put 1184 n701 36.77
+put 1449 n22 44.92
+get 1268
+del 1328
+get 578
+count
+put 384 n808 86.56
+put 90 n572 58.72
+put 1136 n805 27.19
+put 58 n153 69.67
+put 1468 n57 38.15
+del 1326
+get 1224
+count
+get 1611
+put 1370 n656 41.83
+put 1388 n284 67.47
+put 1262 n929 31.9
+put 612 n123 83.17
+get 1512
+put 661 n203 35.33
+put 167 n886 1.64
+get 912
+get 1671
+del 1648
+count
+get 1323
+get 1493
+put 215 n25 76.5
+put 404 n954 2.94
+get 1441
+del 1606
+put 1133 n629 44.95
+put 1242 n410 31.35
+put 1323 n288 81.88
+put 821 n679 99.09
+get 1659
+put 139 n365 61.62
+get 1818
+put 1619 n334 76.88
+put 1606 n83 21.39
+get 6
+get 1057
+put 206 n471 36.07
+put 536 n605 90.16
+get 157
+get 731
+put 1604 n313 61.46
+del 1455
+put 1058 n475 16.56
+put 1655 n817 64.11
+del 984
+del 1934
+get 1109
+del 1920
+put 559 n368 64.24
+get 274
+get 1950
+put 770 n997 13.89
+put 862 n153 68.53
+count
+get 1844
+put 753 n151 20.74
+del 1413
+put 1117 n878 92.04
+put 1334 n277 18.72
+put 1908 n302 93.25
+put 1370 n279 18.6
+del 1187
+get 1059
+del 51
+get 772
+count
+put 788 n644 53.9
+del 216
+get 117
+del 526
+get 1556
+put 1717 n202 50.49
+get 1690
+put 348 n950 91.99
+put 735 n910 47.7
+get 209
+put 1311 n196 54.77
+del 1628
+put 1596 n800 87.81
+get 608
+del 426
+put 1441 n949 18.28
+del 727
+put 1714 n905 13.31
+put 423 n473 11.09
+get 262
+del 1981
+put 33 n925 94.75
+get 1166
+get 123
+put 1505 n714 45.19
+get 1594
+del 850
+get 557
+get 996
+get 1066
+put 1714 n146 17.48
+put 1011 n733 35.94
+put 1764 n142 54.88
+get 1876
+get 75
+put 369 n948 4.94
+put 309 n563 87.09
+get 1818
+put 1202 n113 47.15
+count
+put 1727 n250 16.54
+get 1380
+del 1983
+put 248 n691 29.96
+put 363 n860 68.92
+count
+get 280
+del 1924
+put 814 n478 60.18
+put 1219 n62 32.87
+put 1008 n431 10.47
+get 49
+put 1727 n820 41.54
+del 1978
+get 355
+get 1466
+put 1019 n868 42.81
+del 1860
+del 246
+put 1531 n150 64.36
+get 595
+get 844
+put 1892 n781 38.75
+put 1226 n333 38.36
+put 1911 n948 93.83
+put 1941 n115 79.37
+put 974 n533 73.66
+put 818 n563 98.28
+put 581 n917 46.09
+del 107
+get 361
+put 204 n676 41.64
+put 132 n289 75.95
+count
+get 846
+put 1157 n78 74.38
+del 1534
+put 1805 n319 69.66
+get 1182
+get 1877
+get 526
+get 170
+put 1391 n958 34.74
+put 1427 n575 95.78
+get 871
+get 1521
+put 258 n473 70.12
+put 161 n968 24.47
+put 1704 n465 55.2
+get 1684
+put 273 n19 63.23
+put 109 n219 65.53
+put 1627 n644 69.52
+count
+put 795 n516 81.24
+put 301 n367 7.24
+put 1848 n998 16.59
+put 1029 n851 63.9
+get 1584
+put 1288 n789 65.84
+get 1730
+put 1880 n25 96.99
+del 673
+get 362
+put 1601 n299 43.55
+get 958
+put 905 n584 79.98
+del 1738
+put 1593 n332 62.67
+get 842
+put 1424 n875 33.07
+del 671
+count
+del 1182
+put 1266 n698 62.07
+put 729 n738 9.08
+get 886
+get 1289
+put 1619 n791 48.09
+del 871
+get 59
+get 1938
+put 1725 n425 87.53
+put 411 n199 46.97
+put 136 n660 64.32
+get 1346
+get 1473
+put 1595 n665 53.31
+put 1144 n697 30.36
+put 890 n731 49.35
+del 412
+del 1407
+put 1471 n798 12.95
+del 107
+put 197 n49 23.09
+put 882 n366 53.99
+put 1349 n993 32.08
+put 366 n360 65.02
+put 1284 n719 23.12
+del 1637
+count
+put 1701 n807 70.75
+put 447 n394 25.37
+put 1511 n519 28.28
+put 756 n159 37.93
+get 212
+get 1177
+put 1259 n869 72.28
+put 1889 n592 27.04
+put 1007 n501 79.63
+get 482
+put 4 n372 40.54
+put 1697 n306 61.58
+put 1080 n650 71.99
+put 1689 n815 22.62
+get 1746
+put 1553 n720 77.03
+del 998
+get 1067
+put 146 n291 66.97
+put 672 n135 96.35
+get 1694
+count
+get 1298
+put 1450 n537 64.56
+get 350
+put 1506 n558 96.84
+get 1885
+put 318 n53 43.87
+get 717
+get 220
+put 1267 n726 21.76
+del 1043
+put 1674 n495 17.34
+del 1329
+put 1000 n172 5.35
+put 1448 n4 4.66
+put 610 n461 29.21
+get 1487
+get 1430
+get 537
+del 1133
+put 1357 n53 62.64
+get 66
+put 811 n61 17.42
+put 481 n615 61.83
+put 1664 n751 53.62
+del 1171
+count
+put 814 n770 17.16
+put 214 n701 87.81
+put 1403 n413 82.0
+get 586
+get 1738
+put 441 n400 8.0
+del 1283
+put 1239 n817 42.16
+get 1179
+put 62 n455 13.94
+put 622 n39 30.88
+del 1138
+count
+put 316 n956 73.0
+get 1674
+get 1299
+put 483 n299 60.4
+put 1031 n631 18.5
+put 1493 n270 19.16
+put 512 n764 70.11
+put 1998 n616 73.97
+del 1121
+put 1626 n167 2.97
+count
+get 1707
+put 438 n208 57.18
+put 1920 n632 74.79
+del 1539
+get 1440
+put 815 n198 83.01
+put 159 n770 96.79
+put 327 n774 11.63
+put 950 n265 23.79
+count
+put 1319 n239 99.46
+get 1540
+del 1714
+del 1938
+put 666 n325 39.64
+put 1225 n710 67.05
+put 1611 n374 62.99
+put 1414 n50 25.96
+put 1850 n107 68.21
+del 325
+get 981
+del 669
+put 1345 n414 78.77
+put 1646 n120 85.21
+put 531 n514 27.57
+put 1151 n503 49.98
+del 1634
+get 1813
+put 447 n204 11.53
+count
+put 481 n576 15.44
+put 902 n849 30.86
+get 1937
+del 673
+del 590
+get 476
+put 1862 n531 84.11
+put 1479 n331 98.23
+put 1569 n64 85.32
+get 558
+put 663 n929 99.96
+del 1997
+put 1016 n62 63.75
+get 1050
+get 1000
+get 59
+get 995
+put 1458 n926 18.69
+put 1598 n973 27.0
+get 767
+get 639
+put 1171 n712 9.7
+put 832 n551 33.05
+del 64
+put 503 n883 13.9
+del 1574
+get 1745
+put 341 n346 99.87
+get 735
+get 1797
+get 1469
+put 917 n638 22.54
+get 1815
+get 1385
+get 289
+get 679
+get 1342
+get 1406
+get 1791
+put 896 n159 36.41
+del 1345
+del 398
+put 576 n615 10.7
+put 32 n288 59.64
+get 1838
+count
+put 116 n311 60.8
+put 1521 n520 56.74
+del 565
+del 434
+del 665
+get 160
+get 225
+del 994
+del 799
+count
+count
+get 227
+get 1792
+put 74 n11 11.69
+put 356 n73 99.04
+count
+put 1047 n713 11.87
+put 1698 n465 29.41
+put 466 n688 19.33
+put 19 n846 75.67
+put 1275 n936 31.84
+del 1237
+get 954
+put 1793 n728 72.9
+put 1587 n314 5.79
+get 910
+del 623
+get 1023
+get 1570
+put 369 n711 29.58
+put 1612 n321 14.46
+put 270 n892 68.74
+get 1936
+put 1333 n128 45.21
+put 1338 n318 64.8
+get 1745
+del 873
+put 60 n771 24.42
+del 678
+get 177
+get 915
+put 128 n518 40.29
+del 624
+del 911
+put 1622 n367 1.53
+get 1065
+put 785 n677 35.36
+get 63
+put 1789 n381 92.55
+put 1412 n720 32.2
+get 517
+get 1583
+put 569 n365 12.93
+put 1250 n771 23.28
+del 604
+put 1335 n335 60.7
+get 4
+get 1287
+put 211 n632 84.97
+del 1084
+put 468 n29 35.63
+get 1984
+del 1697
+put 463 n808 49.16
+put 1182 n753 81.4
+get 319
+put 197 n929 74.36
+put 1012 n656 79.25
+put 1774 n55 34.06
+put 1377 n542 81.26
+get 798
+del 1400
+get 1353
+put 1906 n59 70.55
+put 1504 n897 88.02
+count
+get 770
+get 263
+get 352
+count
+del 303
+put 1866 n642 64.12
+put 1676 n768 35.38
+put 681 n145 50.87
+put 337 n744 85.51
+put 1995 n163 61.12
+put 171 n841 6.0
+put 1051 n92 33.42
+put 440 n334 93.28
+put 1386 n607 63.39
+get 513
+put 890 n620 9.11
+put 1832 n543 80.95
+put 104 n939 78.57
+get 145
+put 565 n991 89.1
+put 1661 n744 90.13
+put 683 n971 75.4
+put 1238 n373 82.14
+put 1781 n754 26.4
+get 372
+put 1814 n396 76.95
+get 1048
+get 401
+del 987
+get 46
+del 294
+del 194
+put 2 n384 0.51
+del 278
+del 774
+del 36
+put 1129 n585 86.01
+count
+put 801 n92 61.89
+put 1430 n670 42.65
+get 583
+get 1070
+put 1510 n299 62.19
+del 92
+get 1263
+put 1249 n210 19.57
+get 1590
+put 1338 n784 4.6
+put 1859 n147 21.15
+get 965
+put 1302 n712 78.88
+get 1671
+del 333
+get 564
+put 1687 n252 20.26
+del 92
+del 1799
+get 782
+del 1942
+put 1882 n564 81.79
+get 1295
+del 1716
+put 648 n733 15.77
+count
+put 964 n431 67.95
+put 328 n994 53.31
+put 714 n643 96.3
+del 969
+put 1539 n263 97.57
+del 337
+put 956 n33 13.87
+put 263 n619 50.19
+count
+get 1874
+del 614
+put 395 n919 60.17
+del 308
+get 1935
+put 1207 n262 32.4
+get 1511
+put 1719 n370 93.19
+get 1133
+get 1069
+get 1227
+get 1432
+put 549 n597 68.34
+get 1378
+get 1027
+put 997 n520 9.26
+put 952 n437 5.69
+get 7
+put 1281 n951 90.88
+del 561
+del 1568
+del 71
+put 125 n81 51.05
+get 1202
+put 686 n873 12.45
+put 893 n806 55.76
+get 903
+get 217
+get 1017
+get 701
+put 1714 n598 88.76
+put 1304 n90 26.77
+get 1848
+put 1277 n839 32.16
+put 1579 n88 75.18
+put 725 n875 10.67
+del 960
+put 1232 n285 62.25
+get 1847
+del 934
+put 1384 n780 58.84
+put 863 n38 66.25
+del 3
+put 576 n335 38.56
+get 1526
+put 568 n5 8.88
+put 1725 n533 72.79
+put 1090 n934 10.57
+put 270 n564 87.1
+del 1190
+get 257
+get 991
+get 893
+put 1066 n459 37.65
+count
+put 1286 n695 26.65
+del 70
+put 105 n326 95.05
+put 1142 n644 99.37
+del 956
+put 1320 n102 97.61
+put 1280 n81 26.27
+get 1011
+del 670
+get 1405
+put 1120 n206 1.35
+count
+get 1115
+del 37
+put 405 n714 74.96
+put 221 n941 5.17
+get 1673
+put 1282 n726 74.78
+put 98 n416 64.85
+get 456
+del 1627
+put 1557 n813 59.15
+del 1042
+put 1939 n420 98.41
+get 1866
+put 602 n602 80.91
+get 1431
+get 869
+put 1070 n810 70.22
+put 512 n123 30.59
+put 429 n575 94.09
+get 536
+put 498 n11 94.13
+get 1412
+get 13
+get 921
+put 1167 n929 49.45
+get 882
+put 1904 n14 54.31
+get 1734
+put 1081 n389 1.9
+del 1097
+put 1277 n0 91.66
+del 573
+del 734
+del 510
+get 1893
+del 595
+put 340 n326 87.92
+put 1423 n889 7.04
+put 308 n375 11.63
+put 1342 n152 60.23
+get 1888
+del 221
+get 872
+count
+get 531
+del 947
+put 850 n668 40.19
+put 144 n275 66.08
+put 582 n109 92.59
+get 197
+put 1605 n570 60.67
+put 296 n601 96.35
+put 521 n800 48.3
+put 445 n622 17.66
+put 1031 n260 44.07
+put 1249 n418 39.6
+put 718 n782 76.6
+put 456 n672 51.65
+get 186
+put 1464 n906 31.29
+get 1039
+put 361 n932 97.39
+del 200
+get 617
+put 12 n572 47.45
+get 748
+put 703 n269 95.45
+get 463
+put 1373 n43 52.59
+get 1692
+del 1622
+get 128
+put 288 n176 20.62
+put 589 n144 89.37
+put 1860 n772 50.74
+get 553
+get 1404
+put 1966 n738 30.46
+get 1528
+get 1295
+get 512
+get 1798
+get 1042
+del 1537
+count
+put 475 n81 58.63
+put 1029 n878 48.53
+get 1284
+put 1409 n866 42.53
+put 1873 n959 2.73
+del 1470
+put 1192 n431 81.96
+get 104
+get 1444
+get 1119
+get 500
+put 1789 n825 79.31
+get 1296
+del 81
+del 1330
+put 1911 n592 77.88
+get 1084
+put 298 n388 19.64
+put 321 n342 70.02
+put 299 n475 82.51
+put 1939 n75 7.57
+del 139
+del 1991
+put 97 n136 35.34
+put 1817 n790 15.7
+put 656 n170 52.25
+put 1803 n47 81.18
+get 630
+put 1910 n401 51.1
+del 757
+put 195 n889 83.0
+get 1592
+del 97
+del 1183
+get 1913
+get 1083
+get 1622
+get 1677
+get 1857
+put 663 n725 74.78
+del 1014
+del 670
+get 428
+put 1846 n297 80.47
+put 1336 n580 66.43
+del 443
+put 156 n413 65.54
+del 1789
+get 1007
+put 107 n949 65.28
+get 1905
+get 706
+put 753 n587 11.53
+get 514
+put 1035 n706 42.95
+count
+put 394 n938 77.96
+get 1050
+put 1849 n478 37.21
+put 85 n653 1.03
+put 559 n363 56.93
+put 309 n464 3.89
+get 921
+get 1515
+get 456
+put 383 n466 55.12
+get 151
+put 1189 n181 47.69
+put 955 n333 50.0
+del 786
+count
+put 405 n300 24.33
+del 858
+get 1412
+put 1550 n683 3.15
+get 160
+get 1508
+get 1885
+del 258
+put 1628 n814 43.06
+del 1904
+put 143 n381 19.52
+put 211 n731 19.93
+get 1016
+put 986 n720 60.76
+put 76 n103 70.09
+put 907 n15 32.62
+count
+get 1956
+put 689 n255 18.44
+count
+del 1160
+del 1513
+del 1098
+put 512 n767 96.65
+put 423 n247 81.56
+get 774
+put 1427 n515 41.76
+get 220
+put 1154 n685 44.97
+put 19 n76 10.18
+put 147 n349 63.52
+put 961 n662 71.16
+get 1577
+del 1099
+put 745 n67 36.32
+get 31
+del 217
+put 1330 n105 68.25
+get 913
+put 1004 n528 48.86
+put 429 n416 88.34
+count
+put 1894 n49 42.98
+put 1702 n887 76.48
+get 1260
+put 397 n758 8.05
+del 319
+put 1684 n741 76.35
+put 479 n210 18.71
+put 957 n960 4.68
+put 1756 n919 34.33
+put 206 n548 50.93
+put 210 n797 18.81
+count
+get 836
+put 1498 n974 5.65
+put 991 n495 0.44
+put 155 n989 7.07
+get 929
+del 1484
+get 1274
+get 1828
+get 1524
+del 1003
+put 1048 n379 37.16
+get 1588
+get 320
+get 768
+put 1923 n295 23.75
+get 1580
+put 1629 n459 42.65
+put 192 n661 51.68
+put 269 n937 66.64
+put 1323 n779 95.29
+put 1659 n645 13.5
+get 1048
+put 963 n272 59.8
+put 627 n745 21.11
+del 867
+get 1036
+put 664 n368 54.88
+put 1187 n425 67.68
+put 1280 n575 0.69
+put 616 n196 66.46
+put 1155 n997 72.02
+get 999
+put 1258 n989 21.56
+del 1542
+put 409 n797 73.15
+put 418 n198 49.34
+put 762 n674 11.3
+del 1169
+put 1877 n463 54.13
+count
+del 1733
+get 1991
+get 1322
+count
+put 432 n981 25.54
+put 263 n164 91.33
+get 85
+put 1622 n214 38.32
+del 471
+put 494 n415 5.92
+put 1239 n983 71.11
+put 1909 n681 7.98
+get 1792
+put 723 n187 15.96
+get 819
+get 288
+get 1303
+get 1577
+get 751
+put 739 n672 41.49
+put 521 n887 82.24
+put 53 n403 49.46
+get 1488
+put 577 n578 82.52
+count
+put 980 n570 36.85
+put 1392 n124 78.1
+put 151 n426 40.53
+put 963 n351 88.58
+del 85
+put 478 n807 55.0
+put 208 n441 37.57
+get 727
+put 911 n92 92.87
+put 501 n467 85.32
+get 1377
+put 1181 n68 47.71
+put 1942 n283 1.47
+put 1902 n216 58.36
+count
+count
+put 142 n97 26.8
+get 752
+put 1142 n152 50.92
+put 1321 n197 47.2
+put 875 n676 57.35
+get 635
+del 497
+put 1730 n311 76.36
+get 222
+count
+get 188
+put 660 n287 23.63
+put 314 n396 14.2
+put 899 n596 43.15
+del 1759
+get 13
+get 1684
+get 1429
+del 1075
+get 285
+put 1733 n33 17.5
+put 1870 n149 62.45
+put 1063 n597 66.81
+get 271
+get 1577
+get 1024
+get 1876
+count
+del 871
+put 1908 n289 23.9
+del 1582
+get 45
+put 1876 n41 36.62
+put 1594 n122 65.04
+put 1748 n598 41.24
+get 1762
+put 1426 n722 91.43
+put 435 n538 27.27
+del 20
+put 1552 n862 39.23
+put 545 n749 5.04
+put 1561 n816 88.98
+get 1904
+del 577
+put 874 n608 86.89
+put 1503 n629 80.08
+put 67 n311 11.61
+put 1908 n582 53.09
+get 1312
+get 1745
+get 977
+put 1657 n636 11.17
+put 1766 n260 14.94
+put 1904 n61 59.9
+put 77 n725 97.87
+put 343 n816 70.04
+put 1940 n991 33.5
+count
+get 1135
+get 805
+put 1708 n294 14.4
+get 902
+get 1060
+put 486 n533 76.92
+put 1945 n265 66.46
+put 1926 n360 39.49
+get 624
+put 62 n676 20.42
+put 1632 n86 50.04
+get 1702
+put 273 n320 9.66
+get 18
+get 1508
+put 975 n277 20.05
+put 912 n398 97.29
+put 1850 n826 25.04
+put 801 n759 78.66
+del 1531
+del 1686
+put 814 n940 29.18
+put 1205 n706 10.55
+put 1089 n887 66.5
+del 1464
+get 490
+put 1688 n997 22.7
+put 986 n211 14.7
+put 722 n238 89.47
+get 1151
+put 963 n750 60.54
+get 613
+put 767 n913 58.7
+get 1772
+put 248 n3 58.27
+get 449
+get 1856
+put 524 n582 29.26
+get 1477
+get 130
+put 1307 n716 5.23
+put 1358 n854 77.82
+put 283 n207 23.36
+get 1533
+put 661 n849 40.39
+del 736
+put 1008 n632 25.79
+put 923 n406 88.51
+get 315
+put 336 n483 35.3
+get 627
+get 1865
+get 969
+put 1907 n991 69.7
+del 1737
+put 535 n269 2.09
+get 1124
+put 1430 n215 74.88
+get 1826
+put 1971 n571 10.08
+put 1548 n482 60.5
+put 488 n707 31.99
+put 1093 n762 36.23
+put 218 n201 48.81
+put 1780 n910 93.2
+get 1162
+put 425 n21 18.05
+put 691 n950 1.86
+del 727
+get 779
+put 839 n934 32.42
+put 1085 n543 3.61
+get 388
+put 645 n788 87.17
+put 1792 n973 78.46
+get 319
+del 1785
+get 1069
+put 372 n586 49.87
+put 1495 n342 92.82
+put 1957 n414 21.39
+get 1570
+put 1652 n613 84.15
+get 1683
+count
+get 1079
+put 1771 n319 45.05
+put 1389 n64 25.63
+put 1332 n40 69.81
+get 1087
+del 1283
+get 897
+put 1901 n691 80.68
+put 77 n302 40.65
+del 1647
+del 187
+del 884
+get 1355
+del 1316
+get 1818
+count
+del 1751
+get 261
+del 239
+put 1471 n178 68.14
+put 1977 n195 39.8
+put 295 n292 50.07
+put 191 n904 30.66
+put 1534 n952 39.45
+get 1194
+put 1370 n837 72.3
+del 276
+del 1103
+del 1897
+get 1788
+get 1160
+put 661 n503 64.39
+count
+get 602
+get 1378
+put 364 n865 2.45
+put 91 n456 67.32
+put 1455 n154 89.2
+get 147
+count
+put 67 n232 17.28
+put 1307 n355 65.88
+get 122
+get 1597
+get 1815
+get 1733
+put 563 n347 22.81
+count
+put 311 n767 99.82
+del 913
+get 340
+put 658 n989 69.81
+put 1212 n775 86.58
+count
+put 794 n23 56.65
+count
+put 1379 n976 95.58
+put 709 n377 2.83
+put 1302 n237 6.13
+put 815 n657 47.4
+get 890
+put 1515 n99 17.55
+put 1232 n441 72.05
+put 350 n329 26.93
+get 1819
+del 1786
+del 1907
+del 1003
+del 226
+put 510 n782 51.04
+get 539
+del 1505
+put 1354 n55 26.49
+del 1989
+get 1719
+put 720 n331 21.9
+count
+put 946 n144 18.52
+put 390 n587 9.29
+del 155
+del 1746
+put 640 n562 31.92
+del 665
+put 147 n151 78.02
+get 135
+put 1506 n523 55.32
+get 643
+put 638 n52 86.58
+count
+put 1974 n652 99.82
+put 1724 n642 90.72
+get 396
+put 495 n14 93.57
+put 968 n98 29.81
+get 620
+del 441
+count
+put 376 n597 51.92
+put 605 n386 97.49
+put 480 n937 93.93
+get 1046
+put 97 n321 14.58
+get 81
+count
+get 3
+get 1238
+get 1564
+put 300 n570 44.49
+get 1259
+get 946
+put 774 n995 7.94
+put 930 n342 50.42
+get 1657
+put 1430 n480 23.36
+put 542 n12 90.3
+get 90
+put 337 n416 80.45
+get 1270
+put 1995 n226 22.0
+put 330 n123 34.47
+del 1759
+put 1378 n449 11.08
+get 1147
+put 107 n94 45.85
+get 9
+get 1252
+get 1450
+del 622
+put 1574 n489 66.46
+put 661 n864 96.04
+put 775 n164 66.61
+get 913
+del 1716
+get 728
+put 1742 n218 6.09
+del 1413
+get 861
+get 4
+put 1708 n871 94.87
+del 1252
+put 967 n17 33.44
+get 152
+put 825 n633 71.94
+get 967
+put 954 n83 35.13
+get 33
+get 1240
+get 1286
+get 395
+put 548 n515 35.37
+put 1282 n305 30.72
+put 1693 n208 54.08
+put 781 n271 10.46
+put 893 n868 42.33
+get 1239
+count
+put 138 n211 27.66
+put 1417 n310 36.89
+del 1893
+put 923 n818 19.79
+del 1202
+del 1033
+put 832 n28 68.71
+del 493
+del 840
+get 1598
+del 407
+get 1598
+get 251
+put 418 n612 87.93
+put 1209 n380 65.07
+del 1362
+put 521 n967 77.83
+put 1471 n938 17.53
+get 1030
+put 758 n215 33.3
+del 1564
+get 1638
+get 115
+put 1680 n463 11.22
+get 715
+get 1013
+get 1722
+put 162 n422 16.26
+get 579
+get 1724
+put 1223 n458 95.57
+put 1423 n361 79.66
+get 1024
+get 1732
+del 364
+put 354 n237 21.27
+get 1509
+put 1693 n181 57.01
+put 859 n271 78.29
+put 1707 n798 48.74
+get 1493
+put 1567 n254 84.99
+put 1800 n240 98.59
+get 222
+get 1307
+put 1659 n460 30.32
+put 1817 n502 94.76
+put 71 n76 95.9
+put 32 n844 93.49
+put 790 n562 18.16
+put 1853 n812 27.21
+get 1520
+put 825 n304 16.23
+put 250 n154 50.54
+del 20
+get 1114
+put 255 n692 20.8
+put 466 n956 16.61
+del 411
+put 1885 n789 28.49
+get 1883
+put 1954 n155 66.5
+put 1785 n962 72.6
+del 1359
+put 469 n681 47.09
+del 1307
+put 1145 n633 56.75
+get 1699
+put 815 n686 49.23
+put 1708 n214 30.03
+get 1894
+get 1020
+put 1007 n60 94.57
+put 890 n124 44.09
+count
+put 804 n859 68.63
+del 1606
+get 1890
+get 307
+put 1472 n43 15.11
+put 1289 n204 7.45
+get 41
+get 1396
+put 242 n177 14.8
+del 1747
+get 458
+count
+get 1709
+put 163 n193 2.37
+get 624
+count
+get 800
+put 1212 n291 50.14
+del 769
+put 1686 n733 49.81
+put 939 n523 94.11
+get 583
+put 1126 n260 20.19
+get 1025
+get 1146
+get 1317
+put 1428 n368 31.17
+del 1193
+put 1071 n175 11.43
+put 611 n632 34.14
+del 9
+put 698 n33 63.11
+put 1829 n706 83.35
+put 1182 n275 46.02
+get 1194
+get 1095
+del 130
+put 1394 n253 53.21
+put 1049 n876 27.03
+del 1795
+put 1996 n720 1.75
+put 577 n231 40.21
+put 1138 n204 27.23
+put 120 n351 22.82
+put 349 n431 52.01
+put 1857 n433 81.76
+put 1711 n721 37.09
+del 777
+get 1032
+put 1792 n571 34.63
+put 704 n154 69.82
+put 197 n801 53.55
+put 510 n721 79.7
+del 1769
+put 1346 n284 2.38
+put 488 n406 28.54
+get 1592
+get 702
+del 123
+get 1150
+put 498 n723 25.73
+get 59
+get 1605
+put 112 n362 42.0
+put 1421 n672 21.2
+put 1096 n666 28.49
+get 645
+put 1975 n277 34.87
+get 983
+del 1565
+put 1673 n138 26.53
+del 1309
+put 1822 n748 48.73
+put 703 n784 95.12
+put 806 n900 78.57
+put 39 n250 98.85
+del 802
+get 162
+put 21 n319 9.35
+put 875 n925 7.55
+put 173 n953 53.62
+put 424 n382 20.7
+put 31 n166 77.76
+get 17
+get 422
+put 82 n844 94.07
+get 1027
+put 713 n743 51.39
+put 1435 n16 80.27
+get 1600
+get 978
+get 715
+get 100
+get 910
+put 1186 n492 64.72
+del 758
+put 315 n462 11.79
+del 1326
+del 603
+put 2 n77 99.95
+del 38
+put 1168 n243 99.37
+get 1245
+put 1404 n158 22.31
+put 35 n709 5.22
+get 8
+put 1854 n346 33.79
+put 911 n492 18.65
+get 575
+del 1975
+put 1427 n820 78.56
+del 915
+put 1210 n985 76.55
+del 9
+put 970 n513 25.18
+get 325
+put 1054 n804 32.86
+put 331 n413 41.92
+put 1170 n116 25.06
+put 1195 n778 51.16
+get 1670
+put 72 n594 71.17
+del 790
+put 86 n712 36.32
+count
+get 957
+put 1018 n146 33.19
+put 1874 n858 33.47
+put 508 n371 74.51
+put 1842 n88 81.15
+get 1916
+put 1724 n440 92.18
+put 1895 n720 92.14
+put 958 n930 74.46
+put 326 n364 34.44
+get 1951
+put 646 n387 12.03
+put 814 n757 84.42
+get 848
+put 901 n828 61.03
+put 125 n115 88.85
+get 455
+put 1753 n541 97.24
+put 521 n803 3.0
+get 567
+del 1911
+get 1332
+get 97
+get 81
+put 330 n475 31.07
+get 1894
+del 1781
+put 345 n789 8.7
+put 209 n274 1.05
+put 1833 n45 4.45
+put 550 n114 45.37
+put 744 n416 53.8
+put 768 n476 14.3
+put 1786 n213 4.75
+put 1581 n867 36.39
+get 1505
+get 1102
+put 621 n893 73.08
+get 1696
+del 1366
+del 468
+put 1056 n346 63.03
+put 861 n58 42.5
+del 663
+del 887
+count
+del 576
+put 865 n334 62.01
+del 341
+put 66 n816 82.0
+count
+get 1800
+count
+put 1678 n876 3.79
+del 1670
+put 632 n145 60.01
+put 497 n80 19.09
+put 415 n175 73.85
+put 1859 n327 24.01
+put 1304 n297 5.86
+del 273
+put 1840 n116 92.49
+get 971
+get 652
+del 851
+count
+put 1199 n504 81.16
+put 200 n482 80.92
+put 1603 n721 29.35
+get 1938
+get 772
+count
+count
+put 609 n316 66.1
+put 82 n793 51.24
+get 959
+del 307
+get 1966
+put 43 n580 83.2
+put 1475 n878 44.22
+put 1027 n613 93.72
+count
+put 1475 n785 28.02
+put 1917 n646 85.32
+put 903 n773 6.35
+get 1190
+put 227 n903 48.38
+put 124 n572 19.7
+get 368
+put 495 n432 2.42
+put 805 n716 83.32
+put 917 n991 73.12
+del 411
+put 734 n619 33.47
+put 1187 n907 90.31
+put 1367 n907 0.08
+del 1792
+put 1144 n162 12.58
+get 227
+put 1253 n765 1.21
+get 726
+put 537 n558 34.58
+get 39
+get 753
+put 648 n774 83.77
+put 953 n289 3.91
+del 1234
+del 1987
+put 804 n781 49.87
+put 447 n545 67.09
+get 933
+get 821
+put 905 n557 3.86
+put 1341 n677 87.08
+del 488
+put 1748 n430 45.53
+put 1983 n301 70.3
+get 354
+get 618
+get 710
+get 154
+put 134 n440 31.34
+put 1874 n563 82.12
+get 242
+put 755 n751 92.79
+put 1651 n175 26.34
+put 1284 n763 92.65
+get 1591
+del 989
+put 268 n892 16.68
+get 1846
+put 97 n658 17.18
+put 856 n60 24.18
+put 979 n972 36.35
+del 1036
+put 311 n239 43.94
+put 733 n209 46.57
+put 159 n721 66.78
+del 1186
+put 1173 n914 57.38
+put 191 n158 85.36
+put 884 n7 10.85
+put 504 n946 87.64
+get 1350
+count
+get 927
+put 200 n674 39.44
+get 1340
+put 502 n154 52.1
+del 336
+del 1583
+get 572
+get 439
+count
+put 1190 n313 1.22
+get 721
+get 348
+get 1948
+get 87
+del 696
+put 1660 n25 72.77
+get 1907
+get 1211
+put 724 n701 99.29
+put 334 n172 84.89
+del 1574
+put 1799 n244 77.36
+del 1173
+get 875
+put 372 n141 6.26
+put 1383 n768 50.45
+put 1224 n213 30.71
+count
+put 1985 n824 43.28
+del 1130
+put 1912 n338 78.39
+put 293 n964 19.46
+get 1699
+put 1007 n905 95.67
+get 1749
+get 172
+get 37
+del 1598
+put 277 n327 70.19
+put 1493 n709 53.95
+put 1272 n825 7.11
+put 736 n686 95.51
+get 1060
+get 976
+get 1259
+del 671
+del 931
+put 15 n500 64.26
+del 1806
+put 1459 n475 16.36
+put 349 n566 92.08
+get 132
+get 815
+count
+put 1032 n637 88.5
+put 140 n572 68.21
+get 190
+put 1089 n708 75.58
+put 130 n283 29.26
+put 1834 n612 34.43
+count
+get 315
+put 215 n798 74.95
+put 415 n469 93.29
+put 580 n416 14.73
+del 771
+put 1941 n360 79.89
+put 457 n297 38.62
+put 1378 n554 21.84
+get 1795
+del 580
+get 1579
+del 908
+put 869 n242 13.76
+get 1027
+put 433 n808 79.08
+put 1083 n41 89.49
+put 417 n542 36.52
+put 1095 n17 68.25
+get 628
+get 326
+get 397
+get 1972
+get 412
+del 651
+put 244 n20 63.59
+count
+del 1512
+del 744
+get 95
+put 686 n132 82.67
+get 242
+put 606 n14 26.48
+put 1132 n980 33.9
+put 720 n932 29.28
+put 1378 n737 28.17
+get 1736
+get 1301
+get 986
+put 1434 n775 68.57
+del 1269
+put 1059 n751 96.02
+put 977 n45 64.22
+put 1378 n516 99.41
+put 1754 n4 77.74
+put 438 n777 13.44
+put 1348 n494 64.3
+put 152 n606 65.02
+del 930
+del 1690
+get 1433
+get 464
+put 479 n729 20.93
+get 1756
+put 232 n687 75.24
+count
+put 988 n953 52.45
+put 153 n672 24.86
+put 18 n681 47.51
+del 1090
+get 1650
+put 643 n297 26.1
+get 272
+put 1352 n40 72.82
+put 192 n43 28.89
+get 1011
+get 1352
+get 1416
+get 1047
+del 230
+put 1051 n824 71.49
+del 1222
+put 1419 n74 13.89
+put 539 n64 9.24
+put 1698 n968 99.52
+get 1617
+get 412
+put 121 n404 99.48
+get 1901
+put 1046 n117 78.79
+put 794 n985 61.28
+del 967
+put 1878 n717 72.15
+put 100 n369 63.12
+get 1764
+count
+get 824
+get 1316
+get 1172
+get 887
+put 93 n60 12.91
+get 1601
+put 1221 n735 57.53
+get 1568
+put 1686 n617 47.1
+get 1018
+get 645
+get 1641
+get 644
+put 1447 n293 6.75
+get 1328
+put 771 n20 33.49
+put 911 n642 23.36
+put 363 n824 63.31
+put 1529 n886 85.32
+put 1918 n358 58.24
+del 941
+get 1857
+put 1709 n7 45.57
+del 1288
+put 653 n160 5.55
+put 1006 n556 86.02
+get 820
+put 361 n955 34.28
+del 1667
+put 502 n893 57.66
+get 1739
+put 1668 n300 28.83
+put 504 n422 0.87
+put 1367 n132 97.01
+get 385
+del 960
+get 3
+get 70
+get 492
+put 571 n926 51.62
+del 844
+get 1850
+put 853 n730 2.99
+del 186
+put 1609 n32 81.17
+del 1555
+count
+put 544 n756 92.94
+put 1884 n739 44.97
+put 1392 n760 58.86
+put 1937 n489 4.44
+put 599 n457 43.65
+put 720 n133 49.91
+put 1189 n845 91.38
+put 340 n84 49.37
+del 102
+put 175 n404 93.65
+put 1440 n946 58.74
+del 708
+put 664 n695 8.34
+del 977
+get 1584
+put 1319 n161 0.91
+get 429
+count
+del 148
+get 884
+get 636
+del 246
+count
+put 1263 n77 19.74
+put 251 n726 6.99
+put 563 n123 7.45
+del 519
+get 447
+get 350
+count
+del 1939
+get 1095
+get 1210
+put 1183 n57 31.47
+get 189
+put 299 n924 28.86
+put 933 n25 70.03
+put 1538 n449 87.24
+put 1304 n992 53.63
+get 98
+del 1379
+put 1161 n779 85.42
+get 1050
+put 1677 n220 44.0
+del 1637
+put 1733 n807 61.14
+get 1409
+put 147 n501 53.5
+get 327
+put 782 n454 77.74
+get 358
+get 358
+get 1283
+get 626
+put 884 n455 22.78
+get 1759
+get 958
+get 682
+count
+put 1108 n223 44.05
+put 713 n995 61.3
+get 509
+put 1547 n914 7.7
+get 1931
+get 721
+get 1287
+get 554
+get 418
+del 1211
+del 644
+get 1067
+get 1167
+put 1936 n223 33.1
+del 144
+put 1412 n439 22.07
+put 1081 n310 47.17
+put 722 n506 36.21
+get 1814
+put 304 n199 62.38
+put 1323 n651 82.07
+get 990
+put 1976 n655 27.1
+get 1642
+put 493 n172 27.53
+get 1873
+get 1352
+get 213
+put 788 n890 81.89
+get 166
+get 1216
+get 1912
+get 1669
+put 1415 n316 37.49
+get 1379
+del 149
+put 410 n144 49.56
+get 171
+put 178 n894 1.18
+get 468
+del 282
+put 7 n767 42.92
+del 1284
+get 1912
+put 1540 n419 40.87
+put 182 n121 9.29
+put 586 n296 1.28
+get 984
+put 1189 n398 0.62
+count
+get 1965
+put 684 n792 24.66
+put 216 n93 88.75
+get 1800
+get 1322
+put 614 n529 98.32
+put 180 n18 0.85
+get 312
+get 1815
+get 988
+put 921 n484 4.77
+put 1434 n639 96.9
+put 1670 n331 82.13
+put 1266 n821 37.96
+del 1223
+del 1811
+put 766 n414 90.72
+put 995 n872 76.15
+put 1361 n700 48.32
+del 1272
+get 1916
+del 651
+put 677 n660 3.74
+put 497 n950 92.82
+del 1592
+count
+count
+put 684 n748 46.76
+put 1970 n312 96.76
+put 466 n286 78.85
+count
+get 323
+put 1350 n245 57.53
+put 1034 n257 89.7
+get 866
+put 1854 n142 68.53
+get 1532
+get 11
+put 722 n995 66.7
+count
+put 618 n448 55.6
+get 345
+put 240 n898 32.98
+put 307 n137 19.9
+put 408 n508 40.04
+put 1274 n670 9.97
+put 345 n235 62.59
+put 1332 n952 64.07
+put 502 n225 72.97
+put 1973 n227 4.84
+put 1388 n529 33.38
+put 1217 n592 57.27
+count
+get 1566
+put 1285 n385 72.82
+get 315
+get 1621
+put 1137 n937 1.99
+put 120 n586 85.27
+put 820 n825 47.46
+count
+del 309
+get 544
+put 1259 n949 90.56
+put 1273 n35 38.57
+put 926 n49 86.51
+get 55
+get 649
+put 1821 n512 67.91
+put 1356 n181 32.1
+get 1996
+put 1439 n97 4.93
+count
+get 1309
+del 1173
+put 1336 n79 92.78
+put 1263 n678 4.07
+put 1716 n632 91.11
+get 1511
+put 55 n679 75.3
+put 627 n403 62.94
+put 1016 n782 91.94
+del 1771
+put 27 n466 71.02
+put 795 n949 48.76
+count
+get 1291
+del 1510
+get 1382
+get 496
+del 1498
+get 982
+get 1812
+get 1694
+get 927
+put 1933 n184 40.52
+put 452 n871 12.31
+del 261
+put 355 n813 77.21
+get 532
+put 1062 n269 64.35
+del 1688
+put 621 n63 8.01
+get 439
+del 1100
+get 1910
+put 217 n151 26.21
+del 1813
+put 696 n619 21.5
+del 802
+get 373
+put 1567 n888 21.28
+put 477 n945 37.8
+put 67 n604 64.12
+put 1997 n562 88.63
+get 360
+get 84
+count
+del 976
+del 1584
+put 978 n625 50.33
+put 617 n313 8.76
+put 1646 n382 57.86
+get 309
+del 1900
+get 1369
+put 1599 n139 14.95
+put 1958 n82 4.74
+put 1775 n659 97.57
+count
+get 882
+get 1697
+get 741
+put 1375 n230 71.08
+put 78 n330 46.23
+put 818 n242 78.29
+get 920
+put 677 n698 49.23
+del 1663
+get 1263
+count
+get 1315
+get 1126
+put 1195 n705 39.46
+del 43
+put 1472 n889 60.16
+put 1885 n762 50.87
+put 539 n308 76.82
+put 338 n421 54.38
+put 1556 n828 30.03
+put 1538 n668 86.68
+put 1159 n940 70.27
+put 896 n278 37.09
+get 501
+put 746 n503 88.44
+put 1832 n593 83.67
+put 353 n880 72.65
+get 621
+put 460 n787 67.1
+put 264 n298 68.09
+del 1922
+put 1337 n836 70.21
+put 833 n87 89.32
+count
+del 1542
+del 849
+put 1942 n702 1.5
+put 168 n3 32.16
+put 545 n492 51.64
+count
+get 97
+get 750
+del 44
+put 1730 n256 42.66
+get 92
+put 1928 n28 19.68
+put 1453 n824 66.37
+get 564
+put 1080 n965 48.96
+del 243
+put 74 n195 30.14
+put 165 n486 4.67
+put 681 n538 38.12
+get 1570
+get 903
+put 795 n783 80.05
+put 1359 n776 68.93
+count
+put 1948 n716 36.27
+put 657 n923 84.89
+get 1818
+get 533
+put 577 n366 28.47
+get 1495
+put 428 n277 13.43
+get 829
+del 1940
+get 1190
+del 229
+get 825
+del 1401
+get 851
+put 972 n475 78.46
+get 749
+put 1632 n809 35.08
+del 1060
+put 1916 n685 37.96
+put 16 n610 98.07
+put 1792 n928 27.31
+get 1615
+del 323
+get 318
+del 1739
+put 936 n263 43.38
+put 1102 n785 9.2
+put 1542 n340 77.12
+put 258 n348 23.31
+del 691
+put 810 n519 51.85
+put 489 n337 33.63
+get 1262
+put 502 n924 36.48
+get 1864
+put 981 n658 62.23
+get 967
+put 282 n278 99.54
+get 1794
+del 303
+put 1469 n479 4.55
+del 1656
+put 533 n412 26.22
+get 585
+put 1171 n556 18.38
+get 1764
+get 1281
+get 725
+put 200 n61 52.87
+put 374 n343 65.85
+put 1811 n380 77.28
+put 300 n722 59.82
+put 1325 n772 7.26
+put 1648 n128 72.95
+put 643 n679 87.45
+put 297 n71 7.25
+put 1313 n140 25.59
+get 426
+del 414
+del 320
+get 1089
+put 1493 n306 42.92
+get 327
+count
+get 1871
+put 142 n935 60.31
+get 892
+del 1
+put 292 n925 42.57
+get 68
+put 1061 n757 46.24
+count
+put 1630 n415 6.65
+get 1435
+put 1143 n707 65.3
+del 1342
+get 353
+put 34 n301 22.69
+get 827
+get 618
+put 1871 n190 46.59
+put 1366 n652 56.07
+get 935
+put 1702 n700 36.37
+put 1394 n433 88.61
+put 1072 n335 64.57
+put 88 n645 33.51
+put 963 n58 68.57
+del 179
+put 343 n38 50.97
+put 1057 n636 27.2
+get 519
+put 543 n52 60.24
+del 1675
+put 1774 n505 5.87
+put 508 n631 51.2
+del 148
+put 1528 n360 62.11
+put 1130 n221 75.85
+get 1576
+put 1725 n915 25.55
+put 528 n110 54.12
+put 635 n430 27.69
+put 490 n477 8.6
+put 653 n353 94.57
+get 1977
+put 348 n511 45.49
+put 1435 n227 46.04
+get 589
+get 816
+put 624 n519 91.83
+put 587 n707 45.35
+del 1939
+put 600 n864 87.5
+put 1367 n54 20.75
+put 1451 n565 85.75
+put 1088 n351 79.93
+put 1374 n447 93.12
+get 290
+get 1559
+count
+get 1898
+get 1900
+put 1678 n83 95.39
+del 1155
+get 486
+put 1910 n11 17.11
+put 1342 n37 99.2
+count
+get 1545
+put 1297 n897 87.23
+count
+put 1697 n155 37.63
+del 1092
+put 898 n71 40.06
+del 1697
+get 1257
+get 915
+put 1950 n756 40.72
+get 549
+put 1569 n197 23.37
+get 436
+put 1462 n709 69.78
+del 875
+count
+put 1499 n76 73.11
+put 959 n229 74.61
+get 1224
+get 884
+del 558
+put 664 n684 99.84
+del 1735
+del 671
+put 228 n286 72.92
+del 150
+get 63
+get 631
+put 1168 n750 91.19
+count
+put 853 n789 4.79
+put 16 n614 4.82
+put 1024 n668 80.59
+del 593
+put 482 n792 55.53
+get 929
+put 1015 n276 86.51
+put 751 n731 27.43
+get 1399
+put 639 n266 99.68
+put 112 n601 99.72
+put 397 n207 88.03
+put 1881 n463 39.51
+get 1076
+put 1376 n758 11.11
+put 497 n770 92.29
+get 1590
+put 1333 n718 87.06
+get 199
+get 1303
+put 1395 n244 42.14
+get 482
+del 1306
+put 1446 n613 9.66
+put 705 n344 42.12
+get 1091
+del 1059
+put 916 n392 53.01
+put 1155 n622 73.06
+del 229
+get 194
+get 275
+count
+del 1274
+get 386
+put 1178 n167 65.19
+put 1520 n446 29.54
+put 1512 n110 11.66
+put 1480 n888 10.53
+put 1388 n975 41.95
+get 827
+put 853 n925 54.33
+get 870
+get 417
+get 1271
+get 1850
+get 1642
+get 331
+put 652 n450 41.78
+put 526 n426 5.08
+put 100 n559 94.24
+get 1302
+get 1784
+del 807
+put 251 n713 57.8
+get 677
+get 779
+del 710
+put 1413 n191 67.68
+get 1926
+put 128 n97 81.73
+put 1983 n378 72.62
+put 909 n785 92.7
+put 1893 n953 89.8
+get 518
+put 1708 n18 95.02
+del 1955
+put 346 n231 60.26
+del 924
+put 1186 n692 86.61
+put 891 n539 98.68
+put 987 n405 93.96
+del 950
+get 162
+get 334
+get 638
+put 1950 n980 19.4
+put 213 n95 19.52
+put 1750 n489 51.93
+put 1734 n344 46.17
+put 613 n693 90.71
+get 1122
+get 1548
+put 1636 n811 20.49
+count
+del 1640
+put 1971 n135 24.74
+del 334
+put 1954 n343 3.89
+get 1719
+put 811 n199 74.86
+get 958
+put 1342 n0 58.13
+get 1460
+del 616
+get 954
+put 1412 n213 93.36
+del 1200
+put 1367 n212 38.29
+del 218
+put 802 n900 92.45
+get 1260
+del 57
+put 356 n390 91.49
+put 1478 n787 21.22
+put 1901 n561 31.07
+put 614 n831 11.79
+get 126
+del 519
+put 1849 n524 7.57
+get 1657
+get 1446
+get 199
+put 266 n480 96.61
+put 1993 n357 25.5
+put 299 n894 17.48
+del 140
+get 697
+get 1091
+put 293 n14 13.83
+del 469
+del 758
+del 971
+get 1522
+get 424
+put 618 n138 4.63
+del 1786
+get 173
+get 1955
+get 85
+put 1973 n601 94.8
+del 898
+put 417 n695 42.25
+put 605 n654 25.2
+del 889
+put 294 n251 21.36
+del 910
+put 1631 n470 3.69
+put 869 n382 43.89
+get 1564
+put 525 n465 66.14
+put 1002 n27 55.28
+put 1898 n328 11.85
+put 816 n751 64.78
+del 727
+get 79
+put 1015 n926 12.57
+del 596
+del 787
+get 1034
+get 981
+del 1832
+get 1968
+get 157
+get 464
+del 1063
+put 357 n57 32.21
+count
+put 271 n272 62.31
+get 452
+get 1922
+put 1797 n164 79.73
+put 1994 n565 43.0
+count
+put 1806 n430 9.15
+put 1211 n599 17.48
+put 1462 n449 57.82
+put 1736 n880 45.65
+get 1805
+put 509 n277 57.09
+put 1914 n894 49.21
+put 1902 n189 93.9
+get 682
+count
+put 1493 n898 85.0
+put 310 n939 94.68
+put 380 n712 57.32
+put 26 n29 8.08
+put 1282 n36 94.87
+put 448 n349 76.54
+put 9 n178 47.66
+get 1644
+get 87
+put 927 n423 72.7
+get 559
+put 285 n826 2.13
+get 1007
+del 1549
+get 290
+put 982 n288 63.86
+del 841
+put 1744 n169 62.81
+get 800
+del 1489
+del 1237
+get 52
+get 1974
+put 1218 n774 97.05
+put 1987 n441 96.84
+count
+count
+put 345 n531 34.29
+put 1836 n278 29.53
+put 386 n450 87.05
+get 1644
+put 1776 n455 66.04
+del 676
+del 1708
+get 1482
+put 1582 n487 31.94
+del 1405
+get 1302
+get 1583
+get 43
+put 501 n134 72.53
+del 1461
+get 1435
+put 1572 n243 64.83
+count
+put 1705 n783 48.18
+get 1169
+put 104 n435 27.16
+del 541
+get 38
+del 242
+put 221 n192 22.36
+put 1593 n565 15.9
+get 1462
+put 1713 n948 11.19
+get 1376
+del 561
+put 354 n833 85.12
+put 1347 n493 71.67
+get 33
+put 414 n750 83.94
+get 1610
+put 544 n45 14.58
+get 1351
+put 1813 n409 46.16
+put 978 n455 73.32
+put 1654 n237 2.2
+put 595 n872 50.4
+put 698 n324 19.93
+put 1733 n524 69.86
+get 743
+put 1413 n388 46.2
+put 1070 n687 2.58
+del 966
+get 1233
+put 1754 n907 41.68
+put 1806 n162 32.21
+get 474
+get 1743
+put 1053 n493 37.59
+get 1209
+count
+get 240
+get 754
+del 1496
+put 1459 n704 82.23
+get 1963
+get 1245
+get 724
+put 1634 n410 62.32
+put 1666 n777 35.89
+put 647 n14 4.33
+get 191
+put 131 n171 71.4
+put 139 n982 91.76
+put 1826 n267 61.05
+put 909 n456 34.54
+get 948
+put 404 n791 17.51
+count
+put 268 n671 28.06
+get 1540
+get 1321
+del 1143
+put 1791 n980 77.33
+put 42 n902 99.99
+count
+get 688
+del 793
+get 592
+put 1850 n731 23.95
+get 1196
+get 1594
+get 693
+del 1779
+put 1371 n346 54.18
+put 1578 n657 46.77
+del 1311
+count
+put 601 n885 27.18
+put 1378 n613 95.91
+get 1833
+del 1942
+del 654
+get 279
+del 268
+put 618 n632 18.14
+put 581 n367 43.6
+put 1785 n722 1.71
+put 1306 n199 35.03
+get 358
+put 1149 n644 40.3
+del 1597
+put 135 n577 37.75
+put 796 n643 12.59
+get 307
+put 560 n25 0.13
+count
+get 522
+get 1270
+get 251
+del 188
+put 824 n102 15.28
+put 1830 n354 17.51
+put 1059 n675 84.13
+put 1746 n183 94.2
+put 1294 n265 37.88
+del 697
+put 1149 n301 36.94
+put 978 n38 45.26
+del 447
+put 835 n144 4.67
+count
+put 1507 n247 7.77
+del 1469
+put 603 n993 90.23
+put 1213 n559 21.27
+get 1331
+put 1926 n301 46.64
+put 1787 n623 59.5
+put 123 n860 94.7
+del 238
+count
+put 1525 n97 57.13
+get 581
+put 1692 n599 29.04
+put 1218 n953 52.44
+put 1078 n240 41.21
+get 1498
+put 923 n543 87.73
+get 1354
+get 213
+put 319 n662 72.51
+put 970 n323 46.95
+put 1035 n442 56.7
+del 129
+del 698
+get 980
+del 1661
+put 1866 n971 95.86
+del 31
+put 552 n887 24.01
+count
+put 662 n671 75.13
+del 1200
+get 1963
+get 465
+put 1480 n39 92.56
+put 507 n450 76.17
+get 203
+del 1758
+del 1419
+del 388
+del 949
+get 1735
+count
+get 307
+put 1029 n420 27.28
+del 1708
+put 1355 n616 70.36
+put 527 n442 77.57
+get 1500
+get 129
+put 1302 n69 48.97
+del 1167
+get 1743
+get 70
+get 786
+put 1851 n360 97.84
+del 1759
+get 297
+put 1177 n685 27.33
+put 503 n957 40.95
+put 1810 n151 25.06
+put 1802 n857 68.15
+del 96
+put 977 n664 22.72
+put 1222 n170 55.33
+put 1748 n964 82.32
+put 436 n571 54.05
+put 1785 n249 56.21
+del 1240
+put 715 n270 71.21
+put 1624 n673 26.07
+del 443
+count
+put 1997 n400 9.89
+count
+put 1050 n950 54.54
+put 603 n500 85.36
+put 612 n991 9.13
+count
+get 321
+put 372 n866 2.11
+put 170 n928 67.17
+put 365 n928 47.1
+del 721
+get 1411
+put 845 n469 78.45
+count
+get 804
+get 1771
+put 737 n862 81.39
+put 390 n453 22.95
+get 1039
+put 875 n81 9.97
+get 1629
+get 167
+put 1127 n760 27.85
+count
+put 1510 n706 69.48
+put 959 n672 38.27
+get 380
+put 1492 n103 25.91
+del 775
+count
+get 1520
+put 1873 n784 70.74
+get 588
+del 1561
+put 1386 n480 42.81
+get 1170
+put 702 n778 74.0
+get 999
+get 1314
+del 830
+put 1368 n727 94.55
+put 986 n287 74.35
+put 837 n659 21.6
+del 682
+put 1056 n764 98.34
+get 1861
+count
+put 571 n384 17.24
+get 207
+put 1173 n190 15.02
+put 1247 n239 73.81
+del 1648
+put 1769 n121 91.86
+count
+get 1286
+count
+put 1286 n877 80.71
+get 1184
+put 7 n657 75.78
+put 273 n208 11.7
+get 1197
+count
+del 1285
+del 1504
+put 1452 n314 49.64
+del 1344
+put 820 n212 17.68
+get 1248
+put 1536 n379 55.09
+get 1381
+put 1895 n929 15.24
+get 926
+get 1472
+get 1112
+put 721 n220 5.06
+put 1126 n918 49.74
+put 1739 n602 63.5
+put 59 n7 33.89
+get 1199
+put 1947 n662 71.63
+get 943
+count
+get 197
+put 857 n221 1.37
+put 1746 n335 44.41
+get 1298
+put 1595 n107 23.84
+get 1776
+put 1607 n610 41.25
+put 409 n745 72.61
+get 1303
+get 249
+get 1118
+get 184
+get 677
+get 1453
+put 343 n188 60.55
+put 1510 n270 71.2
+put 1256 n83 80.48
+get 1907
+count
+get 400
+put 1268 n822 38.28
+get 1293
+put 860 n468 98.89
+put 1699 n840 57.59
+get 1722
+put 849 n940 58.42
+put 1320 n670 41.38
+put 662 n854 39.47
+put 1888 n898 78.55
+count
+del 442
+count
+get 1371
+put 197 n279 2.68
+del 1380
+count
+get 1817
+count
+get 205
+put 956 n113 55.95
+put 254 n633 35.69
+get 600
+put 536 n284 3.47
+del 810
+get 1188
+put 1700 n508 12.46
+put 1775 n686 30.01
+put 61 n844 60.55
+put 1704 n415 55.04
+put 1567 n210 66.53
+del 1120
+put 505 n385 91.52
+get 274
+put 647 n568 17.58
+get 1981
+get 360
+put 832 n378 39.95
+put 1188 n925 67.16
+del 32
+put 730 n728 28.48
+put 20 n334 75.01
+put 512 n427 29.81
+put 870 n553 42.64
+put 449 n378 45.87
+put 1629 n447 86.73
+put 1790 n950 31.28
+get 157
+del 93
+count
+del 86
+put 1864 n390 67.09
+put 904 n60 41.93
+put 140 n42 24.99
+put 1459 n616 35.61
+put 1804 n790 50.83
+del 1498
+put 1569 n286 17.48
+put 1433 n631 40.03
+count
+count
+del 1538
+put 670 n858 87.31
+put 889 n35 44.17
+del 200
+get 1655
+put 796 n407 48.19
+get 7
+put 665 n219 78.94
+get 817
+put 744 n470 79.61
+get 809
+get 1949
+del 1677
+get 1366
+put 976 n494 93.81
+put 749 n934 20.47
+put 172 n88 68.76
+get 2
+put 956 n828 94.38
+del 729
+put 1005 n866 52.7
+put 1992 n314 57.87
+put 464 n518 78.63
+get 60
+count
+put 1087 n994 11.13
+put 387 n698 11.56
+get 1995
+del 1928
+del 142
+count
+put 443 n828 88.67
+put 1691 n534 14.39
+put 1775 n994 7.1
+get 1835
+get 622
+put 1857 n493 2.35
+put 58 n506 30.83
+put 572 n35 11.53
+put 1946 n4 14.14
+get 407
+get 1589
+count
+del 56
+put 1071 n69 72.35
+put 1636 n306 66.5
+put 1650 n787 1.56
+get 1913
+count
+put 723 n495 30.97
+get 537
+get 1944
+put 544 n101 37.86
+put 564 n74 23.78
+count
+get 397
+put 670 n87 92.48
+get 325
+get 747
+put 498 n990 30.46
+del 1007
+put 84 n43 62.64
+count
+count
+count
+get 119
+put 1665 n499 27.92
+put 1087 n340 8.36
+put 1346 n393 21.42
+get 63
+put 1820 n647 79.06
+get 1426
+del 1484
+get 1158
+put 1015 n78 98.69
+get 1334
+put 619 n563 0.11
+get 617
+get 1328
+del 587
+get 259
+get 419
+get 1078
+put 512 n439 45.02
+count
+get 1460
+put 933 n281 13.68
+put 1826 n510 30.79
+get 959
+get 191
+get 594
+put 1105 n252 77.52
+put 1174 n159 8.89
+del 1310
+del 771
+put 486 n550 55.92
+put 115 n181 49.94
+get 879
+put 1882 n412 79.17
+put 202 n815 54.83
+put 1664 n55 32.42
+put 1862 n727 23.49
+del 1041
+del 347
+get 1552
+put 733 n105 39.04
+put 697 n553 77.59
+del 1260
+put 80 n775 67.89
+put 135 n104 94.83
+get 272
+put 1639 n784 17.97
+put 516 n192 54.41
+get 778
+put 1106 n93 75.67
+count
+del 602
+get 738
+put 1305 n89 84.73
+put 1007 n342 20.27
+get 1046
+get 1231
+del 501
+put 79 n953 87.01
+put 239 n331 69.32
+put 1604 n495 56.5
+del 1385
+get 705
+put 1506 n699 90.8
+put 712 n472 46.18
+put 662 n963 53.55
+del 301
+put 1426 n110 50.04
+del 1205
+put 318 n529 34.95
+put 129 n113 28.13
+put 1950 n211 23.97
+put 91 n581 33.84
+put 141 n424 73.72
+del 87
+put 197 n953 81.82
+get 1793
+del 1595
+put 1630 n81 6.58
+get 1559
+put 221 n791 32.49
+get 363
+get 505
+get 1203
+del 1619
+get 1888
+get 1705
+get 1034
+get 1241
+put 930 n284 0.83
+get 321
+put 11 n85 19.59
+put 154 n928 4.78
+get 1948
+get 1761
+put 652 n8 87.06
+get 461
+put 1495 n74 32.93
+put 1866 n95 29.19
+put 1787 n995 25.51
+count
+put 1626 n454 81.95
+count
+put 1641 n832 98.33
+get 35
+get 1980
+get 1661
+del 547
+del 1486
+del 932
+count
+put 190 n753 56.99
+del 1308
+get 1090
+del 1042
+put 1667 n620 15.61
+put 310 n971 93.27
+get 1776
+get 1750
+put 801 n654 31.47
+put 271 n404 36.23
+put 1047 n754 73.43
+put 1980 n18 94.4
+del 1055
+put 1850 n509 17.35
+put 1587 n887 68.95
+get 1423
+get 177
+put 744 n666 18.91
+del 1266
+put 934 n805 36.58
+get 1379
+put 960 n440 26.84
+put 1703 n686 64.97
+count
+del 730
+get 1096
+del 1101
+get 694
+get 360
+del 480
+get 806
+put 1261 n36 67.83
+count
+put 480 n298 65.76
+put 1077 n525 26.86
+get 1222
+put 358 n11 32.1
+put 961 n569 30.06
+put 607 n326 58.9
+put 75 n541 95.08
+put 471 n917 80.88
+get 1871
+del 1742
+put 1609 n762 56.55
+put 516 n257 29.74
+put 8 n922 79.67
+put 326 n634 23.0
+get 1782
+put 1231 n768 60.17
+del 1480
+get 642
+count
+count
+put 1228 n847 71.88
+put 1475 n160 78.75
+put 551 n112 3.23
+count
+put 1231 n868 4.18
+get 1771
+put 1958 n25 15.56
+put 651 n963 2.98
+del 558
+put 1270 n947 82.37
+del 1445
+put 450 n92 31.68
+put 1963 n825 10.85
+put 1414 n874 3.96
+put 1708 n354 96.68
+del 1240
+put 1952 n396 16.38
+put 30 n650 20.01
+put 254 n8 33.85
+del 707
+count
+del 1130
+get 455
+put 501 n200 5.16
+put 137 n203 67.71
+del 585
+get 1696
+del 135
+get 1039
+put 385 n893 47.75
+put 1207 n414 5.47
+put 1215 n672 99.42
+put 1740 n223 73.76
+count
+put 125 n287 24.83
+del 772
+get 333
+put 569 n9 34.69
+put 1522 n104 77.01
+get 1300
+put 1291 n860 87.27
+put 1618 n846 21.79
+get 1584
+get 57
+put 461 n744 83.78
+put 1247 n111 60.74
+put 37 n831 16.68
+get 260
+put 169 n504 34.14
+put 429 n326 91.33
+get 1074
+get 1131
+del 798
+del 219
+put 1707 n647 40.17
+del 708
+put 745 n104 36.76
+put 731 n109 55.91
+put 1402 n616 54.43
+put 1247 n98 14.28
+put 279 n654 17.55
+del 393
+del 586
+count
+put 1226 n180 27.01
+put 965 n235 78.03
+put 128 n883 70.52
+put 331 n203 59.92
+get 1379
+put 1239 n833 29.46
+put 1910 n158 65.01
+get 233
+put 121 n449 73.22
+del 613
+get 742
+put 1841 n412 25.83
+count
+put 658 n598 58.78
+del 1810
+del 1566
+get 1067
+get 711
+count
+del 1188
+get 610
+get 71
+del 1132
+put 29 n525 65.17
+put 705 n955 47.27
+put 1336 n675 43.56
+put 1080 n445 29.09
+put 1907 n771 40.24
+put 1278 n628 98.64
+del 675
+put 1470 n868 48.9
+put 1235 n371 28.25
+put 1172 n60 38.93
+get 1932
+put 1688 n283 28.05
+del 720
+put 525 n470 36.23
+put 260 n817 12.48
+get 1043
+get 640
+del 1384
+get 1589
+put 480 n886 87.56
+get 604
+put 1025 n627 20.28
+put 1243 n564 5.97
+put 82 n532 32.37
+put 1702 n159 80.3
+put 1103 n138 98.4
+del 964
+put 1748 n623 88.19
+del 1644
+get 667
+get 82
+del 277
+get 595
+put 1821 n130 54.6
+get 1626
+get 87
+get 944
+put 1806 n633 29.95
+get 1050
+get 1732
+put 1292 n524 6.27
+put 1993 n583 5.36
+get 1185
+get 1784
+get 926
+put 1471 n947 84.23
+put 622 n47 48.89
+put 1791 n829 59.91
+put 1877 n319 63.72
+del 1536
+put 511 n110 42.88
+get 911
+del 606
+put 1835 n545 97.92
+get 1417
+put 1340 n627 89.41
+get 917
+put 434 n60 1.91
+get 1698
+put 914 n59 60.02
+del 604
+put 1870 n334 33.59
+del 1229
+put 1572 n498 57.36
+get 1580
+get 1240
+put 1610 n179 40.7
+del 1515
+put 1592 n949 47.78
+del 1129
+put 1891 n555 88.49
+put 551 n679 31.74
+get 44
+put 594 n108 3.28
+put 351 n507 13.78
+count
+put 819 n141 55.9
+put 1684 n405 23.33
+get 77
+put 280 n207 33.37
+put 1796 n42 62.59
+count
+get 1599
+put 297 n858 2.64
+put 1097 n88 18.79
+del 1726
+get 41
+get 1597
+get 1583
+get 1178
+count
+del 1190
+get 1370
+get 1980
+put 29 n628 8.58
+put 33 n683 4.24
+put 1211 n951 42.37
+put 573 n825 77.51
+put 782 n404 77.92
+del 1658
+put 339 n359 54.8
+get 508
+count
+put 971 n104 43.88
+get 1256
+del 990
+get 47
+put 1378 n335 22.23
+get 1700
+put 821 n339 78.0
+put 1547 n388 65.79
+put 400 n265 82.66
+get 183
+put 1337 n414 95.0
+put 1876 n236 31.41
+count
+put 421 n181 54.55
+get 1923
+get 1136
+get 930
+put 1483 n450 75.09
+put 1621 n547 34.46
+put 489 n332 82.8
+put 392 n995 71.19
+put 421 n77 70.38
+put 742 n22 86.36
+get 1476
+get 176
+put 1801 n58 4.74
+put 1119 n113 35.12
+count
+get 558
+put 1873 n41 41.49
+get 1553
+del 239
+put 454 n517 39.81
+put 509 n286 68.09
+del 924
+get 1246
+put 288 n255 19.12
+put 939 n836 47.44
+put 245 n768 24.99
+put 871 n89 54.61
+put 167 n302 84.15
+put 1027 n831 80.87
+get 1551
+del 1539
+get 910
+put 291 n983 66.23
+del 1716
+count
+get 830
+del 1678
+del 70
+del 474
+get 773
+put 350 n931 8.1
+put 1947 n575 39.31
+del 1141
+get 350
+count
+get 147
+put 56 n53 18.08
+get 675
+del 1911
+put 971 n752 78.12
+get 949
+del 1931
+del 437
+get 849
+put 217 n273 54.98
+count
+put 1182 n306 34.2
+put 1047 n156 97.3
+get 547
+put 362 n554 21.76
+get 1490
+del 1530
+get 662
+del 1382
+put 1721 n788 29.87
+get 1779
+get 1805
+get 1553
+count
+get 142
+put 1343 n195 23.39
+put 210 n508 81.66
+put 216 n854 9.4
+get 1932
+del 1376
+put 1076 n690 71.93
+put 1784 n800 32.87
+get 1457
+put 717 n317 0.38
+put 731 n723 62.47
+get 682
+get 784
+get 1484
+put 511 n353 24.49
+put 1184 n659 97.22
+get 1906
+get 1233
+get 551
+put 1404 n174 26.78
+put 894 n894 77.66
+del 1593
+del 895
+get 1854
+put 598 n913 91.03
+put 95 n686 64.44
+get 963
+put 835 n355 73.96
+put 731 n142 67.53
+get 1735
+del 1133
+put 1637 n785 48.29
+get 646
+get 537
+get 1369
+del 722
+del 1388
+put 349 n620 20.29
+put 1973 n706 58.85
+get 778
+get 1279
+del 752
+get 1962
+get 1284
+del 1103
+del 476
+put 1134 n167 64.06
+del 1011
+get 19
+get 965
+get 197
+put 1174 n772 93.17
+put 840 n450 87.29
+del 1873
+put 486 n307 43.99
+del 1543
+get 173
+put 1970 n270 3.75
+count
+get 687
+put 866 n142 97.0
+put 131 n69 2.32
+get 1307
+put 1583 n734 80.28
+put 1428 n806 19.09
+put 684 n725 64.87
+get 477
+get 1719
+get 417
+put 665 n266 97.22
+del 1027
+put 157 n426 57.19
+get 1042
+get 266
+count
+get 1219
+get 457
+put 1983 n240 21.8
+put 10 n19 17.81
+put 930 n356 2.4
+del 864
+put 379 n731 37.37
+del 1424
+get 1145
+del 1069
+put 1568 n407 22.05
+get 958
+del 1106
+get 1585
+put 496 n706 76.77
+put 289 n547 96.51
+put 1072 n33 23.38
+put 1988 n170 33.91
+get 265
+put 643 n23 40.53
+del 736
+count
+del 1863
+put 1264 n492 26.66
+put 940 n559 94.23
+get 1194
+put 524 n106 94.39
+get 1305
+put 267 n916 33.1
+put 1882 n862 27.67
+put 354 n40 84.11
+get 1857
+del 1054
+get 176
+put 585 n261 60.33
+put 1814 n718 77.79
+put 706 n228 25.26
+put 1917 n302 33.24
+get 1195
+get 965
+put 862 n363 40.61
+get 648
+del 1630
+put 1983 n841 21.07
+put 1062 n349 49.88
+get 1449
+put 223 n601 74.41
+put 1925 n933 95.81
+put 71 n839 73.06
+put 1596 n290 77.24
+get 1405
+put 1528 n666 74.52
+del 1304
+put 1102 n390 1.85
+put 299 n601 84.55
+put 136 n803 35.52
+put 1833 n137 79.4
+del 571
+put 650 n616 77.79
+get 50
+del 941
+count
+put 744 n632 33.39
+put 1232 n275 27.53
+del 145
+put 1996 n169 62.38
+get 984
+put 902 n983 32.44
+put 1979 n654 20.04
+get 640
+put 1543 n918 79.02
+put 379 n432 71.29
+put 2000 n706 42.18
+del 1363
+put 872 n101 62.85
+put 319 n866 7.79
+put 475 n55 43.75
+put 888 n911 37.81
+put 173 n821 87.15
+put 1740 n950 69.14
+put 128 n29 14.73
+get 525
+put 950 n658 37.11
+del 1268
+del 907
+put 979 n617 17.01
+get 1905
+put 190 n815 23.17
+put 1861 n307 59.21
+put 761 n137 59.59
+del 767
+put 1876 n956 95.83
+del 1094
+put 1362 n926 28.88
+put 189 n859 49.07
+get 1201
+put 129 n789 49.31
+del 331
+put 1221 n502 28.69
+put 583 n368 40.43
+get 1501
+get 380
+del 1145
+put 864 n299 30.25
+get 1501
+del 1869
+put 762 n539 6.37
+get 484
+count
+put 268 n707 85.29
+count
+del 1670
+put 441 n492 97.82
+get 1872
+put 1317 n987 32.15
+del 1323
+put 1910 n290 68.32
+del 1012
+count
+put 237 n879 91.27
+put 1263 n691 74.07
+count
+count
+put 1853 n577 19.02
+put 1330 n510 96.41
+get 1320
+put 888 n998 32.81
+put 1168 n813 34.59
+count
+put 207 n399 58.59
+del 1662
+get 1799
+get 876
+get 226
+del 943
+get 884
+get 1613
+del 1781
+del 1240
+get 1420
+del 69
+put 1068 n710 34.39
+put 32 n898 57.37
+get 1080
+put 1498 n904 53.93
+get 1360
+del 413
+put 145 n942 14.46
+put 582 n647 41.54
+put 816 n469 98.97
+del 406
+put 251 n194 77.09
+put 127 n797 92.75
+del 278
+put 1964 n696 22.46
+put 835 n268 74.86
+del 44
+put 556 n130 13.6
+count
+get 1316
+put 1855 n76 44.86
+put 529 n448 13.55
+get 1800
+get 92
+put 708 n168 57.56
+put 11 n949 59.31
+del 805
+get 1718
+get 1637
+put 954 n524 81.86
+get 1918
+get 651
+put 1226 n148 42.23
+put 554 n548 72.11
+del 1157
+get 242
+get 817
+put 900 n842 40.49
+del 252
+get 567
+put 795 n909 30.78
+put 83 n678 75.84
+put 178 n293 93.91
+put 1290 n994 63.75
+put 668 n116 41.18
+put 1695 n806 88.17
+put 977 n751 88.51
+put 48 n743 82.83
+get 676
+del 821
+put 1943 n976 24.36
+del 1370
+get 1539
+get 1314
+get 844
+put 1898 n521 78.36
+put 1904 n776 89.62
+get 718
+get 549
+get 394
+put 1470 n160 54.86
+put 1756 n274 28.04
+put 669 n625 8.08
+put 291 n695 55.15
+get 1307
+get 1762
+del 1777
+del 152
+get 847
+put 741 n575 43.97
+get 672
+count
+put 724 n305 92.15
+put 1227 n676 52.62
+del 416
+count
+get 1639
+get 1366
+get 1436
+put 112 n255 54.86
+del 1282
+put 1134 n453 77.01
+get 1782
+put 1882 n332 58.76
+del 1930
+del 1710
+put 1811 n811 6.31
+put 1509 n351 88.34
+put 102 n239 22.2
+put 1415 n449 2.48
+get 180
+del 368
+put 953 n326 39.79
+put 273 n136 95.03
+count
+put 1236 n989 42.66
+get 176
+put 113 n699 23.09
+put 1402 n520 21.82
+put 1903 n396 30.64
+put 919 n351 49.92
+put 215 n261 39.06
+del 255
+get 1051
+put 1711 n135 91.8
+put 1165 n351 93.06
+put 570 n666 90.4
+put 985 n271 32.75
+put 259 n696 99.06
+del 1909
+get 339
+get 1700
+get 1659
+put 350 n9 72.21
+put 1612 n856 69.88
+get 1033
+put 1701 n914 0.57
+get 464
+get 612
+put 156 n530 34.09
+del 1404
+del 1154
+del 1099
+put 785 n651 68.24
+get 1621
+put 1063 n33 85.24
+del 8
+del 994
+get 650
+get 1533
+del 1863
+del 396
+put 1978 n297 93.08
+put 158 n975 27.33
+get 884
+put 1220 n765 91.14
+del 1153
+del 1362
+get 153
+del 78
+get 776
+count
+put 81 n200 62.01
+put 1943 n978 21.58
+get 1627
+put 1737 n124 93.56
+put 523 n997 65.87
+del 50
+put 1490 n939 13.51
+put 1534 n97 99.67
+put 270 n17 26.98
+del 1088
+del 1609
+put 914 n564 15.37
+del 70
+put 187 n253 16.97
+get 1051
+put 1970 n245 82.3
+put 17 n403 35.72
+put 807 n727 33.26
+get 1383
+get 1327
+put 1099 n67 75.63
+get 545
+put 337 n918 23.53
+put 1586 n923 66.25
+put 630 n506 54.8
+del 754
+put 1879 n44 90.49
+put 739 n6 47.62
+get 1324
+del 303
+get 1793
+del 996
+put 52 n382 20.04
+get 1972
+put 1947 n866 29.29
+put 1067 n620 35.57
+put 776 n756 47.81
+put 1671 n437 73.94
+get 1617
+get 1845
+get 1198
+put 1297 n85 7.0
+get 481
+put 134 n467 40.45
+put 628 n332 88.57
+get 1528
+put 1273 n452 94.41
+get 318
+put 1418 n175 35.39
+put 43 n765 53.12
+del 1619
+get 1898
+get 356
+get 331
+get 1245
+put 58 n747 86.0
+get 170
+put 568 n24 26.68
+put 561 n968 53.43
+put 1330 n498 29.13
+count
+get 1310
+put 1734 n889 23.07
+get 776
+put 1710 n623 90.41
+put 857 n808 54.13
+put 1886 n182 59.09
+get 477
+put 314 n338 4.27
+put 609 n706 63.93
+del 998
+put 805 n658 99.81
+del 939
+del 65
+get 1203
+get 713
+del 1683
+put 1767 n299 46.41
+put 436 n747 44.83
+put 1325 n304 62.16
+put 1439 n640 3.32
+put 1969 n290 96.25
+put 1922 n477 84.03
+get 1789
+get 1
+put 325 n628 2.83
+put 363 n978 31.27
+del 947
+get 1296
+put 859 n220 51.21
+put 912 n662 57.96
+count
+get 1403
+del 1823
+del 1423
+get 1512
+put 1736 n406 12.3
+del 1604
+get 150
+del 301
+put 807 n296 21.63
+get 1641
+get 649
+put 1865 n801 6.39
+put 597 n81 37.79
+put 267 n786 38.33
+put 1284 n721 23.37
+get 1128
+put 1261 n260 45.56
+put 344 n610 76.05
+put 1318 n784 60.73
+put 1941 n165 21.16
+del 10
+put 787 n527 79.91
+get 185
+get 1779
+put 1336 n742 0.39
+del 1565
+put 827 n540 65.15
+put 1352 n694 34.58
+put 61 n733 63.09
+put 1810 n495 62.82
+del 1820
+del 1710
+put 215 n584 80.64
+get 1160
+put 1403 n479 23.43
+del 737
+put 1924 n104 78.83
+get 71
+del 647
+get 905
+del 1304
+del 525
+put 1253 n717 22.89
+put 1572 n319 15.38
+del 1097
+del 1739
+del 1663
+del 387
+get 848
+get 1887
+put 1399 n662 71.26
+get 93
+put 1115 n830 40.81
+get 164
+count
+get 1250
+put 1401 n975 61.96
+put 1836 n665 77.24
+count
+del 1158
+put 1480 n979 70.3
+count
+put 1187 n562 57.67
+put 346 n724 19.87
+get 454
+del 1831
+get 1996
+put 1109 n148 43.99
+put 755 n525 70.61
+put 759 n670 25.13
+del 1352
+get 1695
+del 319
+del 1930
+get 1991
+put 732 n701 50.15
+count
+put 495 n866 93.47
+put 1502 n842 94.53
+put 505 n171 63.88
+put 954 n768 42.81
+get 1959
+put 284 n36 2.62
+get 168
+del 1166
+del 231
+put 15 n907 50.85
+count
+put 1278 n79 7.3
+put 405 n164 37.97
+put 683 n639 85.44
+del 1892
+put 531 n287 87.98
+count
+put 373 n424 98.04
+get 1282
+put 1950 n798 84.66
+get 563
+put 999 n589 64.52
+get 716
+get 271
+del 451
+put 591 n691 82.27
+put 519 n166 78.07
+get 433
+put 331 n806 41.18
+del 1147
+put 492 n402 38.96
+put 1693 n641 64.46
+get 1024
+put 835 n695 90.19
+get 985
+put 157 n191 19.17
+put 1112 n989 34.45
+put 1375 n297 56.25
+put 1373 n887 52.55
+get 1626
+del 1052
+del 1780
+del 1567
+get 30
+get 1700
+put 1870 n518 7.86
+get 58
+put 584 n201 78.39
+put 886 n136 82.77
+put 292 n90 71.21
+del 1738
+put 1168 n623 83.07
+get 659
+get 431
+put 830 n899 12.62
+del 1722
+get 246
+put 1390 n227 8.27
+put 130 n66 49.84
+get 746
+count
+get 1950
+get 1725
+get 877
+put 1748 n605 18.0
+get 1612
+get 536
+del 1305
+get 429
+get 1218
+put 456 n292 23.01
+del 430
+get 1512
+get 1262
+get 868
+put 231 n91 3.81
+get 28
+put 209 n265 14.01
+put 1878 n849 41.09
+get 1808
+get 482
+put 386 n774 42.43
+get 451
+get 1246
+get 286
+put 801 n221 91.25
+get 635
+del 1063
+put 456 n30 42.13
+get 1499
+put 1734 n247 6.05
+put 259 n635 38.31
+del 123
+get 785
+get 1159
+put 1317 n691 44.33
+put 1136 n251 96.01
+put 1544 n211 46.79
+put 41 n551 9.81
+put 530 n145 82.6
+put 337 n667 99.26
+get 1126
+get 478
+del 1000
+get 23
+del 1579
+del 204
+put 1507 n309 15.37
+get 1232
+get 1864
+put 1519 n668 71.56
+put 1461 n87 82.79
+put 705 n501 81.63
+put 698 n906 26.11
+del 1765
+put 1751 n66 36.14
+put 603 n397 78.0
+put 1964 n670 9.59
+put 1267 n710 72.6
+put 21 n329 47.74
+count
+count
+get 191
+put 1959 n539 46.95
+put 1697 n261 96.6
+put 569 n63 89.23
+put 704 n939 49.26
+put 1434 n332 76.18
+put 1746 n924 2.99
+put 828 n780 98.67
+put 1235 n958 58.94
+del 1194
+get 344
+del 1994
+get 1661
+del 1927
+count
+put 1833 n875 8.8
+put 1727 n467 39.19
+get 350
+get 494
+count
+get 618
+put 589 n800 0.75
+del 371
+get 1801
+del 938
+get 472
+put 1126 n113 86.29
+get 1129
+put 1426 n460 37.98
+put 1792 n871 55.13
+del 516
+put 1525 n605 42.99
+put 1536 n152 45.24
+get 1179
+put 1349 n843 47.74
+put 65 n706 56.51
+put 152 n584 75.23
+put 676 n529 34.74
+put 872 n249 95.13
+put 1739 n229 53.45
+put 209 n167 75.24
+put 1599 n772 11.78
+put 688 n899 57.29
+get 1799
+put 499 n704 21.21
+get 670
+get 1004
+get 1503
+get 592
+get 128
+del 638
+put 940 n497 17.41
+put 535 n118 49.62
+put 1759 n39 20.71
+put 1282 n939 12.45
+put 431 n641 86.32
+del 541
+get 1271
+put 1908 n156 28.51
+put 1298 n658 60.45
+count
+put 1067 n461 92.18
+put 125 n870 91.94
+get 1590
+put 1281 n972 7.71
+get 1251
+put 1412 n256 31.88
+put 215 n24 53.41
+put 703 n80 75.18
+count
+put 929 n592 98.9
+put 1852 n385 79.2
+put 1964 n740 54.17
+get 758
+get 281
+put 1193 n632 92.89
+get 1929
+put 82 n623 61.81
+del 1828
+get 801
+put 1142 n252 58.27
+put 1743 n525 32.55
+put 148 n471 83.56
+put 625 n560 84.8
+del 874
+get 86
+put 288 n56 38.47
+del 959
+del 1080
+put 334 n450 8.3
+del 338
+put 791 n914 88.85
+del 141
+put 576 n258 0.42
+count
+put 1149 n268 31.3
+put 1878 n282 61.32
+get 1791
+put 44 n643 47.18
+put 1432 n559 4.76
+put 1821 n422 40.48
+count
+put 923 n445 26.68
+get 1143
+get 1193
+put 746 n519 87.26
+get 89
+get 976
+count
+del 1678
+del 45
+put 77 n704 12.13
+get 255
+del 901
+put 99 n392 11.06
+count
+put 996 n234 91.43
+put 1500 n582 82.26
+put 407 n822 47.67
+put 388 n974 57.57
+put 736 n263 9.23
+del 1730
+put 1960 n99 30.95
+put 661 n466 69.79
+del 564
+get 1854
+get 175
+put 447 n877 49.85
+get 1149
+put 1153 n32 1.7
+put 1671 n568 71.41
+put 1032 n538 29.09
+del 1336
+put 1975 n827 59.08
+put 30 n25 97.62
+del 1017
+del 28
+get 1731
+put 1687 n493 99.83
+put 1812 n231 0.25
+put 504 n604 1.39
+put 330 n343 65.45
+put 1947 n120 50.67
+put 1072 n510 64.94
+put 866 n243 99.05
+put 431 n757 92.25
+get 1053
+get 1043
+put 1162 n294 22.81
+put 1035 n606 12.15
+put 246 n895 67.41
+get 849
+count
+put 169 n299 81.6
+get 873
+get 315
+put 964 n606 20.0
+del 985
+put 1599 n523 77.26
+count
+put 914 n323 70.98
+get 890
+put 453 n267 51.74
+put 1481 n188 39.47
+del 801
+put 338 n616 86.7
+count
+put 1461 n364 54.11
+put 1302 n701 34.05
+put 405 n645 91.34
+put 15 n455 81.35
+put 275 n335 87.39
+put 774 n660 64.8
+put 949 n428 14.48
+put 138 n862 71.96
+del 494
+get 444
+get 47
+put 570 n932 79.66
+get 40
+get 1434
+del 1868
+count
+get 1419
+put 271 n762 70.87
+put 1078 n938 16.94
+put 607 n158 1.76
+get 1438
+get 1133
+get 474
+put 970 n435 70.47
+del 450
+get 1433
+put 1892 n224 93.34
+put 1542 n59 59.49
+put 1534 n973 72.94
+put 1436 n703 15.85
+get 805
+put 1789 n17 21.48
+put 148 n917 43.76
+put 78 n610 46.37
+put 1991 n456 75.18
+put 53 n441 52.58
+del 1493
+put 1841 n295 63.12
+get 189
+del 76
+get 499
+get 560
+put 397 n51 21.07
+put 488 n803 7.11
+del 458
+get 1018
+put 917 n129 36.55
+put 440 n199 28.49
+get 1689
+get 1799
+put 163 n210 17.28
+del 721
+get 1522
+get 101
+put 688 n644 62.77
+del 503
+put 308 n510 15.12
+del 1268
+get 1388
+del 712
+get 2
+del 645
+put 341 n383 46.22
+put 1582 n731 65.55
+count
+put 637 n433 18.4
+get 1536
+put 1475 n970 11.21
+get 283
+put 1919 n424 95.86
+put 1164 n489 66.55
+del 1616
+get 848
+put 1167 n132 9.57
+get 489
+put 1520 n686 6.24
+put 10 n430 6.8
+get 1074
+put 1827 n79 36.67
+get 1724
+del 1803
+get 1232
+put 1165 n364 19.9
+del 1622
+put 180 n826 62.26
+put 1688 n279 73.37
+get 633
+get 1935
+put 812 n935 59.99
+get 243
+put 569 n982 3.08
+get 264
+put 1952 n24 76.2
+put 792 n800 30.71
+del 1709
+put 1922 n670 6.69
+put 822 n785 25.76
+del 1705
+put 778 n21 21.72
+put 1361 n287 56.92
+put 1392 n138 3.83
+put 801 n214 29.19
+get 1755
+count
+put 688 n294 62.21
+count
+put 753 n274 4.03
+put 907 n415 43.7
+get 1232
+put 1029 n585 91.83
+put 514 n817 42.18
+del 240
+put 1276 n368 60.44
+get 1433
+get 182
+put 1819 n356 55.03
+get 269
+del 801
+put 393 n852 44.71
+get 1756
+get 1960
+put 747 n375 6.91
+put 217 n76 63.29
+put 1026 n594 29.06
+put 937 n835 18.24
+del 1587
+put 1108 n566 93.32
+get 1475
+put 631 n249 50.48
+put 441 n127 6.64
+get 1147
+get 1641
+put 981 n587 62.59
+get 530
+get 1735
+put 1852 n234 65.45
+get 176
+put 1078 n101 7.22
+get 1940
+put 1953 n367 38.24
+get 667
+put 1841 n945 92.44
+put 694 n823 42.42
+put 912 n617 69.58
+del 1851
+count
+put 85 n764 81.25
+put 379 n158 33.94
+put 1849 n138 34.21
+del 1995
+put 1291 n164 25.74
+put 777 n150 14.12
+put 616 n608 34.32
+del 996
+put 1624 n223 95.25
+put 922 n741 32.47
+put 670 n772 98.75
+put 663 n189 3.74
+get 1062
+del 164
+put 1397 n447 13.12
+del 1410
+del 1275
+del 575
+put 1769 n134 3.38
+put 1301 n726 9.81
+put 1316 n589 46.84
+count
+put 1333 n53 87.0
+get 193
+del 1960
+del 598
+del 1669
+put 1894 n199 47.55
+put 571 n29 78.52
+put 287 n201 38.2
+get 839
+get 1413
+get 1439
+put 557 n766 62.9
+get 626
+put 291 n395 48.07
+put 620 n366 7.44
+put 483 n130 89.01
+get 1445
+get 1048
+put 245 n28 32.42
+get 586
+put 148 n421 93.28
+put 634 n33 44.86
+put 1242 n446 36.97
+put 1917 n719 54.17
+del 1654
+del 832
+get 1067
+put 646 n246 40.89
+put 1411 n514 65.18
+get 402
+put 380 n896 59.32
+put 1270 n464 6.09
+put 1012 n580 48.45
+put 1284 n553 71.47
+put 1382 n789 28.25
+put 544 n103 50.32
+put 1909 n95 10.56
+put 403 n233 96.03
+get 1607
+del 1088
+put 675 n163 34.33
+put 33 n953 25.85
+put 1952 n652 78.85
+del 101
+get 512
+put 589 n864 23.2
+put 356 n344 27.22
+put 1835 n227 28.56
+get 242
+del 96
+get 1040
+put 1874 n808 50.85
+del 1172
+put 345 n282 17.96
+put 1539 n270 18.74
+get 794
+get 963
+put 634 n766 57.36
+put 1205 n698 87.3
+del 1189
+del 857
+count
+put 545 n98 49.07
+get 1677
+get 712
+put 660 n391 11.21
+put 394 n117 75.34
+put 390 n413 73.79
+get 850
+get 1035
+put 1548 n694 21.79
+count
+del 910
+put 1766 n484 68.92
+put 1940 n225 63.88
+get 868
+put 1802 n112 34.58
+del 1150
+get 1603
+get 1614
+del 919
+del 1670
+put 1387 n463 15.84
+put 1849 n574 45.16
+del 1653
+put 623 n870 51.37
+put 1648 n969 82.22
+get 1903
+put 1173 n427 48.22
+count
+put 875 n616 72.38
+get 548
+put 1986 n854 95.48
+get 609
+put 1364 n947 45.68
+put 817 n647 71.94
+put 947 n177 89.44
+del 1626
+del 636
+get 540
+count
+get 1826
+get 634
+put 1739 n784 85.62
+get 405
+put 632 n932 3.31
+put 1793 n298 86.93
+get 1771
+put 265 n473 64.54
+get 716
+del 469
+put 1274 n182 68.81
+get 400
+count
+put 1476 n612 20.26
+get 1879
+put 20 n193 46.74
+get 459
+put 1910 n829 79.64
+del 514
+get 793
+put 1566 n910 59.15
+del 1874
+get 1613
+put 478 n460 23.52
+get 339
+put 55 n531 53.87
+put 531 n301 59.24
+get 1294
+get 747
+put 779 n680 81.39
+get 1017
+get 1094
+get 206
+del 874
+put 255 n172 33.29
+put 1892 n858 21.79
+put 468 n497 94.86
+count
+get 653
+get 369
+put 793 n769 90.27
+count
+put 201 n114 42.53
+put 512 n467 74.57
+del 1240
+get 70
+get 1563
+get 426
+get 625
+put 1125 n179 15.18
+put 1396 n238 72.12
+del 694
+put 1939 n890 87.38
+get 1706
+count
+get 1633
+put 1049 n371 61.86
+put 1623 n4 90.73
+put 1929 n607 48.18
+put 260 n170 2.71
+put 1845 n251 79.52
+get 1508
+get 1748
+put 1240 n493 32.55
+put 456 n523 49.68
+del 1836
+put 1488 n199 91.02
+get 735
+count
+get 496
+del 36
+put 567 n35 17.84
+put 1314 n195 17.24
+del 1747
+get 1621
+put 1884 n72 65.46
+put 1196 n481 26.6
+count
+put 856 n720 70.16
+del 1691
+put 1550 n332 1.96
+get 773
+get 499
+put 648 n832 96.05
+put 1655 n898 79.09
+count
+put 624 n836 87.21
+del 644
+count
+put 1422 n752 25.43
+put 770 n359 81.62
+del 947
+put 1949 n355 63.4
+put 1344 n888 79.59
+get 1423
+put 895 n428 33.12
+put 1837 n832 8.78
+put 928 n923 6.97
+del 1865
+put 846 n239 66.7
+get 634
+put 1695 n519 74.03
+get 1112
+put 1499 n240 48.17
+put 25 n886 83.18
+put 1018 n766 41.56
+put 412 n357 57.88
+put 1537 n425 6.11
+put 30 n729 62.09
+put 1239 n986 74.98
+del 1805
+get 869
+get 1873
+del 101
+get 722
+count
+del 1899
+get 497
+put 1330 n326 17.03
+put 4 n344 80.96
+del 1622
+get 1800
+count
+del 938
+put 387 n776 25.23
+del 1252
+put 1294 n911 93.74
+get 1079
+get 680
+get 1805
+put 1015 n154 37.31
+del 411
+put 1210 n187 82.85
+put 588 n897 95.49
+del 485
+get 1804
+put 1319 n575 22.48
+put 381 n351 9.38
+del 81
+put 1983 n409 16.47
+put 407 n523 85.59
+put 1413 n206 70.47
+put 514 n65 16.22
+get 1888
+put 1577 n589 29.56
+get 456
+put 1703 n943 40.4
+get 163
+put 330 n67 26.64
+get 547
+get 1753
+count
+put 1786 n559 70.6
+put 269 n392 61.79
+put 965 n98 39.04
+del 1731
+put 1322 n811 50.36
+put 352 n401 79.72
+put 1932 n82 60.8
+get 11
+put 556 n608 35.12
+put 1329 n754 93.36
+put 312 n199 59.29
+put 879 n27 96.53
+get 1641
+put 933 n763 29.51
+get 850
+del 1608
+put 764 n770 94.47
+get 522
+put 1195 n719 89.96
+del 1012
+put 898 n133 7.24
+count
+put 1737 n468 43.89
+del 1490
+get 27
+put 1488 n839 34.9
+put 263 n194 66.94
+put 1363 n950 54.62
+put 80 n65 89.47
+del 112
+get 1164
+put 1005 n963 42.65
+put 213 n823 40.36
+get 719
+put 1955 n905 31.55
+put 1998 n281 59.98
+del 145
+get 1263
+get 1379
+del 916
+put 1247 n901 93.96
+put 1666 n724 37.75
+put 206 n394 16.5
+get 1200
+del 1673
+put 1833 n770 65.49
+get 117
+put 1555 n117 14.75
+put 477 n719 99.42
+del 1956
+get 162
+put 1083 n996 11.44
+put 423 n631 80.9
+del 1165
+put 1796 n396 50.49
+put 508 n104 93.51
+put 669 n979 35.09
+del 930
+put 1507 n0 54.2
+put 1452 n343 17.86
+put 535 n276 79.16
+get 1357
+put 1701 n788 2.67
+get 420
+put 1947 n633 60.28
+get 1704
+put 1714 n824 94.64
+put 298 n357 81.84
+put 120 n903 44.09
+get 1307
+del 763
+del 53
+get 685
+put 1161 n175 34.89
+get 950
+put 1023 n339 8.03
+del 761
+get 1098
+del 1120
+put 1634 n961 59.08
+get 1222
+put 1511 n394 51.6
+put 895 n131 12.67
+put 614 n929 72.24
+put 1824 n384 16.13
+del 253
+put 753 n140 50.34
+get 833
+del 785
+get 802
+put 857 n336 67.33
+put 1703 n21 72.09
+put 727 n681 32.34
+get 1436
+del 1551
+put 1772 n481 57.18
+get 1243
+put 521 n347 14.36
+get 1153
+get 344
+put 1904 n768 25.11
+put 1543 n771 39.41
+del 1915
+get 1201
+get 1912
+get 1888
+put 1867 n497 55.39
+get 1159
+get 1360
+put 1010 n587 81.2
+put 656 n52 12.27
+put 1992 n304 60.81
+count
+get 36
+put 398 n229 25.39
+put 1556 n470 82.17
+put 1166 n337 76.1
+del 141
+put 705 n600 7.43
+put 968 n415 29.04
+get 824
+put 1359 n208 48.14
+put 1999 n50 39.44
+put 1484 n351 52.23
+put 236 n124 21.39
+put 1334 n330 85.01
+get 567
+put 426 n777 54.21
+put 1711 n816 5.77
+get 759
+get 326
+put 353 n253 69.21
+get 1925
+get 932
+put 18 n820 64.86
+count
+get 1637
+count
+put 1503 n831 4.81
+put 1342 n833 75.53
+count
+get 39
+put 440 n249 4.96
+put 844 n723 78.02
+put 672 n291 36.21
+put 967 n634 95.33
+get 1785
+put 90 n541 92.19
+del 101
+put 455 n879 50.61
+put 1468 n18 11.48
+put 1078 n851 78.33
+put 768 n84 78.99
+put 1278 n428 6.53
+get 1676
+put 1338 n261 2.12
+get 953
+put 636 n472 86.46
+put 923 n802 70.44
+del 55
+get 1065
+get 1157
+get 1007
+del 3
+get 1616
+put 1569 n904 74.64
+put 1366 n600 45.48
+del 1125
+put 1737 n640 98.44
+count
+put 456 n997 61.38
+put 1964 n763 66.15
+put 1578 n287 24.56
+get 1659
+put 1004 n670 19.11
+put 1452 n839 5.81
+put 904 n481 83.08
+get 1520
+get 1359
+put 1339 n756 45.61
+put 30 n417 97.61
+put 508 n602 77.77
+put 1003 n784 76.46
+put 1408 n924 31.76
+put 1458 n481 13.44
+get 1035
+put 1878 n981 32.16
+get 1495
+get 363
+get 1478
+put 1016 n880 99.96
+put 792 n579 4.31
+get 1409
+count
+get 1562
+get 40
+del 1052
+put 1872 n182 57.82
+put 325 n341 69.17
+del 206
+del 1947
+get 628
+get 1635
+put 203 n579 88.02
+get 1973
+del 333
+del 1460
+get 414
+put 23 n762 67.49
+get 1232
+get 1127
+put 872 n664 4.12
+get 131
+get 926
+get 1400
+get 187
+put 1925 n885 63.19
+put 1174 n63 95.86
+get 1810
+get 1371
+put 1342 n827 22.65
+count
+put 1556 n249 34.01
+put 444 n251 88.21
+get 1965
+put 47 n912 7.81
+count
+put 1391 n186 6.36
+put 1507 n451 3.19
+get 432
+put 1285 n605 29.82
+get 406
+get 1932
+get 568
+put 524 n330 70.48
+put 1499 n991 34.35
+get 887
+del 545
+get 1037
+put 1375 n331 96.99
+get 1849
+get 1128
+put 1026 n834 97.6
+get 1461
+put 1047 n15 67.87
+put 21 n443 38.78
+put 1345 n759 53.96
+get 1929
+del 449
+get 1268
+count
+count
+put 874 n322 23.29
+put 1373 n395 43.84
+put 64 n756 11.55
+del 1351
+put 692 n824 52.26
+get 627
+get 107
+put 1355 n703 61.0
+put 885 n153 97.96
+count
+put 676 n771 98.41
+del 605
+put 1391 n436 15.15
+put 89 n733 93.85
+get 1351
+count
+get 1250
+get 889
+get 1223
+put 431 n293 75.48
+get 1585
+del 1605
+del 444
+put 1056 n262 15.65
+del 1192
+del 1477
+get 581
+get 610
+put 845 n484 88.64
+put 1785 n442 14.58
+put 1804 n340 73.41
+put 511 n254 97.75
+count
+put 1106 n138 37.77
+put 623 n333 11.53
+put 1566 n417 92.69
+get 1139
+put 1289 n626 96.19
+put 1241 n698 20.15
+put 309 n219 91.37
+put 1856 n662 11.82
+count
+put 1295 n470 77.64
+get 536
+get 1114
+put 815 n266 57.71
+put 126 n622 19.7
+put 1185 n75 11.54
+get 8
+put 936 n743 73.78
+put 554 n688 14.66
+get 587
+del 1453
+put 373 n124 19.64
+put 1922 n488 73.0
+put 1405 n523 13.08
+get 516
+put 1015 n227 40.75
+put 1839 n859 83.47
+get 54
+del 509
+get 199
+count
+put 1037 n114 3.64
+put 1990 n172 67.08
+put 1415 n244 38.78
+get 1243
+put 1488 n400 50.62
+get 1423
+put 1405 n423 96.62
+del 850
+put 835 n311 83.23
+count
+get 1808
+get 682
+get 1817
+get 213
+get 239
+del 583
+put 1125 n847 75.57
+put 455 n2 76.3
+get 378
+get 1632
+put 1154 n357 75.93
+count
+get 1755
+del 1894
+put 1615 n192 35.99
+get 808
+put 1970 n280 24.93
+put 764 n653 81.0
+put 982 n992 0.11
+put 1338 n317 87.22
+put 1028 n960 36.43
+del 1199
+put 542 n987 59.29
+get 14
+put 1584 n721 49.04
+del 601
+count
+put 1836 n389 57.1
+put 921 n92 24.86
+put 458 n656 60.88
+put 1467 n231 19.43
+put 81 n244 67.99
+put 1282 n518 41.73
+count
+put 231 n233 16.99
+put 1166 n182 86.54
+put 246 n802 53.57
+put 1240 n428 98.67
+get 1124
+del 1402
+count
+put 1757 n168 70.69
+put 1997 n967 18.6
+get 863
+put 1650 n805 67.26
+get 1737
+get 156
+get 139
+del 33
+get 341
+count
+put 1113 n660 40.88
+put 348 n324 15.62
+del 668
+put 1295 n608 89.72
+get 564
+del 222
+get 1421
+put 543 n277 37.4
+del 1443
+get 123
+put 1553 n327 9.95
+put 1909 n419 47.46
+put 201 n544 25.46
+put 243 n119 33.82
+put 1234 n349 65.11
+put 1577 n865 90.36
+put 635 n684 93.14
+get 156
+put 1637 n250 61.41
+del 750
+get 1641
+del 1117
+get 1602
+del 750
+put 482 n824 10.46
+put 867 n26 60.88
+del 1491
+put 588 n580 60.92
+del 107
+put 250 n553 98.55
+del 1740
+get 832
+count
+put 296 n784 98.77
+del 273
+put 1102 n177 50.52
+get 1235
+del 1093
+get 266
+put 178 n852 15.56
+put 1014 n855 67.35
+put 1013 n706 96.02
+put 1169 n456 49.89
+put 145 n377 50.79
+put 1679 n566 37.75
+get 1068
+get 1238
+put 843 n657 66.56
+put 795 n830 52.35
+get 1018
+get 680
+put 65 n653 97.15
+put 694 n973 73.01
+put 368 n669 45.59
+put 482 n255 11.97
+put 1281 n137 43.27
+put 1035 n555 82.11
+put 825 n343 81.81
+del 1772
+put 1438 n468 83.92
+get 262
+put 1716 n199 17.53
+put 152 n48 32.33
+put 1999 n598 65.68
+put 1016 n799 99.17
+put 287 n433 20.67
+del 281
+put 1431 n604 7.35
+get 1754
+get 236
+get 727
+count
+get 1515
+del 1011
+get 581
+put 882 n491 93.7
+get 494
+put 1536 n593 82.95
+del 801
+get 912
+count
+get 347
+del 1790
+del 1072
+put 368 n124 24.86
+get 1845
+put 1734 n583 34.76
+count
+put 148 n129 5.27
+get 1716
+put 1433 n112 27.62
+put 394 n729 92.77
+put 1961 n262 0.81
+put 3 n911 92.14
+put 1509 n880 29.64
+del 1765
+get 105
+put 1619 n625 9.0
+count
+get 1989
+del 325
+put 123 n352 6.24
+put 546 n991 10.58
+put 923 n428 94.55
+del 1791
+count
+get 1145
+put 1545 n173 17.08
+count
+put 1831 n688 17.34
+get 1248
+put 211 n173 22.23
+put 1521 n565 57.58
+get 966
+put 521 n877 36.25
+get 855
+del 588
+put 1674 n974 59.66
+put 933 n457 7.44
+del 610
+get 282
+get 411
+get 854
+get 1939
+put 413 n485 75.01
+get 135
+count
+count
+del 1830
+put 1232 n77 97.48
+put 411 n634 41.78
+put 1226 n577 55.81
+put 1007 n572 34.3
+put 1176 n411 59.32
+put 1727 n167 69.37
+put 354 n347 94.97
+get 899
+put 864 n679 89.54
+put 1341 n596 26.79
+put 1841 n367 79.65
+put 142 n907 12.79
+get 943
+put 1967 n599 11.57
+put 172 n595 33.17
+get 1953
+put 940 n514 54.93
+put 1161 n767 7.41
+put 384 n773 25.22
+put 1272 n351 93.28
+get 1671
+put 768 n240 2.67
+get 1366
+del 1757
+put 1585 n727 49.58
+put 519 n841 68.58
+put 748 n844 85.0
+put 1908 n579 36.8
+put 1533 n365 79.43
+put 464 n184 53.96
+put 913 n714 21.46
+get 176
+put 255 n639 21.97
+del 487
+put 1781 n427 78.2
+get 1311
+put 6 n726 78.69
+del 1277
+put 1848 n798 16.25
+put 158 n666 86.11
+get 552
+put 1759 n788 13.61
+put 323 n255 60.72
+put 1899 n248 23.57
+put 1615 n873 15.52
+put 776 n516 28.26
+put 1790 n914 92.6
+put 1920 n8 82.52
+get 419
+put 956 n82 85.38
+put 1589 n963 71.14
+del 1252
+get 1247
+del 1943
+put 1808 n238 35.66
+get 1278
+put 557 n360 97.32
+put 415 n342 56.61
+put 304 n435 0.1
+get 89
+get 906
+put 146 n80 58.03
+put 1334 n292 89.82
+get 469
+del 876
+get 1713
+put 1879 n631 64.91
+put 1408 n635 84.41
+put 1394 n746 14.87
+put 1217 n519 85.55
+get 1311
+get 1423
+get 481
+put 1495 n341 60.85
+put 1399 n643 14.39
+del 202
+put 1699 n637 18.57
+del 1166
+count
+put 1704 n654 77.56
+put 1376 n147 92.03
+del 735
+put 859 n954 49.98
+del 367
+del 1501
+del 1758
+put 209 n427 80.94
+count
+get 1648
+put 1360 n335 85.07
+put 1755 n809 79.47
+del 1730
+put 1057 n32 82.98
+get 1037
+put 1666 n397 43.26
+get 263
+put 1159 n649 77.93
+put 1508 n176 89.78
+get 738
+get 368
+put 1639 n637 16.57
+put 245 n313 4.77
+put 663 n825 80.33
+count
+put 636 n909 68.55
+get 989
+get 1648
+del 1955
+put 1726 n514 80.82
+get 39
+put 1429 n243 36.85
+del 784
+get 228
+put 1873 n156 98.0
+get 1291
+get 783
+put 202 n594 88.25
+put 226 n874 70.01
+count
+get 1766
+put 1562 n383 41.56
+get 1117
+put 56 n582 71.59
+put 67 n333 14.15
+put 542 n561 29.98
+put 1248 n488 56.88
+get 490
+get 611
+put 1598 n44 25.78
+put 528 n644 37.86
+put 267 n531 80.41
+del 236
+put 1174 n136 91.75
+get 564
+put 244 n510 49.0
+get 144
+put 182 n578 30.32
+get 1062
+get 194
+get 679
+count
+put 458 n581 80.1
+put 931 n154 68.46
+put 840 n717 62.12
+put 1191 n773 5.18
+get 1577
+count
+put 1499 n325 16.01
+put 1516 n77 42.35
+del 1620
+put 380 n588 72.18
+put 755 n322 35.18
+del 1029
+del 1371
+get 1629
+put 1682 n37 63.59
+put 724 n327 23.98
+count
+del 1980
+get 1952
+put 1715 n424 0.46
+put 1764 n391 86.9
+put 1003 n128 16.12
+put 1845 n871 81.64
+put 79 n454 33.8
+put 379 n941 51.71
+get 1444
+put 736 n919 64.74
+put 771 n856 72.33
+put 662 n988 39.82
+put 623 n628 6.41
+del 1934
+put 1999 n617 4.08
+put 1776 n323 37.86
+put 118 n25 54.93
+get 1379
+get 165
+put 1068 n951 83.95
+put 1914 n734 11.68
+del 1530
+put 931 n111 38.75
+get 849
+put 1558 n346 19.71
+count
+get 779
+put 221 n376 52.27
+del 795
+get 1175
+put 1323 n878 72.22
+put 312 n84 51.72
+put 1012 n919 64.63
+get 1418
+get 85
+get 1047
+count
+count
+put 706 n762 47.56
+put 1824 n541 18.46
+put 693 n585 65.59
+del 472
+put 1828 n273 1.15
+get 1477
+put 704 n333 61.47
+del 683
+put 653 n133 99.92
+put 158 n344 11.15
+get 841
+get 137
+get 1155
+put 205 n828 4.84
+get 1052
+put 1869 n173 41.91
+del 833
+put 1598 n755 59.23
+put 783 n288 17.93
+get 856
+put 542 n535 38.68
+get 1486
+put 661 n181 78.6
+get 1454
+get 689
+put 95 n375 79.31
+put 1783 n520 27.57
+put 733 n851 0.14
+get 143
+get 1235
+del 290
+put 757 n340 88.23
+get 1289
+get 1070
+put 2 n307 0.99
+get 1097
+get 1716
+del 1973
+del 745
+put 1189 n378 38.79
+put 295 n721 72.54
+get 999
+put 1435 n34 0.88
+put 1668 n291 22.19
+put 227 n566 4.86
+put 491 n696 43.6
+put 129 n283 20.56
+put 870 n165 5.07
+put 572 n70 21.3
+put 532 n727 91.03
+get 417
+get 447
+get 1524
+del 1718
+del 1160
+del 1973
+put 1182 n372 28.72
+get 995
+put 1406 n870 15.58
+put 1263 n454 66.8
+put 849 n607 40.38
+put 1267 n824 85.44
+get 1484
+put 517 n258 26.43
+get 1807
+put 50 n197 53.51
+del 80
+put 614 n668 70.36
+get 1201
+get 264
+get 1522
+put 610 n559 38.66
+del 1969
+get 945
+get 403
+put 1926 n558 88.63
+put 215 n460 0.06
+put 1965 n109 12.29
+get 816
+get 976
+get 1271
+del 617
+put 1513 n400 47.59
+put 941 n58 59.2
+get 281
+get 1308
+put 266 n357 61.89
+get 1500
+get 1037
+del 277
+put 1419 n411 93.47
+put 775 n793 94.37
+put 1609 n763 9.77
+put 1609 n454 48.96
+del 694
+count
+get 645
+put 690 n53 47.63
+del 393
+put 265 n42 56.16
+put 1421 n123 12.93
+put 1817 n627 50.33
+put 689 n184 34.81
+put 1663 n810 86.18
+get 508
+put 1058 n966 50.43
+put 1086 n827 79.07
+put 288 n545 96.14
+put 1591 n61 89.02
+put 1046 n88 65.14
+del 1608
+del 1501
+get 1485
+get 1645
+put 1116 n236 9.52
+del 1822
+del 1164
+put 823 n947 71.59
+get 1943
+put 1316 n369 55.45
+put 1144 n683 95.84
+put 1497 n875 23.43
+del 1861
+put 1079 n919 98.37
+put 1515 n599 65.43
+get 802
+del 923
+put 1524 n224 71.32
+count
+put 1114 n509 22.1
+get 1472
+put 382 n864 89.88
+get 421
+count
+get 1818
+del 597
+put 1979 n61 3.65
+count
+del 1398
+put 972 n432 69.79
+put 1550 n775 61.65
+put 1422 n573 44.4
+get 1980
+get 946
+get 1674
+get 386
+del 1328
+del 1109
+put 763 n314 75.4
+del 204
+put 108 n540 37.09
+put 1091 n695 23.73
+put 21 n363 3.98
+get 975
+put 700 n618 75.05
+put 1893 n418 48.24
+get 1474
+put 748 n455 23.23
+get 1879
+put 1755 n66 89.36
+get 309
+put 71 n176 58.56
+put 1223 n565 80.43
+put 272 n733 77.57
+del 632
+count
+put 102 n406 13.99
+put 906 n895 48.11
+put 254 n655 94.14
+put 1988 n144 51.7
+put 1737 n716 8.37
+put 208 n362 33.24
+get 1092
+put 255 n837 43.91
+get 728
+get 1012
+put 1654 n115 5.67
+put 196 n432 28.59
+del 174
+count
+put 253 n672 6.56
+put 1501 n675 79.83
+get 1802
+put 583 n868 46.97
+count
+put 155 n620 64.62
+put 1005 n597 90.16
+count
+get 55
+put 761 n655 96.57
+get 1192
+del 9
+put 1721 n71 63.94
+get 1759
+get 9
+put 796 n880 52.87
+put 177 n68 19.12
+put 7 n349 14.07
+put 1667 n228 27.19
+get 1716
+put 1859 n431 73.43
+count
+put 1797 n86 57.99
+del 691
+del 1138
+get 1285
+get 212
+get 1640
+put 168 n402 96.06
+get 64
+get 1114
+get 1355
+get 1683
+put 1894 n930 61.18
+put 716 n630 0.52
+put 1236 n2 69.43
+count
+get 1545
+get 1814
+count
+put 44 n891 22.22
+count
+get 1395
+put 87 n443 36.63
+put 250 n489 14.16
+put 1580 n563 23.61
+put 1894 n416 61.01
+del 1050
+del 1974
+put 155 n357 74.09
+put 705 n253 23.49
+put 1428 n247 63.72
+get 1457
+del 351
+put 403 n475 21.7
+del 1626
+get 442
+count
+put 1232 n627 53.17
+get 981
+count
+count
+get 662
+put 283 n868 91.9
+get 225
+put 1605 n452 24.39
+del 1029
+put 856 n416 66.21
+put 508 n459 32.72
+get 1703
+put 1528 n846 33.61
+del 277
+get 1634
+del 5
+get 963
+get 258
+get 1940
+get 373
+put 1371 n791 92.68
+get 1572
+get 230
+put 607 n179 46.72
+get 1581
+get 1699
+get 1954
+get 162
+get 1866
+put 1705 n427 67.15
+del 1517
+count
+count
+get 393
+del 551
+del 1317
+get 1237
+put 346 n212 72.82
+get 114
+del 601
+del 1289
+put 1158 n513 82.22
+get 305
+put 83 n238 7.46
+put 1399 n233 3.23
+put 173 n140 83.16
+del 1676
+put 1227 n457 21.61
+put 924 n159 69.31
+put 1362 n791 24.11
+put 1529 n480 74.62
+del 138
+put 417 n479 41.55
+get 782
+del 707
+put 776 n67 74.37
+put 1783 n612 19.65
+del 1169
+get 1170
+del 675
+put 1396 n55 51.85
+put 1642 n261 74.75
+get 1913
+get 633
+del 761
+get 1536
+get 1815
+put 249 n20 90.83
+put 269 n903 55.67
+put 1569 n741 23.31
+get 9
+put 1049 n689 50.06
+get 413
+put 123 n542 76.45
+get 1694
+put 1157 n55 73.0
+put 993 n856 17.29
+put 1214 n229 73.58
+del 808
+del 835
+del 271
+put 253 n101 34.52
+put 1324 n618 83.74
+put 1148 n874 79.57
+get 793
+put 1503 n68 34.83
+del 1191
+put 1920 n557 98.97
+get 1705
+get 479
+put 1197 n920 30.91
+get 885
+count
+del 1914
+get 1887
+put 286 n345 14.13
+put 1568 n415 61.86
+get 834
+count
+put 902 n453 33.64
+del 1976
+put 680 n482 28.82
+get 887
+get 492
+get 880
+get 342
+put 200 n450 26.88
+put 68 n347 28.78
+get 1666
+put 632 n823 82.69
+get 1971
+put 1772 n785 75.9
+get 1118
+get 887
+put 1189 n273 30.01
+put 1021 n341 63.93
+get 1102
+get 3
+put 1814 n185 95.67
+get 1726
+put 1745 n908 76.25
+put 534 n748 61.88
+put 1677 n522 60.4
+put 104 n978 67.72
+get 1913
+put 124 n821 75.69
+get 1514
+del 638
+put 269 n510 83.48
+get 720
+get 1175
+count
+get 1503
+put 1656 n873 1.47
+put 793 n121 86.43
+get 1874
+del 1902
+put 1426 n557 87.46
+del 1617
+put 817 n823 26.65
+del 111
+put 1843 n461 79.32
+del 813
+put 1627 n803 20.81
+del 651
+put 843 n412 57.87
+put 1023 n99 14.6
+put 945 n551 27.27
+del 939
+get 741
+put 373 n580 70.35
+get 1323
+put 935 n955 99.25
+put 1274 n187 53.7
+put 856 n454 66.79
+get 812
+put 369 n709 21.43
+get 1572
+put 948 n934 68.23
+put 1900 n884 72.83
+get 654
+put 591 n55 96.09
+put 493 n579 73.14
+count
+get 944
+put 247 n460 76.07
+put 768 n974 77.02
+put 920 n47 68.46
+put 724 n299 79.15
+put 682 n348 69.24
+put 129 n601 39.83
+put 663 n689 97.87
+del 1440
+get 1990
+put 1713 n754 45.33
+put 1786 n290 74.4
+put 101 n861 6.46
+count
+count
+get 1376
+put 342 n558 83.19
+get 1746
+put 1956 n789 10.14
+del 1318
+put 835 n660 21.68
+put 332 n952 7.71
+put 1789 n926 67.85
+del 733
+put 1475 n603 65.85
+put 720 n605 64.21
+del 518
+put 285 n551 96.99
+del 221
+put 1259 n425 62.58
+get 929
+get 210
+get 1809
+get 403
+del 1413
+put 820 n19 76.33
+get 1708
+put 708 n656 97.52
+put 697 n821 42.8
+put 503 n389 9.25
+get 1294
+put 983 n733 45.99
+put 1475 n945 62.9
+del 327
+put 745 n739 46.06
+put 603 n727 3.58
+put 1206 n133 31.3
+get 88
+put 1335 n860 72.73
+put 1426 n235 27.47
+put 547 n114 17.24
+count
+put 974 n945 75.62
+put 1392 n868 79.64
+get 1023
+put 986 n919 81.73
+put 1815 n432 13.62
+put 1856 n773 61.61
+del 407
+get 700
+get 126
+get 1632
+put 719 n716 36.39
+put 191 n272 2.62
+put 1947 n104 35.16
+put 63 n225 53.65
+del 1793
+put 1652 n437 66.08
+put 1599 n965 39.78
+get 1336
+del 1841
+put 1601 n714 34.56
+get 896
+put 1684 n935 99.15
+put 1463 n965 76.93
+put 1590 n394 90.08
+get 1879
+put 939 n233 95.16
+get 1335
+del 573
+del 1853
+count
+get 1022
+count
+del 1294
+get 1858
+get 835
+get 249
+put 244 n796 57.5
+put 1500 n181 21.84
+put 774 n768 39.49
+del 604
+put 1436 n744 97.9
+get 40
+get 838
+get 592
+del 1812
+put 1813 n237 96.37
+put 1261 n29 88.03
+put 1317 n564 40.97
+del 469
+count
+get 1957
+put 608 n316 70.78
+get 709
+put 768 n107 79.84
+get 1181
+del 619
+put 1881 n80 0.02
+put 1276 n641 15.96
+del 758
+get 942
+put 373 n740 47.66
+count
+put 1435 n612 48.31
+del 783
+del 1012
+get 1272
+put 107 n627 34.74
+del 1962
+get 1277
+get 1749
+get 1873
+del 608
+get 753
+put 1350 n418 82.41
+put 416 n797 54.1
+put 1594 n408 80.02
+put 1655 n664 13.11
+get 1694
+put 1223 n270 65.54
+count
+put 1298 n914 66.39
+get 1532
+get 1287
+del 676
+put 1690 n494 2.25
+put 1748 n923 55.04
+get 655
+del 1865
+get 525
+put 1054 n810 28.91
+put 1586 n865 83.77
+put 994 n757 19.23
+put 32 n545 11.13
+get 690
+get 1127
+put 787 n6 69.84
+put 1173 n294 9.05
+count
+get 1486
+put 1692 n657 34.55
+put 1635 n219 68.19
+put 1212 n196 23.78
+count
+put 349 n556 43.81
+put 905 n214 72.58
+put 562 n655 10.74
+count
+put 586 n708 48.14
+del 1624
+get 1967
+put 162 n513 9.61
+get 429
+del 928
+get 809
+get 909
+get 1420
+put 899 n393 64.19
+get 1348
+get 691
+put 874 n338 29.35
+put 161 n214 32.34
+count
+put 640 n550 74.3
+del 1586
+get 1743
+put 534 n726 39.77
+put 1980 n910 96.78
+get 1849
+put 1231 n688 68.95
+get 1596
+del 1866
+put 253 n436 65.13
+put 515 n901 81.04
+get 1202
+put 1669 n834 3.92
+put 1647 n235 14.98
+put 326 n213 74.81
+put 1035 n280 87.46
+put 1335 n622 35.2
+get 979
+get 1606
+put 1370 n863 94.48
+count
+put 12 n156 30.81
+put 792 n348 29.92
+put 1130 n835 18.16
+count
+get 540
+put 195 n694 40.98
+put 1777 n674 7.27
+put 1582 n53 64.48
+get 778
+put 1491 n54 28.58
+get 1980
+del 463
+count
+del 1426
+count
+get 708
+del 240
+del 1242
+put 481 n143 76.4
+put 1194 n957 36.36
+del 738
+put 165 n93 85.13
+del 354
+put 726 n542 68.66
+put 1727 n397 24.58
+get 31
+put 27 n325 94.17
+get 1776
+put 587 n588 6.27
+count
+get 177
+put 1564 n128 52.69
+del 1855
+put 1802 n712 40.88
+put 403 n876 38.86
+count
+get 1593
+del 421
+get 1751
+get 1341
+get 476
+put 1418 n28 94.5
+del 1907
+put 1664 n921 30.81
+put 1278 n765 50.25
+get 211
+put 1209 n370 70.2
+del 1114
+count
+del 912
+put 296 n940 14.74
+del 497
+put 686 n364 21.9
+get 1179
+get 1008
+del 115
+count
+del 1987
+del 255
+put 1470 n374 60.75
+get 337
+put 1654 n876 90.8
+get 135
+put 662 n344 39.4
+put 325 n31 21.4
+get 505
+put 1420 n103 62.34
+put 886 n3 78.47
+put 146 n152 88.91
+del 614
+put 1086 n792 75.61
+put 1085 n295 69.68
+put 1785 n580 51.45
+get 251
+get 1222
+get 1599
+put 57 n881 2.9
+get 1759
+put 378 n890 16.47
+del 1595
+put 822 n422 63.94
+put 1381 n672 55.91
+put 1322 n319 33.63
+del 20
+put 112 n931 98.02
+get 1551
+put 63 n302 37.96
+put 111 n98 48.81
+put 1808 n769 55.25
+get 1723
+get 1161
+get 503
+put 1610 n448 43.19
+del 1509
+put 221 n789 43.84
+get 411
+put 476 n490 66.28
+put 154 n738 6.28
+del 1966
+del 1687
+put 9 n847 93.82
+get 1672
+put 943 n37 99.46
+put 503 n228 80.85
+put 1862 n491 17.91
+count
+put 1152 n764 44.56
+put 665 n883 46.12
+get 74
+get 820
+count
+get 7
+get 201
+get 1067
+put 230 n861 95.59
+put 575 n57 79.23
+get 1150
+get 1211
+del 851
+put 1225 n211 17.14
+del 264
+del 793
+put 182 n783 23.42
+del 977
+put 517 n873 4.48
+put 1258 n831 19.9
+put 987 n536 77.54
+count
+put 1232 n462 62.2
+get 1268
+get 1790
+put 840 n242 52.68
+del 668
+get 630
+get 865
+put 1876 n565 55.76
+put 1969 n709 83.02
+del 1663
+put 1140 n318 54.93
+get 67
+put 182 n244 37.23
+put 1693 n276 73.98
+put 802 n679 7.35
+put 548 n389 8.75
+del 1543
+put 41 n391 13.64
+put 1357 n221 4.49
+get 1341
+put 941 n158 34.89
+put 1595 n686 3.92
+put 855 n51 36.03
+put 1507 n935 39.05
+get 1028
+del 1782
+put 1337 n234 36.67
+get 1875
+get 1618
+put 1295 n377 38.24
+get 1919
+put 595 n967 52.55
+count
+get 163
+put 368 n796 7.9
+del 1345
+put 1458 n883 66.08
+put 1277 n495 91.63
+put 444 n892 11.58
+put 467 n920 64.72
+get 1729
+put 1701 n161 73.53
+put 574 n556 55.4
+get 153
+put 1982 n208 31.8
+put 625 n383 54.97
+get 243
+get 684
+del 92
+get 902
+put 400 n891 74.72
+get 1592
+put 1320 n996 13.21
+put 1892 n404 53.64
+put 1361 n334 2.02
+get 1374
+put 5 n622 25.21
+put 306 n795 86.21
+put 1101 n784 62.09
+put 1515 n536 21.58
+put 1178 n244 78.94
+put 898 n134 25.24
+put 1265 n910 39.18
+get 534
+put 771 n232 71.46
+put 693 n924 15.67
+put 1418 n299 38.36
+del 1190
+put 925 n152 64.53
+put 1290 n212 57.36
+get 1430
+put 1369 n839 3.9
+get 1374
+get 1338
+put 421 n152 35.38
+put 1529 n818 79.03
+put 599 n930 94.52
+put 477 n681 66.84
+put 680 n65 90.0
+put 133 n268 26.54
+get 650
+put 170 n835 86.61
+get 1938
+put 1592 n273 9.71
+put 915 n408 75.43
+get 1353
+put 211 n541 97.94
+get 91
+del 654
+put 1988 n355 33.17
+put 1254 n313 29.84
+put 718 n438 7.23
+put 1368 n464 66.22
+get 468
+get 923
+put 1010 n659 25.54
+get 1700
+del 335
+get 1705
+get 1577
+put 47 n705 50.59
+get 1523
+put 1842 n397 45.0
+get 791
+put 1881 n305 4.27
+put 960 n741 23.81
+put 1758 n211 51.11
+put 1868 n943 81.24
+put 1001 n196 67.09
+put 706 n114 27.97
+put 391 n725 29.37
+put 1961 n599 84.87
+del 529
+put 1628 n238 18.04
+get 1469
+put 60 n676 8.08
+put 1640 n15 11.57
+put 1001 n825 41.62
+get 589
+del 12
+put 1858 n225 28.82
+count
+get 1436
+put 1411 n240 70.84
+get 1707
+count
+get 936
+get 1046
+get 280
+get 1224
+put 111 n807 46.13
+get 838
+put 1876 n237 83.05
+del 1344
+put 714 n571 49.45
+put 1990 n696 61.62
+get 1361
+get 495
+put 1055 n904 17.42
+del 197
+put 226 n292 96.69
+put 1041 n740 27.82
+get 871
+get 952
+get 1877
+put 1514 n955 92.18
+get 412
+get 1537
+put 253 n103 2.31
+put 241 n618 50.31
+put 1610 n927 35.67
+del 726
+put 293 n697 83.81
+get 295
+put 892 n36 31.52
+get 638
+put 1421 n269 64.29
+put 206 n240 0.62
+get 866
+put 1877 n295 23.51
+get 454
+put 1027 n426 47.41
+get 1356
+get 804
+del 1804
+get 1174
+put 786 n692 8.61
+put 1759 n407 61.38
+put 312 n709 78.78
+get 594
+put 971 n29 71.94
+get 1720
+put 1438 n820 91.19
+put 1699 n559 56.85
+put 80 n963 22.25
+put 1195 n533 34.74
+put 351 n785 9.47
+put 541 n349 15.84
+get 1776
+get 659
+put 1528 n49 83.3
+get 662
+put 1545 n408 80.23
+put 1653 n265 18.9
+del 672
+put 1501 n907 87.28
+put 1256 n447 90.4
+del 1089
+put 640 n623 45.76
+count
+put 1854 n414 15.66
+put 1740 n856 67.69
+del 487
+del 1703
+get 349
+put 405 n302 27.2
+get 339
+get 1017
+put 256 n937 44.41
+put 818 n22 83.85
+put 509 n401 94.25
+put 720 n957 33.0
+put 171 n555 18.87
+get 1101
+put 1123 n529 44.51
+del 1726
+put 1984 n280 98.89
+get 276
+get 681
+put 1420 n414 13.86
+put 1480 n870 82.92
+get 1468
+get 1657
+get 1744
+put 387 n591 87.44
+put 614 n35 46.95
+get 291
+put 1259 n656 49.4
+del 1527
+get 1712
+put 1242 n294 57.5
+del 985
+put 778 n273 83.3
+get 1137
+get 378
+get 26
+put 1680 n768 35.47
+get 1542
+put 472 n635 62.59
+put 1164 n429 79.06
+get 1387
+put 1908 n97 11.77
+count
+get 1015
+put 1843 n892 46.36
+del 1391
+put 1392 n12 10.5
+put 506 n880 21.91
+del 33
+get 450
+put 1256 n806 40.39
+put 1649 n46 46.12
+put 230 n978 56.4
+get 1789
+get 951
+put 1606 n816 80.52
+del 1125
+put 614 n811 40.03
+put 39 n608 89.11
+get 1151
+put 1201 n744 77.16
+put 553 n862 49.56
+get 358
+put 1515 n432 94.49
+put 667 n607 80.32
+put 241 n204 11.04
+get 363
+put 1206 n177 33.19
+put 155 n71 89.43
+del 454
+put 1426 n661 98.28
+get 1722
+del 871
+put 574 n760 60.8
+put 1700 n229 0.01
+get 1897
+put 966 n199 75.45
+del 964
+put 1808 n430 93.12
+get 1159
+put 1694 n847 24.16
+del 1676
+put 446 n657 79.11
+del 567
+get 1234
+get 831
+put 1967 n503 31.28
+del 728
+get 1445
+get 727
+put 1408 n258 40.37
+put 10 n716 19.77
+put 101 n878 20.79
+del 1472
+put 1691 n602 19.03
+put 357 n880 41.82
+get 503
+get 1166
+get 1500
+get 1357
+put 286 n799 11.03
+del 501
+get 564
+get 1510
+get 1678
+del 1726
+get 1635
+get 589
+get 613
+put 1720 n867 78.47
+del 202
+put 1746 n199 28.89
+put 1618 n594 86.35
+del 168
+get 1261
+put 261 n698 92.37
+put 1179 n892 92.37
+get 990
+get 1328
+put 1444 n834 71.38
+get 889
+put 1700 n242 57.48
+put 718 n704 26.04
+get 1753
+count
+del 1589
+put 1661 n532 99.51
+get 1168
+put 1927 n940 33.01
+del 1076
+put 1226 n445 81.85
+get 29
+put 1226 n938 41.89
+count
+get 1209
+put 1718 n457 32.71
+put 221 n867 29.57
+get 1007
+del 1583
+get 719
+get 182
+get 1314
+put 961 n231 34.7
+get 1474
+del 55
+del 1900
+put 557 n286 31.73
+put 65 n801 15.37
+put 1941 n526 11.75
+get 153
+get 1086
+get 335
+del 151
+put 1806 n944 42.85
+put 662 n100 25.71
+get 595
+put 1082 n915 37.29
+put 574 n881 24.52
+get 122
+get 1167
+put 1791 n361 76.29
+put 898 n399 35.48
+put 1770 n219 37.84
+count
+get 1308
+del 1505
+del 965
+del 183
+del 1389
+put 1548 n37 69.76
+get 318
+del 1009
+del 837
+put 999 n584 66.96
+put 328 n553 46.34
+get 69
+del 91
+get 1179
+put 1350 n55 96.67
+get 294
+get 942
+put 241 n909 63.51
+put 761 n985 57.28
+put 60 n889 33.86
+put 680 n669 14.24
+put 1192 n346 92.24
+put 1686 n780 15.66
+put 1939 n746 37.26
+get 1792
+put 102 n734 74.92
+put 1179 n321 47.01
+get 1167
+put 753 n632 28.76
+put 203 n330 4.81
+put 1573 n311 32.6
+get 682
+del 1923
+del 1415
+get 1073
+get 1825
+put 1524 n45 31.08
+put 125 n959 67.63
+put 945 n16 39.32
+put 1615 n197 60.95
+del 999
+put 1285 n776 57.17
+put 1900 n426 57.24
+get 610
+put 848 n211 80.68
+put 1225 n984 23.83
+del 1040
+get 993
+del 1632
+get 1203
+del 609
+del 437
+get 851
+del 397
+count
+count
+put 749 n508 7.2
+put 83 n887 87.08
+get 391
+put 1017 n855 54.94
+put 1853 n497 63.57
+put 831 n98 68.38
+put 310 n696 22.98
+get 1792
+count
+get 474
+get 737
+del 1483
+put 1262 n831 2.73
+del 171
+put 1054 n1 94.85
+put 41 n563 80.79
+count
+get 324
+put 276 n362 47.47
+get 722
+get 1032
+del 1888
+put 1663 n212 1.58
+count
+put 1487 n984 74.02
+put 965 n525 62.14
+get 1748
+put 1469 n244 80.82
+put 272 n798 25.28
+del 389
+get 220
+get 755
+count
+put 793 n38 4.85
+get 788
+put 1347 n273 20.58
+get 834
+del 1471
+put 134 n276 20.49
+put 1034 n857 32.43
+count
+put 428 n492 92.89
+put 1895 n125 77.04
+del 258
+get 1177
+put 222 n657 36.92
+get 1917
+get 210
+get 573
+put 516 n196 60.3
+put 635 n982 86.1
+get 317
+put 1686 n656 80.41
+put 1862 n821 0.93
+get 57
+del 1
+del 521
+put 908 n826 94.53
+del 116
+count
+get 188
+get 687
+del 1992
+put 1700 n494 89.53
+put 25 n972 63.08
+put 29 n25 61.15
+put 1020 n196 32.51
+get 1763
+get 275
+put 1711 n918 31.19
+get 873
+del 1913
+get 758
+put 934 n345 97.04
+del 384
+put 620 n759 68.03
+put 715 n168 80.57
+put 1604 n337 59.37
+get 268
+get 541
+get 894
+get 418
+put 877 n615 84.34
+put 417 n271 39.01
+put 1285 n7 88.56
+del 436
+put 1975 n711 18.65
+put 446 n552 76.31
+get 1593
+del 503
+get 1969
+put 689 n994 56.51
+put 284 n480 92.6
+put 975 n3 55.93
+get 1987
+put 760 n609 87.5
+put 1143 n332 82.35
+put 1844 n280 46.78
+put 1192 n465 31.62
+put 1577 n247 28.57
+put 1189 n639 70.02
+put 1978 n797 34.39
+put 245 n493 63.96
+get 1831
+get 1304
+del 104
+put 1897 n441 47.25
+get 709
+count
+put 1858 n459 9.92
+put 1480 n528 60.16
+get 1674
+del 1794
+get 1540
+del 496
+put 1631 n718 59.04
+get 136
+put 43 n782 81.03
+put 1947 n304 51.57
+del 497
+put 46 n897 22.54
+get 847
+put 1126 n672 72.92
+put 809 n923 99.83
+get 566
+get 506
+get 1588
+get 242
+get 1604
+get 533
+count
+put 1635 n715 96.14
+put 1584 n959 24.5
+get 670
+put 972 n573 44.43
+del 433
+del 1056
+put 1782 n334 4.29
+put 1866 n922 4.05
+put 1318 n931 59.55
+put 918 n263 91.02
+get 1435
+put 1664 n321 6.51
+count
+get 648
+get 1637
+get 1471
+put 690 n583 53.79
+put 1347 n860 24.6
+put 1446 n422 68.47
+put 1266 n84 51.23
+get 48
+put 1548 n680 18.49
+put 1422 n539 38.51
+put 1718 n849 59.03
+put 1708 n845 2.34
+put 1464 n761 15.95
+get 174
+put 116 n16 83.84
+put 731 n763 21.23
+get 277
+get 4
+del 52
+put 1126 n457 24.51
+put 1365 n989 56.77
+del 55
+count
+del 1362
+get 781
+get 804
+get 786
+put 1248 n62 33.24
+get 1303
+del 503
+put 494 n675 70.94
+get 1217
+del 462
+del 905
+del 241
+del 1994
+put 1026 n302 2.65
+put 699 n339 20.39
+del 1100
+get 1852
+get 1094
+put 904 n374 78.11
+put 442 n379 4.76
+count
+get 607
+put 1700 n267 19.37
+put 521 n164 64.94
+del 265
+count
+del 894
+del 1563
+put 693 n534 54.56
+put 1989 n679 2.83
+count
+put 1480 n470 92.17
+del 500
+count
+get 1766
+get 1684
+count
+get 227
+get 388
+put 167 n152 51.48
+put 25 n682 41.84
+put 196 n230 18.22
+put 737 n845 4.11
+put 1849 n939 63.41
+put 752 n830 27.59
+put 1969 n707 84.65
+put 1447 n65 36.03
+get 1242
+del 725
+get 196
+put 686 n849 49.76
+get 358
+del 53
+get 334
+put 1737 n758 53.83
+count
+get 861
+put 15 n932 88.92
+put 425 n441 42.69
+del 600
+put 63 n774 61.28
+get 693
+put 257 n651 94.9
+get 324
+put 299 n511 31.12
+put 956 n171 52.84
+put 688 n429 91.37
+get 671
+put 1444 n443 53.41
+put 460 n108 83.95
+put 836 n298 83.46
+del 183
+put 1264 n269 97.59
+get 872
+put 529 n544 19.62
+count
+del 453
+put 476 n558 99.21
+put 583 n502 84.76
+get 1980
+put 1124 n24 10.91
+get 1462
+put 1484 n525 66.98
+get 1461
+put 1061 n951 30.84
+get 672
+del 871
+put 604 n580 42.53
+get 207
+put 78 n532 18.31
+put 375 n235 47.6
+put 1899 n471 69.3
+get 357
+put 1299 n303 9.76
+put 1110 n190 41.05
+put 1040 n267 54.52
+put 1500 n405 30.83
+put 1081 n339 32.17
+put 1507 n555 47.91
+del 82
+del 981
+get 1270
+put 785 n512 56.84
+put 1258 n311 70.27
+put 1092 n337 61.72
+get 743
+del 1049
+get 190
+del 450
+count
+get 643
+get 983
+put 1999 n339 82.71
+del 169
+del 1105
+get 1957
+put 311 n467 44.08
+put 595 n777 52.88
+put 849 n565 83.78
+put 539 n11 69.36
+put 1324 n842 65.24
+del 1691
+get 1780
+put 554 n69 89.61
+del 452
+put 1662 n643 60.72
+put 308 n0 9.88
+del 1131
+get 1871
+get 741
+count
+put 1446 n542 96.51
+del 1100
+del 763
+get 94
+get 1432
+get 386
+put 547 n177 19.93
+put 1960 n359 37.9
+put 452 n4 22.37
+get 1531
+get 915
+put 1183 n605 7.38
+put 901 n181 5.24
+get 1105
+put 1217 n510 92.75
+put 1637 n25 34.12
+count
+put 225 n827 65.84
+put 1628 n930 3.9
+get 1462
+put 1745 n85 25.52
+put 82 n43 95.77
+get 818
+put 713 n48 94.84
+get 961
+put 1118 n862 54.27
+put 1761 n802 99.0
+put 482 n312 87.34
+put 1624 n110 60.67
+get 1882
+del 1215
+get 706
+count
+put 1043 n226 14.94
+get 1404
+del 1088
+del 1085
+count
+put 1527 n246 68.38
+get 1252
+get 1139
+put 1214 n260 41.0
+get 656
+put 1835 n705 21.41
+get 199
+put 788 n337 48.45
+del 1046
+get 628
+del 500
+put 297 n366 54.68
+get 338
+put 1924 n523 98.47
+get 1349
+get 558
+get 1994
+get 498
+del 295
+get 1739
+get 767
+get 1291
+put 1682 n182 41.76
+put 1637 n819 28.93
+put 1755 n700 1.62
+put 1496 n775 85.45
+put 219 n57 65.86
+put 834 n894 63.95
+put 622 n173 85.75
+put 533 n434 80.37
+put 1175 n495 27.09
+get 442
+put 674 n338 52.68
+put 651 n153 38.4
+del 209
+put 890 n24 95.29
+get 751
+get 21
+del 1300
+put 1328 n26 94.02
+del 260
+put 1835 n206 3.6
+put 1748 n284 68.8
+put 879 n916 60.55
+del 911
+get 72
+put 74 n468 16.91
+get 577
+put 1800 n831 29.4
+del 451
+get 570
+get 1570
+count
+put 170 n359 30.94
+put 1744 n591 80.84
+put 215 n222 91.45
+put 1989 n54 12.78
+put 112 n414 24.76
+del 157
+get 707
+put 1598 n35 7.17
+del 1118
+put 536 n157 71.38
+get 469
+get 1681
+put 737 n576 33.57
+put 1227 n914 10.86
+get 632
+get 736
+put 388 n673 70.42
+put 666 n389 12.47
+get 983
+put 1254 n818 28.92
+count
+get 1859
+put 1656 n671 96.76
+count
+put 1218 n416 78.64
+count
+get 529
+put 1068 n421 53.55
+put 365 n280 38.19
+del 1995
+del 1633
+get 1929
+put 137 n880 82.27
+put 944 n93 65.7
+put 460 n868 17.66
+get 985
+put 1470 n603 87.05
+put 314 n902 86.82
+get 402
+get 1910
+put 332 n925 87.34
+get 512
+put 1926 n725 30.72
+get 1127
+get 679
+del 553
+put 1605 n140 63.78
+put 822 n291 88.43
+put 1550 n757 51.71
+put 349 n974 73.05
+get 784
+put 1009 n292 39.37
+put 315 n197 23.7
+put 1518 n63 27.66
+get 75
+get 471
+count
+get 269
+put 1698 n381 89.38
+put 531 n469 68.93
+del 616
+put 144 n602 31.03
+put 1538 n172 60.7
+get 1652
+get 1653
+put 525 n827 37.82
+del 329
+put 789 n698 10.67
+put 1611 n884 2.22
+put 194 n209 36.88
+put 794 n184 90.72
+get 62
+get 579
+get 440
+get 1544
+put 1836 n29 33.73
+put 351 n121 80.13
+put 147 n517 73.0
+del 47
+del 601
+del 1767
+put 1478 n146 92.3
+put 221 n192 46.08
+get 441
+put 836 n983 47.63
+put 328 n322 30.5
+put 921 n135 75.96
+get 1445
+put 575 n217 63.94
+get 845
+get 1234
+del 1521
+put 1962 n412 96.45
+put 1465 n269 11.45
+del 1657
+put 1799 n470 14.57
+count
+put 136 n309 0.1
+put 60 n769 18.78
+put 857 n810 65.56
+put 1739 n145 42.55
+del 355
+get 1520
+put 1406 n150 95.71
+put 1650 n134 16.53
+get 209
+del 1425
+put 1304 n697 73.56
+get 209
+get 591
+get 1966
+get 499
+put 1115 n242 17.35
+get 884
+get 336
+put 755 n753 99.22
+put 1373 n759 92.69
+put 1853 n126 90.32
+del 256
+del 552
+get 1097
+count
+put 1355 n760 24.42
+put 393 n5 58.57
+put 1862 n967 87.23
+put 1239 n137 24.18
+put 992 n793 7.73
+put 756 n772 21.89
+get 527
+put 161 n756 99.41
+get 1152
+put 262 n152 92.64
+put 952 n273 32.9
+put 335 n298 71.75
+get 507
+put 1328 n296 27.29
+put 1458 n758 95.6
+put 1279 n222 72.82
+get 1749
+get 1819
+put 909 n963 54.7
+put 707 n156 3.09
+del 151
+get 1365
+del 869
+get 1661
+put 1342 n921 38.62
+get 62
+put 1802 n948 79.94
+get 583
+put 298 n425 28.08
+del 606
+put 1366 n32 74.18
+del 94
+put 853 n67 48.63
+del 1649
+get 826
+get 502
+get 640
+count
+put 4 n837 83.85
+get 1672
+put 1693 n412 74.03
+get 160
+put 220 n728 74.9
+get 645
+put 225 n756 35.61
+put 1877 n813 40.05
+get 1215
+put 754 n97 78.59
+get 831
+put 836 n437 75.61
+put 99 n515 95.33
+get 1050
+get 1466
+get 951
+get 1941
+put 847 n852 73.22
+put 1256 n862 25.48
+put 1366 n296 26.19
+put 329 n217 59.96
+del 1212
+put 918 n101 62.44
+del 741
+count
+get 1417
+get 1530
+get 921
+get 1801
+count
+put 1798 n65 98.27
+get 371
+put 668 n735 52.19
+del 1108
+put 295 n971 21.51
+put 614 n906 18.66
+put 1775 n551 16.58
+put 218 n487 76.64
+put 1224 n698 56.28
+count
+get 500
+put 846 n729 44.03
+get 206
+del 640
+del 547
+del 756
+put 1693 n388 10.11
+del 658
+get 595
+put 1474 n482 30.18
+put 1060 n852 71.43
+del 1413
+get 1144
+put 1572 n85 15.87
+get 899
+put 981 n406 77.62
+get 831
+del 1687
+put 1760 n371 18.67
+put 425 n349 43.55
+put 652 n591 70.45
+del 434
+get 405
+put 738 n773 24.62
+put 560 n795 96.2
+get 173
+count
+put 1698 n915 5.8
+get 125
+put 159 n647 70.59
+get 1599
+get 779
+put 1687 n773 18.97
+put 542 n249 81.72
+put 1155 n349 77.09
+put 1854 n545 78.85
+put 800 n306 57.1
+get 428
+put 547 n306 76.54
+del 1207
+del 1705
+del 1685
+get 1164
+put 1167 n681 18.35
+put 568 n957 16.42
+get 1099
+put 1854 n328 1.74
+put 82 n939 18.7
+put 996 n27 10.77
+put 902 n818 94.48
+put 970 n306 45.63
+put 1097 n287 64.96
+get 899
+count
+get 363
+put 455 n464 76.37
+put 1751 n709 60.08
+get 379
+put 1952 n696 91.41
+put 1503 n742 35.63
+put 393 n686 65.78
+del 928
+del 1889
+put 1333 n104 8.64
+put 462 n638 91.92
+put 1290 n368 68.87
+get 1867
+get 923
+put 1245 n279 97.81
+put 1480 n469 46.44
+get 1657
+get 970
+get 192
+get 350
+del 958
+count
+put 546 n209 59.5
+count
+get 365
+get 1112
+put 756 n378 85.7
+count
+put 1685 n462 85.5
+put 1421 n369 83.64
+put 1470 n299 42.32
+put 1356 n382 15.92
+put 102 n466 15.44
+del 552
+put 1096 n133 37.12
+count
+put 806 n300 59.59
+del 1074
+del 1886
+count
+count
+get 669
+del 1143
+put 1100 n188 5.31
+get 1260
+put 1957 n30 76.36
+put 351 n817 37.94
+get 606
+put 51 n526 49.61
+put 29 n41 13.31
+get 353
+put 524 n369 36.05
+get 112
+put 253 n124 72.13
+put 985 n686 13.67
+count
+del 67
+put 72 n390 98.25
+put 289 n268 13.4
+get 1572
+put 1543 n987 6.13
+put 50 n327 56.3
+get 881
+put 1927 n87 81.28
+put 136 n760 58.56
+get 434
+del 1037
+del 841
+put 968 n786 62.83
+get 1131
+get 921
+put 8 n879 25.08
+put 1558 n53 67.91
+put 189 n634 90.55
+get 1167
+put 1951 n441 11.06
+get 1948
+count
+del 616
+del 1045
+get 1947
+put 1322 n5 36.83
+del 1172
+get 392
+get 503
+get 1978
+put 180 n673 35.77
+del 1668
+get 567
+del 1259
+put 1097 n722 73.28
+get 1964
+put 1225 n238 33.62
+get 109
+del 1753
+put 133 n692 27.63
+get 1279
+get 1099
+put 1793 n328 11.12
+del 1900
+get 1170
+put 470 n213 67.12
+put 1770 n920 77.24
+put 1394 n135 61.39
+put 432 n902 18.12
+get 1790
+put 530 n813 89.86
+put 790 n897 50.02
+put 748 n790 7.96
+put 651 n22 93.27
+put 59 n630 73.56
+put 1141 n881 74.25
+get 378
+del 1629
+get 1160
+put 590 n668 23.26
+del 1387
+put 1169 n426 83.54
+put 242 n427 41.31
+put 755 n767 43.86
+del 991
+put 538 n366 5.4
+get 726
+put 1480 n56 57.8
+del 1875
+get 1881
+get 1311
+put 1411 n388 96.81
+get 722
+count
+get 1671
+get 1306
+put 73 n768 26.39
+put 1467 n350 45.94
+put 304 n726 89.6
+del 232
+del 1517
+put 1608 n376 17.28
+get 280
+del 209
+put 348 n697 10.3
+get 1705
+count
+put 1343 n320 7.65
+del 1177
+put 171 n10 52.7
+put 738 n447 97.41
+get 1439
+del 434
+put 920 n650 6.49
+put 405 n313 78.47
+get 628
+get 357
+count
+put 1225 n18 98.99
+put 1675 n775 8.59
+get 1367
+get 1797
+put 1527 n246 84.32
+count
+get 836
+put 549 n861 48.03
+get 429
+put 1104 n396 87.84
+get 651
+get 264
+put 114 n894 20.15
+put 97 n537 90.12
+put 1848 n76 4.51
+get 575
+put 278 n883 26.06
+put 272 n487 82.92
+put 1646 n94 1.7
+put 1162 n784 78.68
+put 592 n701 50.87
+del 507
+put 357 n28 23.96
+count
+put 637 n319 39.51
+put 1011 n567 45.86
+get 1404
+put 603 n72 33.56
+del 1185
+put 1988 n25 88.29
+put 923 n391 68.86
+get 50
+del 1954
+get 524
+put 520 n555 97.39
+put 1638 n781 83.58
+get 877
+put 1520 n973 15.82
+get 1849
+del 1074
+del 212
+put 121 n273 99.17
+put 1623 n869 29.77
+del 1401
+get 1136
+put 636 n194 70.71
+get 1720
+put 885 n246 79.32
+get 547
+put 1271 n121 48.45
+put 1222 n2 56.46
+put 491 n821 94.75
+put 1611 n698 6.77
+get 423
+put 1986 n911 57.86
+put 500 n248 74.58
+get 1133
+put 1003 n544 67.0
+get 1223
+put 258 n701 30.67
+get 1893
+put 1561 n878 54.69
+del 1762
+put 1840 n317 39.6
+put 762 n79 67.93
+put 1730 n463 58.97
+del 821
+del 332
+put 1040 n444 69.06
+del 1998
+put 1781 n808 83.6
+del 1748
+put 872 n572 82.73
+del 755
+put 1176 n584 68.84
+put 358 n361 72.73
+get 654
+put 782 n348 75.64
+put 1596 n101 70.47
+put 259 n318 78.92
+get 743
+put 876 n630 90.29
+put 1008 n827 31.96
+get 173
+get 359
+put 1904 n955 86.1
+put 192 n603 91.76
+put 1763 n306 23.29
+put 872 n75 97.95
+get 1788
+get 429
+get 1090
+get 265
+put 665 n219 11.01
+put 541 n919 39.89
+get 1338
+get 376
+del 1523
+del 54
+put 1138 n720 15.73
+get 361
+del 629
+put 1569 n823 66.34
+get 950
+put 126 n337 52.44
+put 1239 n750 27.03
+get 462
+del 658
+put 462 n792 92.9
+get 1424
+get 218
+put 470 n376 16.74
+put 1072 n136 22.74
+del 189
+put 1278 n811 62.46
+put 498 n934 20.76
+put 879 n213 64.87
+del 12
+put 1505 n19 64.15
+get 1462
+put 676 n338 77.79
+count
+put 1345 n908 27.48
+del 495
+put 355 n494 57.29
+put 1319 n217 27.58
+put 839 n91 88.83
+put 1567 n993 27.23
+get 1615
+put 1992 n738 36.7
+put 65 n993 97.94
+put 114 n591 56.43
+get 89
+put 1749 n56 71.41
+del 965
+put 143 n232 10.13
+put 583 n321 43.93
+put 1996 n720 42.34
+put 1641 n464 72.77
+get 1486
+put 1455 n21 80.03
+del 426
+count
+put 168 n465 56.75
+put 1168 n44 19.8
+del 510
+get 1358
+put 1421 n897 72.98
+get 376
+put 103 n766 29.42
+put 1246 n310 12.89
+del 561
+put 1254 n294 8.19
+del 46
+get 126
+get 396
+get 850
+put 1626 n607 18.61
+get 156
+del 120
+get 1872
+del 1042
+put 1762 n540 41.59
+get 1729
+get 1318
+get 845
+get 1348
+get 727
+count
+del 736
+put 213 n616 79.48
+put 905 n609 26.62
+get 414
+del 1783
+put 609 n403 70.12
+del 1554
+put 1624 n482 19.12
+count
+put 852 n206 66.14
+put 640 n855 87.93
+put 1896 n25 12.61
+del 1511
+get 258
+put 1508 n726 89.24
+get 352
+put 671 n439 64.95
+get 1870
+get 755
+get 1442
+put 493 n651 29.32
+put 1115 n909 28.58
+put 1642 n485 67.69
+put 1825 n720 50.78
+put 1167 n388 35.56
+put 1048 n752 87.07
+put 230 n39 81.12
+put 1837 n867 55.08
+put 87 n935 7.03
+del 80
+del 56
+put 837 n244 30.61
+put 1713 n611 7.12
+get 1528
+put 1785 n946 1.51
+put 131 n554 37.23
+put 764 n821 89.28
+del 917
+get 263
+del 1092
+put 226 n913 32.83
+put 1401 n2 50.76
+put 574 n451 68.62
+put 233 n661 82.35
+put 12 n661 55.77
+put 1845 n730 93.61
+put 425 n996 0.0
+get 1614
+put 1219 n329 2.73
+get 44
+put 517 n26 15.98
+put 1656 n506 30.71
+put 19 n192 70.08
+put 743 n176 19.17
+put 525 n290 29.34
+put 1927 n832 81.04
+del 408
+count
+get 1081
+put 454 n213 71.01
+put 1055 n689 29.85
+del 718
+put 1438 n53 29.69
+get 202
+put 1630 n771 36.64
+count
+get 620
+put 1961 n34 60.86
+get 1175
+put 185 n449 86.55
+get 497
+get 91
+get 1302
+put 1206 n894 10.69
+get 1863
+put 1993 n318 52.17
+del 1834
+put 87 n5 51.45
+get 490
+del 1910
+get 1665
+get 1669
+get 563
+put 1866 n999 22.81
+put 1726 n321 49.4
+get 1475
+get 1152
+put 773 n788 95.75
+del 523
+put 453 n961 7.72
+get 178
+put 783 n131 79.21
+del 530
+get 204
+get 1055
+put 542 n839 5.69
+del 1774
+put 1428 n343 73.01
+del 1529
+del 1111
+get 589
+get 1030
+put 1337 n903 16.08
+get 1966
+get 512
+del 1842
+get 1475
+count
+del 1124
+put 1656 n679 60.25
+get 1455
+put 172 n694 38.0
+get 1941
+put 91 n527 77.0
+put 1157 n176 28.59
+get 1951
+put 1982 n476 51.96
+get 215
+del 1236
+put 1117 n192 97.72
+get 1107
+get 1157
+count
+get 333
+put 1829 n604 50.43
+put 711 n616 96.99
+put 855 n666 57.49
+put 1551 n603 22.33
+get 947
+get 1859
+put 1374 n136 45.08
+del 1218
+put 1869 n116 19.15
+del 225
+get 1485
+get 336
+put 600 n967 26.11
+put 1914 n173 50.13
+put 298 n359 78.73
+get 1535
+get 1243
+get 528
+put 468 n350 64.51
+get 474
+put 368 n622 76.33
+put 1291 n895 78.18
+del 294
+put 1719 n620 75.47
+put 366 n347 78.61
+get 1297
+put 196 n188 50.4
+del 679
+put 692 n792 26.54
+del 612
+put 1209 n962 73.73
+del 1554
+put 1436 n16 94.1
+get 1601
+del 1659
+put 213 n830 63.74
+get 1573
+put 280 n817 44.89
+get 709
+put 1713 n514 94.51
+put 71 n556 15.18
+put 300 n395 27.58
+get 499
+get 1444
+get 1247
+put 908 n706 95.88
+get 109
+del 1872
+del 36
+put 447 n880 97.68
+get 448
+get 202
+del 599
+put 1846 n647 62.39
+put 1725 n211 13.79
+put 501 n725 25.06
+put 216 n757 72.55
+put 1638 n712 26.21
+get 1222
+put 1720 n304 37.73
+put 38 n363 38.24
+put 1147 n137 68.21
+put 930 n364 44.76
+del 1098
+put 1582 n307 87.38
+put 562 n846 32.23
+get 584
+get 1951
+get 1681
+put 1572 n376 17.64
+put 268 n758 88.42
+put 760 n505 21.21
+put 298 n288 42.0
+get 1612
+put 1303 n146 63.19
+put 1088 n466 67.87
+del 894
+put 176 n903 35.02
+put 293 n568 67.01
+get 138
+put 1376 n248 96.46
+put 1897 n639 5.17
+put 729 n229 44.63
+put 1520 n268 36.42
+put 1367 n806 64.43
+get 508
+del 112
+get 496
+get 1921
+count
+del 1144
+put 696 n414 42.06
+put 1843 n0 46.44
+del 697
+put 1097 n510 73.57
+put 1338 n489 19.49
+put 64 n22 13.11
+del 1111
+put 1914 n474 39.46
+get 118
+del 1768
+put 1602 n43 66.43
+get 407
+del 374
+get 1105
+put 198 n716 48.76
+put 1340 n362 1.77
+put 129 n500 1.28
+del 1886
+get 596
+del 1782
+put 1597 n178 57.46
+del 1711
+put 981 n953 77.27
+get 442
+put 641 n600 42.85
+put 769 n315 38.21
+put 1068 n457 59.87
+get 915
+put 828 n541 86.39
+put 1470 n691 38.05
+put 118 n454 37.72
+put 1790 n822 63.9
+get 761
+put 1924 n433 30.61
+put 1033 n493 54.94
+count
+put 995 n447 80.95
+put 416 n744 93.76
+count
+get 1992
+get 1920
+put 2000 n445 97.77
+put 284 n999 93.83
+put 476 n247 85.29
+count
+put 957 n255 95.1
+put 647 n114 93.18
+count
+put 1983 n768 31.68
+del 972
+get 1857
+put 1270 n222 26.77
+put 1362 n251 20.02
+put 269 n132 31.77
+del 892
+get 1223
+get 256
+del 1414
+get 603
+count
+put 1214 n323 89.37
+put 707 n148 32.58
+put 679 n137 80.48
+put 496 n409 62.29
+get 490
+put 1977 n177 69.23
+put 1443 n288 8.32
+put 1068 n544 28.01
+put 767 n373 46.0
+count
+put 936 n985 76.14
+put 1152 n397 68.66
+count
+get 1467
+put 932 n645 2.27
+put 1512 n965 30.67
+put 1133 n144 13.85
+get 1658
+put 1580 n244 24.0
+get 722
+count
+get 1522
+count
+put 766 n256 85.96
+count
+put 1739 n602 75.89
+get 1452
+put 161 n778 51.88
+get 1565
+put 1486 n367 93.78
+put 698 n515 42.49
+del 136
+put 1856 n413 68.11
+del 368
+count
+put 625 n180 78.76
+put 349 n39 7.79
+put 1772 n655 94.58
+get 1505
+del 1310
+get 1025
+del 488
+put 239 n398 69.28
+del 1037
+put 386 n19 56.57
+put 309 n278 34.99
+put 786 n888 7.94
+put 43 n705 21.85
+del 1515
+put 1175 n333 64.8
+get 898
+put 898 n51 48.12
+get 1291
+put 1214 n659 83.62
+put 1670 n710 52.1
+count
+count
+get 1529
+put 903 n448 33.46
+get 1222
+put 1149 n685 89.36
+del 910
+get 1362
+get 304
+put 1811 n116 80.05
+put 1283 n718 53.35
+put 764 n780 30.98
+get 246
+get 1305
+put 1027 n429 73.55
+get 849
+put 1397 n418 82.23
+get 1402
+get 1230
+del 445
+get 407
+del 1698
+get 1389
+put 1431 n202 39.79
+get 1905
+put 1045 n120 96.69
+put 1854 n444 45.55
+put 1177 n769 70.43
+put 807 n765 27.32
+put 1130 n667 31.52
+put 897 n145 71.96
+put 20 n997 69.32
+put 1102 n645 63.53
+get 815
+put 1272 n911 7.72
+get 539
+get 666
+put 1860 n402 57.43
+put 1245 n958 16.44
+put 1997 n938 76.75
+get 1332
+put 26 n486 7.32
+get 1902
+get 13
+put 819 n615 20.97
+get 769
+del 1973
+put 156 n817 59.73
+put 1381 n935 37.87
+put 1862 n616 74.35
+put 339 n750 20.26
+get 463
+put 1512 n724 79.76
+put 649 n452 43.96
+put 863 n56 97.46
+put 132 n238 5.88
+put 453 n716 0.92
+put 1318 n754 81.15
+get 1393
+count
+get 1032
+put 1474 n594 42.1
+put 492 n691 25.07
+get 200
+del 786
+get 1550
+put 283 n278 74.85
+put 156 n543 61.84
+del 250
+get 605
+get 1923
+del 1568
+put 178 n275 89.74
+del 771
+get 1784
+get 1271
+put 891 n329 29.82
+get 1311
+put 1456 n698 55.41
+put 1977 n951 27.55
+get 692
+put 1466 n254 69.03
+get 1573
+put 786 n664 24.06
+put 781 n203 47.32
+del 1351
+put 648 n313 43.5
+del 1175
+del 1874
+put 1898 n761 62.46
+put 1600 n675 21.09
+get 816
+get 799
+put 1470 n977 54.15
+put 688 n746 75.72
+put 1145 n661 32.14
+get 440
+count
+get 1592
+del 1745
+put 1547 n787 98.44
+get 1626
+put 946 n26 88.45
+get 149
+put 978 n635 85.46
+get 223
+del 1199
+count
+put 1271 n134 55.41
+count
+del 247
+put 561 n201 51.31
+put 315 n367 42.16
+put 166 n694 47.36
+get 993
+get 1630
+get 1837
+put 820 n190 8.6
+put 837 n398 14.29
+get 879
+put 1209 n72 35.52
+get 1268
+put 1114 n467 53.9
+del 199
+put 806 n578 47.41
+get 152
+put 212 n221 58.44
+put 1359 n536 87.55
+get 637
+del 604
+get 898
+put 1442 n821 51.87
+put 1648 n577 92.72
+get 770
+count
+put 893 n87 79.22
+put 1229 n281 75.97
+put 116 n365 75.89
+del 1594
+del 1633
+count
+del 259
+put 1372 n825 66.48
+get 1175
+get 1138
+put 749 n814 1.04
+get 1330
+get 1905
+put 526 n119 84.74
+put 1308 n418 95.77
+get 198
+put 1163 n280 53.73
+del 510
+get 1427
+put 1065 n915 79.19
+put 1366 n31 4.19
+get 1843
+put 323 n369 46.95
+get 1190
+put 1172 n559 62.65
+get 270
+put 725 n944 65.6
+get 997
+put 1660 n680 90.38
+del 1627
+put 365 n335 19.78
+put 262 n102 62.13
+del 775
+del 446
+del 1663
+put 1973 n476 79.62
+put 1794 n340 22.08
+count
+put 1598 n238 47.37
+put 665 n625 3.55
+count
+put 1625 n168 19.5
+get 1763
+put 92 n876 19.76
+count
+del 177
+put 178 n665 83.91
+count
+get 1675
+del 112
+put 56 n268 98.99
+put 1249 n662 91.39
+get 475
+put 911 n494 93.78
+del 755
+put 1738 n192 76.1
+count
+get 1960
+put 960 n495 97.56
+del 1807
+put 506 n383 36.59
+put 1796 n914 79.36
+get 726
+get 1948
+get 105
+put 1655 n161 12.76
+put 1183 n446 20.01
+get 1357
+get 1294
+put 434 n49 8.24
+put 1732 n147 28.13
+get 1615
+get 788
+put 1493 n550 13.72
+put 1575 n732 48.0
+del 52
+get 305
+put 510 n738 24.07
+del 1832
+get 1257
+put 100 n974 81.38
+get 262
+get 1762
+del 1346
+del 326
+put 1876 n956 95.16
+put 129 n387 31.7
+get 673
+del 1846
+get 109
+put 199 n574 28.68
+del 719
+get 407
+get 1788
+del 291
+get 308
+get 460
+get 1594
+put 931 n741 84.56
+put 916 n978 36.23
+get 1062
+put 853 n736 75.53
+put 246 n872 0.67
+put 1462 n85 44.5
+put 781 n389 53.6
+put 59 n575 45.34
+put 1600 n972 33.62
+get 728
+put 502 n369 6.9
+count
+put 1498 n785 73.78
+get 855
+put 535 n165 44.43
+get 1426
+put 1995 n767 0.51
+del 1068
+get 1205
+get 1289
+put 899 n294 90.83
+get 73
+count
+get 1217
+get 504
+get 1625
+del 1318
+del 848
+get 1814
+put 1042 n224 54.05
+get 1682
+put 504 n418 62.9
+put 1563 n20 18.76
+get 1656
+put 1507 n119 10.33
+put 192 n520 22.99
+put 1397 n668 58.12
+del 1005
+put 352 n363 45.04
+put 916 n225 8.33
+get 1673
+del 1680
+del 1890
+del 1479
+put 1932 n761 59.8
+get 824
+put 1722 n659 83.2
+put 1576 n378 49.63
+get 1923
+get 631
+get 1452
+put 1063 n306 96.0
+del 1047
+put 1385 n398 69.05
+count
+put 430 n2 28.19
+del 1117
+get 90
+put 1006 n319 79.19
+put 428 n433 29.97
+del 659
+put 557 n186 60.59
+count
+get 1813
+del 993
+del 71
+put 1890 n443 15.52
+del 338
+put 1756 n523 64.65
+del 1539
+put 1645 n310 54.61
+put 1595 n753 86.82
+put 966 n83 93.19
+put 105 n682 1.81
+del 950
+del 1719
+get 980
+get 549
+get 462
+put 1610 n216 44.0
+del 1991
+put 1172 n428 94.05
+put 1413 n793 50.21
+del 1753
+get 1380
+del 155
+del 296
+put 679 n462 79.38
+del 339
+put 1295 n679 7.94
+put 451 n332 27.33
+put 1490 n619 39.25
+put 436 n860 12.39
+put 105 n283 37.67
+put 1761 n238 81.57
+get 533
+get 997
+del 919
+get 826
+put 1670 n473 38.13
+put 773 n708 91.47
+del 557
+put 800 n681 36.76
+put 1801 n645 29.82
+count
+put 1658 n971 59.52
+count
+put 1522 n788 84.9
+count
+put 1257 n933 25.52
+put 406 n720 57.13
+put 741 n286 13.81
+put 1051 n749 87.32
+get 1150
+put 508 n23 17.6
+put 265 n270 38.78
+put 798 n685 77.71
+count
+get 49
+put 1507 n55 12.62
+get 19
+count
+put 1113 n27 90.89
+put 28 n521 19.63
+put 1289 n703 85.08
+get 1964
+put 479 n713 90.69
+put 1490 n994 69.98
+put 435 n753 73.57
+put 1135 n268 83.31
+put 1277 n312 42.2
+get 1104
+put 466 n773 34.97
+get 1456
+put 402 n911 16.92
+del 208
+get 76
+get 1742
+get 1234
+del 1747
+put 1737 n453 60.36
+put 1566 n46 23.66
+put 85 n762 72.61
+count
+get 222
+put 482 n640 25.06
+put 1229 n269 11.55
+get 1223
+put 1529 n623 35.5
+del 1173
+del 516
+del 566
+put 1960 n336 14.74
+del 1639
+put 317 n122 37.11
+get 639
+put 1484 n792 23.82
+put 1940 n504 98.04
+put 1168 n777 64.39
+put 1473 n308 80.73
+del 969
+put 1277 n895 96.1
+put 938 n4 40.69
+put 1316 n505 73.68
+put 67 n489 34.3
+get 375
+get 1109
+get 1667
+put 1065 n559 50.6
+put 1157 n243 12.22
+get 1692
+get 1367
+get 1066
+put 27 n426 55.73
+put 1624 n883 71.23
+put 37 n437 91.48
+put 1652 n326 2.28
+put 663 n656 6.49
+get 1193
+put 1052 n844 61.14
+put 1502 n148 84.23
+get 1280
+get 1390
+put 972 n560 13.88
+del 335
+del 525
+put 379 n199 12.12
+del 334
+del 235
+put 1045 n853 2.09
+get 825
+put 737 n559 65.33
+put 513 n877 90.11
+get 484
+put 1815 n406 25.57
+put 959 n234 39.84
+count
+del 871
+del 149
+del 475
+get 1714
+put 5 n579 75.68
+get 1792
+put 104 n895 44.81
+get 647
+put 1026 n689 30.74
+del 745
+get 1655
+get 604
+get 790
+put 1804 n685 77.11
+get 168
+put 1986 n325 32.72
+put 1380 n61 63.39
+put 1426 n76 49.71
+put 12 n961 28.26
+del 1416
+del 93
+put 819 n329 42.39
+get 306
+put 1253 n73 94.17
+del 1067
+put 780 n955 41.41
+count
+get 1246
+get 725
+get 1331
+count
+count
+put 847 n93 52.01
+put 1992 n211 83.39
+put 1758 n100 20.0
+del 1446
+count
+get 364
+get 832
+put 413 n111 28.42
+put 113 n106 8.86
+put 985 n907 99.04
+del 769
+put 997 n948 3.53
+put 1472 n737 39.31
+put 643 n997 16.88
+put 910 n255 27.66
+put 1921 n908 79.81
+put 1908 n76 43.74
+put 1043 n926 97.32
+put 534 n365 51.26
+get 1502
+del 346
+del 1671
+put 116 n124 55.48
+get 297
+put 1126 n654 24.1
+put 575 n226 86.72
+put 1917 n452 95.64
+put 1713 n662 95.18
+get 1132
+put 164 n232 34.22
+put 1913 n734 66.14
+put 1122 n932 23.43
+del 628
+get 366
+put 1216 n415 26.24
+put 1102 n902 85.01
+put 1912 n772 28.19
+del 659
+del 1928
+del 1658
+put 1315 n175 0.8
+put 723 n965 94.56
+put 1030 n313 65.17
+put 1738 n283 85.21
+count
+put 59 n691 99.94
+put 712 n741 63.94
+count
+del 657
+get 109
+get 1263
+get 640
+get 1241
+put 1450 n297 54.32
+put 415 n776 89.56
+put 1602 n828 55.93
+get 262
+get 622
+put 298 n458 65.16
+del 1891
+put 593 n596 38.83
+put 25 n289 38.74
+del 815
+put 289 n169 18.57
+put 1646 n362 72.21
+put 94 n155 43.18
+get 1260
+put 1539 n106 86.39
+put 1111 n4 42.73
+put 368 n645 67.08
+put 1924 n573 43.46
+put 672 n85 76.33
+put 1646 n490 41.76
+get 733
+del 750
+put 1486 n480 73.37
+put 1126 n771 30.27
+put 916 n471 30.89
+get 337
+count
+put 1030 n692 28.03
+count
+count
+put 1242 n323 39.25
+del 1463
+put 1582 n976 19.61
+get 1849
+put 1722 n816 28.15
+get 1400
+get 231
+put 1669 n393 54.79
+put 542 n331 73.52
+del 334
+get 1370
+put 367 n24 93.11
+put 425 n234 40.64
+put 1783 n795 91.3
+del 689
+get 1584
+put 524 n455 62.96
+get 986
+put 783 n928 55.18
+get 1160
+get 572
+count
+put 1020 n934 25.23
+get 663
+get 716
+put 222 n13 35.31
+get 1942
+del 196
+get 1637
+get 965
+get 995
+get 1845
+put 742 n251 23.87
+get 1246
+put 1543 n503 93.86
+del 1685
+del 1254
+get 1238
+put 795 n412 83.8
+put 1793 n884 94.32
+put 21 n173 71.9
+put 899 n995 45.08
+del 1123
+del 1273
+put 1211 n221 77.15
+get 1134
+del 907
+get 370
+get 1932
+put 319 n544 79.72
+del 470
+get 1509
+put 810 n496 63.02
+put 1620 n260 22.72
+get 1847
+put 129 n733 87.31
+get 609
+put 467 n515 69.34
+get 1733
+put 933 n186 5.5
+get 1592
+get 301
+get 309
+put 518 n31 43.29
+put 488 n107 47.59
+get 76
+get 1182
+put 11 n694 70.1
+put 1100 n338 9.61
+put 628 n891 47.64
+put 243 n904 75.62
+put 308 n221 52.81
+del 1473
+put 1211 n804 88.82
+count
+put 205 n256 39.7
+put 27 n651 3.72
+get 108
+del 1469
+get 1589
+put 467 n99 30.69
+get 706
+put 1506 n421 12.8
+get 275
+put 1869 n653 87.07
+put 1032 n242 13.38
+put 521 n168 58.73
+del 1490
+put 1618 n753 84.86
+put 1948 n784 97.05
+put 158 n909 49.77
+put 892 n717 88.07
+get 238
+get 369
+put 762 n518 91.93
+put 623 n532 55.24
+put 972 n864 7.6
+get 1220
+del 327
+put 396 n333 59.28
+del 1765
+get 1330
+count
+put 1062 n16 16.01
+put 330 n776 38.57
+put 753 n204 79.03
+put 299 n920 11.02
+get 917
+count
+get 386
+put 1791 n625 89.63
+put 8 n81 73.52
+del 1328
+get 634
+put 1366 n319 1.24
+put 161 n960 57.89
+del 673
+put 1784 n977 3.78
+put 286 n633 47.74
+put 305 n309 55.2
+del 1364
+put 2000 n466 63.42
+put 328 n603 76.22
+put 685 n807 1.88
+get 551
+get 598
+put 591 n72 20.84
+put 1150 n669 70.44
+get 509
+get 1966
+get 861
+put 76 n928 97.46
+get 564
+get 1087
+put 1564 n842 39.02
+put 204 n104 80.9
+get 1758
+put 1129 n207 99.9
+get 98
+put 78 n578 63.05
+put 789 n710 2.17
+put 1869 n842 41.76
+get 977
+get 1651
+get 1560
+put 1676 n613 96.05
+count
+count
+get 1459
+del 634
+get 512
+put 1043 n237 69.23
+put 259 n959 10.62
+get 729
+put 1890 n958 4.37
+put 1928 n488 65.87
+put 261 n219 91.98
+del 1727
+put 1524 n477 73.51
+get 1486
+get 1788
+del 885
+put 18 n629 13.62
+put 834 n466 29.43
+put 561 n664 98.57
+del 1129
+get 1185
+put 1302 n367 40.48
+put 264 n92 32.89
+del 1987
+put 224 n249 43.29
+put 1263 n686 12.85
+del 1384
+put 591 n524 99.07
+put 59 n745 85.82
+put 1985 n471 89.36
+del 939
+get 1826
+del 280
+get 1068
+put 1776 n578 79.4
+put 1777 n605 85.06
+put 75 n973 72.61
+get 1746
+put 595 n179 61.11
+put 818 n490 73.02
+count
+get 183
+del 1734
+get 498
+del 1858
+get 1043
+put 1830 n415 5.8
+del 1055
+put 351 n308 58.97
+put 88 n635 15.52
+get 579
+get 1186
+put 757 n304 44.95
+get 494
+get 228
+put 982 n765 47.72
+put 1166 n226 62.45
+get 45
+get 1359
+put 1162 n698 59.93
+count
+put 1562 n318 84.24
+put 1802 n280 24.32
+get 1643
+get 1579
+get 711
+count
+del 432
+put 277 n367 40.56
+put 1592 n622 13.82
+get 244
+put 1570 n658 70.9
+put 1595 n825 90.21
+del 1676
+put 1105 n441 94.88
+put 517 n391 39.41
+del 1121
+put 359 n126 17.09
+get 793
+get 1242
+del 635
+put 203 n903 75.21
+put 1998 n417 27.05
+get 1471
+get 1586
+put 1679 n955 98.8
+put 1626 n149 51.79
+put 790 n61 69.04
+put 884 n109 76.11
+put 480 n264 10.41
+put 900 n137 44.86
+put 603 n597 87.19
+del 681
+get 1843
+put 1344 n515 58.92
+put 763 n725 86.32
+get 1829
+get 951
+get 756
+put 1672 n745 54.65
+del 46
+del 1703
+get 275
+put 1235 n725 82.38
+count
+put 87 n569 85.93
+put 1729 n882 66.17
+put 1844 n254 49.21
+put 1478 n505 94.51
+put 4 n253 94.75
+put 1989 n131 59.16
+put 155 n128 28.56
+get 1444
+put 1397 n675 63.84
+get 1489
+del 113
+put 1106 n88 3.72
+get 763
+put 1515 n840 0.04
+get 984
+put 1979 n749 54.64
+put 119 n248 1.82
+put 1859 n447 20.81
+put 1848 n929 75.14
+del 21
+put 365 n838 66.85
+put 1616 n581 61.42
+put 1180 n934 25.13
+put 990 n415 21.46
+get 1406
+put 1032 n939 35.26
+put 1213 n314 40.37
+put 310 n489 1.85
+get 1912
+get 678
+get 320
+del 402
+put 90 n476 69.43
+put 1164 n470 18.71
+put 1852 n772 67.64
+put 43 n564 9.17
+put 1209 n16 9.86
+put 1229 n437 25.78
+get 1264
+get 1244
+get 1470
+del 450
+put 1148 n810 72.83
+put 947 n803 99.78
+get 1035
+put 1643 n662 25.51
+put 499 n57 27.71
+put 1154 n910 13.53
+del 837
+get 712
+count
+del 1163
+put 1402 n436 53.67
+put 1546 n493 51.95
+del 482
+get 557
+get 1148
+get 1245
+get 1309
+get 1153
+get 649
+get 914
+put 1804 n311 59.15
+get 799
+put 1351 n402 12.85
+put 1613 n762 57.29
+del 1649
+get 1541
+put 496 n113 90.89
+get 610
+put 421 n624 97.38
+del 1337
+get 1063
+put 1245 n147 17.87
+get 942
+del 781
+get 1799
+put 1300 n379 93.45
+get 1245
+put 977 n49 98.61
+put 1933 n771 85.3
+get 726
+put 928 n299 8.54
+put 1418 n803 25.69
+put 1032 n808 72.44
+get 1178
+put 700 n727 98.78
+put 335 n799 0.32
+put 1035 n325 64.81
+put 82 n180 41.97
+get 1804
+del 1577
+del 982
+put 586 n752 45.42
+count
+get 537
+get 1805
+put 1400 n455 72.16
+put 579 n238 55.34
+put 1756 n770 92.39
+get 711
+get 31
+put 416 n689 60.9
+get 1271
+get 1211
+put 1713 n850 40.07
+put 640 n957 86.03
+put 170 n676 46.18
+count
+put 82 n496 13.61
+count
+get 1549
+put 220 n481 65.81
+put 1957 n652 65.36
+get 942
+put 542 n543 85.75
+get 1053
+del 1834
+count
+del 497
+put 900 n945 18.5
+put 903 n185 77.17
+del 235
+get 1287
+put 658 n394 67.73
+put 11 n462 6.61
+del 71
+put 1512 n854 21.32
+put 764 n786 61.43
+put 1835 n190 92.65
+count
+get 1667
+put 789 n288 88.12
+get 1327
+put 1919 n173 65.22
+count
+get 1610
+put 41 n435 27.23
+put 760 n26 41.17
+put 687 n204 14.65
+put 1944 n745 37.43
+put 1370 n513 53.77
+get 439
+put 975 n929 14.34
+put 717 n563 93.9
+get 195
+get 193
+put 415 n126 40.59
+count
+get 738
+del 967
+put 1844 n393 45.24
+put 344 n62 54.4
+put 214 n915 51.62
+del 1183
+put 1327 n600 92.7
+get 152
+get 843
+put 462 n457 11.09
+put 751 n22 98.05
+put 476 n598 14.26
+put 826 n837 42.36
+del 922
+del 648
+put 1728 n134 20.82
+count
+put 647 n69 22.07
+put 526 n195 37.32
+get 230
+put 1277 n40 82.1
+put 1399 n24 2.68
+get 255
+put 549 n752 84.83
+count
+get 771
+get 787
+put 598 n159 63.23
+count
+get 1262
+get 261
+put 1008 n22 67.25
+del 1010
+put 1594 n268 99.84
+count
+del 1517
+put 232 n372 22.0
+get 244
+get 157
+get 913
+count
+put 1862 n27 80.72
+put 29 n27 72.82
+put 1687 n616 35.93
+put 1732 n21 53.26
+put 1342 n574 95.89
+put 624 n978 66.02
+get 538
+get 1935
+put 931 n635 40.08
+put 449 n852 24.35
+count
+del 534
+get 876
+put 826 n99 3.81
+count
+put 1580 n961 36.45
+put 1716 n294 67.71
+get 1501
+del 439
+get 1259
+put 153 n508 12.76
+put 365 n913 90.06
+put 1289 n120 79.61
+put 1145 n471 57.65
+put 239 n460 64.45
+put 1875 n53 52.08
+put 575 n328 55.12
+get 1055
+get 502
+put 600 n685 71.67
+get 1622
+get 545
+get 1980
+put 959 n19 52.89
+put 1915 n655 4.88
+get 404
+put 1711 n634 97.15
+get 1468
+put 1733 n710 39.11
+put 170 n407 43.79
+put 332 n924 4.85
+get 626
+get 576
+get 1859
+put 1745 n55 91.31
+put 564 n922 7.06
+del 692
+get 916
+put 1692 n984 34.26
+get 1243
+get 66
+del 1806
+put 754 n796 3.62
+put 1197 n2 49.47
+get 1104
+put 966 n203 46.12
+get 1101
+del 1516
+put 1788 n701 5.24
+put 684 n483 38.2
+put 789 n748 66.68
+put 70 n2 78.74
+count
+put 1698 n484 49.41
+put 1219 n203 1.02
+put 187 n738 51.24
+get 837
+put 1945 n432 4.74
+put 1598 n147 72.45
+get 574
+get 378
+put 333 n594 91.97
+get 1643
+put 1725 n641 51.11
+put 300 n9 92.99
+get 1997
+count
+del 926
+put 99 n500 94.49
+put 1683 n127 18.13
+count
+put 1349 n672 29.04
+get 96
+get 228
+count
+get 188
+get 874
+put 1170 n968 98.43
+del 1853
+put 884 n0 1.88
+get 1918
+put 826 n399 69.62
+count
+put 412 n113 61.64
+put 648 n308 74.03
+put 1244 n333 25.15
+del 1583
+get 1200
+put 45 n215 26.58
+del 405
+del 1578
+count
+get 1876
+put 1676 n580 12.18
+get 213
+put 1997 n314 84.19
+del 728
+put 1814 n160 36.37
+del 1786
+put 1034 n893 16.75
+put 1745 n399 57.29
+put 819 n920 73.37
+put 1143 n87 95.55
+del 1120
+del 100
+put 1691 n414 93.66
+put 973 n907 37.77
+put 1862 n136 31.75
+get 728
+get 1581
+put 427 n292 83.97
+put 513 n246 68.42
+put 861 n461 42.85
+put 1523 n900 52.79
+del 962
+get 811
+del 1491
+put 1805 n427 17.94
+get 1336
+put 277 n170 27.78
+put 778 n263 11.5
+put 1122 n821 19.96
+get 1195
+get 734
+del 329
+put 1722 n869 3.28
+put 876 n422 52.73
+put 405 n931 52.36
+get 1671
+put 91 n676 58.14
+put 1320 n395 56.47
+put 1833 n909 2.85
+get 292
+get 1980
+put 1042 n989 88.8
+count
+put 24 n752 38.76
+put 666 n917 21.66
+put 886 n360 44.1
+del 1780
+put 1545 n148 69.95
+put 709 n849 98.0
+del 1144
+get 1255
+put 1124 n372 14.61
+get 1476
+del 784
+get 1847
+get 1496
+get 427
+put 1231 n112 67.56
+get 1559
+put 135 n298 33.28
+get 1175
+put 920 n463 82.82
+count
+put 841 n242 56.41
+get 1204
+put 559 n191 58.02
+put 1744 n142 92.83
+del 768
+get 1802
+put 843 n552 68.98
+put 1694 n83 46.74
+del 1880
+count
+get 1179
+del 1728
+get 1609
+count
+put 224 n424 96.1
+get 309
+put 1676 n696 95.85
+get 560
+get 916
+put 1440 n945 55.58
+get 628
+put 1822 n57 33.32
+put 16 n22 79.22
+del 1528
+count
+put 1231 n649 89.36
+put 388 n467 33.5
+count
+put 830 n623 11.38
+put 1444 n440 18.7
+get 168
+get 367
+del 380
+put 792 n962 46.18
+put 1618 n160 93.52
+put 1036 n229 41.12
+put 1070 n625 48.04
+put 715 n405 59.56
+put 1394 n221 66.53
+put 344 n571 72.57
+get 1669
+get 945
+get 1098
+put 1930 n219 44.62
+get 464
+count
+get 1888
+get 1752
+put 1771 n626 58.77
+put 1537 n12 84.71
+put 1310 n47 15.34
+put 789 n171 46.63
+put 122 n482 53.23
+del 873
+get 585
+del 1425
+get 656
+put 340 n943 47.99
+put 1022 n356 65.93
+get 1636
+get 952
+put 1949 n205 71.94
+put 698 n852 46.5
+put 480 n119 0.13
+get 1566
+put 1024 n332 5.68
+put 1263 n211 47.56
+del 572
+put 1648 n692 53.7
+put 1019 n186 6.12
+get 734
+put 1428 n868 95.51
+put 1108 n650 88.95
+put 531 n292 45.06
+del 624
+get 1029
+put 760 n147 21.52
+put 979 n496 81.37
+put 1024 n130 67.92
+get 1548
+put 46 n572 98.06
+del 434
+put 1972 n876 12.69
+count
+get 1196
+get 41
+get 1838
+put 437 n625 8.26
+put 871 n516 37.06
+get 1564
+del 273
+put 1651 n151 25.84
+get 1265
+put 834 n180 49.64
+del 1388
+put 1586 n878 58.44
+get 1525
+put 43 n379 81.19
+put 1743 n699 86.88
+count
+put 994 n584 64.31
+get 778
+get 846
+get 514
+get 371
+put 1208 n841 7.1
+put 424 n704 27.42
+put 401 n685 12.65
+put 288 n636 50.29
+get 207
+put 98 n196 6.18
+del 1896
+get 588
+put 1928 n743 78.89
+del 1084
+put 515 n399 1.85
+get 753
+put 1403 n542 66.31
+put 90 n411 24.73
+get 292
+get 1780
+put 1302 n489 2.21
+get 69
+del 1147
+get 1505
+get 812
+get 870
+get 21
+put 976 n745 59.4
+get 1340
+del 528
+get 885
+get 432
+get 947
+put 483 n887 20.09
+get 751
+put 1808 n80 34.06
+put 468 n814 36.92
+put 382 n330 59.08
+put 1447 n785 12.89
+del 690
+put 1318 n590 0.55
+get 67
+put 1677 n373 18.36
+put 986 n964 95.67
+get 888
+put 1707 n453 97.3
+count
+put 1847 n773 66.33
+put 397 n83 50.14
+count
+put 904 n638 37.94
+put 491 n919 0.09
+del 931
+put 1734 n180 21.82
+put 966 n171 61.67
+put 793 n603 63.25
+del 1139
+put 1157 n224 52.72
+get 32
+put 1283 n326 6.08
+get 1156
+count
+put 1537 n945 70.36
+put 301 n89 35.96
+put 710 n610 42.78
+put 959 n208 85.25
+put 1372 n626 58.61
+put 1926 n125 65.32
+put 1713 n126 85.85
+get 63
+get 1759
+put 1561 n996 7.55
+get 149
+put 1086 n532 0.53
+put 318 n386 14.47
+get 1587
+get 403
+put 1834 n334 61.53
+get 1068
+get 1278
+get 830
+put 1287 n561 82.59
+put 383 n558 10.86
+get 204
+get 1602
+put 1960 n389 83.29
+put 312 n323 80.04
+put 328 n588 28.64
+del 1635
+get 1913
+put 827 n461 58.74
+put 1235 n664 25.96
+put 1363 n577 18.84
+del 1810
+put 699 n947 4.16
+get 86
+get 109
+put 1720 n205 15.08
+put 96 n12 0.19
+put 1974 n788 88.99
+put 802 n776 1.12
+count
+put 833 n664 87.32
+put 1673 n900 98.05
+get 1655
+get 1466
+put 770 n750 20.04
+del 1036
+get 783
+put 1385 n578 31.58
+put 1545 n323 95.58
+put 314 n634 99.14
+put 1267 n64 57.14
+put 1978 n193 22.55
+put 995 n606 45.11
+put 1236 n956 18.94
+get 1308
+del 1626
+get 1912
+get 1173
+del 980
+put 850 n652 26.55
+del 199
+put 527 n22 98.19
+get 1566
+put 1068 n914 92.68
+get 434
+put 3 n644 20.73
+put 1668 n332 52.87
+get 1641
+del 1540
+put 237 n807 84.32
+del 1582
+put 663 n330 78.67
+put 800 n156 9.16
+put 1896 n541 93.9
+del 819
+get 730
+put 965 n89 5.09
+get 1415
+put 365 n994 39.37
+get 133
+get 730
+del 175
+get 1622
+put 293 n280 78.99
+put 1080 n958 39.25
+get 182
+count
+put 990 n734 7.59
+put 130 n986 24.26
+put 1160 n863 65.59
+get 1288
+put 652 n519 3.48
+get 945
+del 1734
+put 1139 n598 23.44
+get 993
+get 733
+put 1967 n451 30.79
+del 490
+get 798
+put 1660 n74 4.31
+put 1196 n815 79.76
+put 2 n164 97.0
+put 176 n334 72.97
+get 1433
+put 636 n9 45.2
+put 72 n862 37.29
+del 1467
+del 260
+put 1144 n433 72.75
+put 651 n215 79.27
+get 1853
+del 1240
+count
+get 1270
+del 121
+get 1807
+put 78 n625 93.08
+get 505
+put 1448 n209 87.83
+put 1096 n558 62.57
+put 783 n280 85.02
+put 43 n856 57.54
+get 1658
+del 1942
+count
+put 1919 n705 86.58
+count
+put 222 n498 22.18
+put 641 n301 89.61
+get 940
+put 758 n23 73.51
+del 124
+get 1297
+put 1995 n742 52.38
+del 1962
+put 1379 n826 75.44
+get 515
+get 1713
+put 386 n181 63.94
+put 1779 n561 16.97
+put 447 n717 46.49
+get 1851
+put 40 n34 13.67
+del 1480
+del 961
+get 1406
+count
+put 1721 n694 37.95
+get 1091
+del 1504
+get 777
+put 353 n702 30.8
+del 1684
+count
+put 1335 n954 30.78
+del 1825
+put 1910 n533 78.33
+put 900 n393 0.35
+get 1337
+put 1307 n259 1.2
+get 184
+del 1909
+get 1648
+put 1518 n247 1.88
+count
+put 1932 n65 53.39
+count
+put 664 n384 66.94
+count
+put 1754 n193 3.74
+get 74
+put 1826 n49 15.91
+del 997
+del 709
+del 1617
+put 726 n76 71.54
+count
+put 1393 n346 55.31
+put 861 n218 79.4
+get 238
+count
+put 876 n379 41.6
+get 387
+del 214
+put 887 n251 87.34
+put 472 n526 23.45
+put 1778 n112 13.82
+put 1870 n444 17.31
+del 1503
+get 1362
+get 827
+count
+get 1769
+put 237 n14 76.45
+put 1973 n270 87.21
+get 1030
+get 294
+del 1118
+del 192
+put 176 n647 68.63
+put 1384 n85 97.3
+get 1131
+count
+put 1590 n424 85.91
+put 816 n501 95.0
+del 1698
+get 1367
+get 1611
+del 438
+del 727
+put 579 n231 53.05
+get 1820
+count
+del 314
+put 745 n842 26.32
+put 1518 n644 47.81
+get 235
+put 1417 n664 33.17
+count
+put 1995 n22 29.36
+get 1457
+put 586 n99 45.63
+put 468 n768 60.17
+get 830
+count
+count
+get 1510
+put 2 n249 7.54
+get 1392
+put 1656 n809 34.57
+get 1245
+get 157
+del 1919
+put 503 n284 73.19
+put 1658 n156 12.83
+put 970 n127 80.84
+put 910 n715 21.34
+get 1433
+put 659 n87 18.08
+count
+get 1690
+put 1869 n248 32.48
+count
+get 1012
+del 1797
+del 331
+get 364
+get 219
+count
+put 1146 n993 79.09
+put 1720 n509 26.25
+get 433
+get 1652
+get 365
+put 1477 n324 6.85
+del 1133
+get 585
+put 615 n712 6.67
+get 767
+get 1538
+put 1426 n420 63.29
+del 1754
+put 1771 n608 56.38
+put 405 n161 30.17
+put 761 n530 43.82
+put 881 n577 81.15
+put 1374 n317 77.39
+get 713
+del 936
+del 1719
+get 18
+del 724
+put 1451 n876 12.5
+get 389
+put 1782 n685 71.66
+put 1925 n706 67.78
+put 1682 n441 39.79
+get 1361
+put 419 n435 32.09
+del 556
+del 503
+put 93 n765 33.16
+put 971 n899 72.8
+put 1257 n254 13.42
+get 1174
+put 45 n460 52.11
+put 862 n891 66.96
+get 619
+put 286 n239 25.34
+put 656 n508 93.01
+put 545 n168 52.92
+put 789 n633 7.42
+put 1380 n738 82.0
+get 147
+get 1014
+del 421
+get 464
+get 1676
+get 305
+get 894
+count
+put 89 n620 63.3
+get 1235
+put 1655 n164 85.6
+put 338 n85 27.39
+get 349
+del 1636
+put 703 n115 92.36
+get 350
+put 146 n60 90.09
+get 1316
+put 1269 n241 38.77
+put 846 n543 30.45
+count
+get 522
+put 1433 n203 15.87
+del 1038
+get 147
+put 305 n63 7.58
+get 569
+get 1180
+put 2000 n906 95.46
+put 320 n688 90.85
+get 1274
+put 142 n296 90.61
+get 1514
+put 1698 n885 51.27
+put 1112 n345 8.52
+put 279 n870 97.95
+del 1632
+del 1581
+put 1808 n95 77.05
+put 1569 n795 15.86
+del 1833
+get 80
+get 359
+put 1066 n236 48.0
+put 1 n192 60.1
+put 1154 n585 83.61
+put 1973 n180 19.72
+get 1588
+put 880 n143 50.74
+put 628 n685 81.73
+get 5
+get 1962
+get 1646
+get 721
+put 1493 n651 78.87
+get 929
+put 1767 n358 19.39
+put 1402 n212 24.51
+put 1155 n308 35.94
+put 652 n378 64.66
+put 501 n527 36.71
+put 1463 n916 11.51
+count
+get 1218
+put 602 n416 36.43
+put 1506 n278 89.09
+put 666 n891 74.83
+put 69 n783 84.55
+put 261 n723 69.54
+get 989
+get 1696
+get 1490
+put 1105 n226 89.5
+get 1216
+put 414 n335 13.21
+count
+del 1044
+del 590
+del 600
+put 1480 n511 50.3
+put 311 n245 95.43
+put 1911 n90 13.99
+put 1098 n677 24.39
+put 1584 n278 63.24
+put 1494 n184 53.4
+get 1952
+put 628 n246 33.06
+get 970
+put 1306 n531 75.32
+del 1082
+get 33
+get 1282
+get 588
+del 403
+put 1172 n263 48.23
+put 902 n123 87.13
+get 204
+put 1733 n475 48.25
+put 781 n578 52.46
+del 1476
+put 686 n656 28.28
+put 871 n114 80.29
+put 126 n839 26.13
+put 306 n248 67.98
+del 1455
+put 1899 n959 88.09
+put 1756 n258 24.89
+get 1550
+count
+put 1106 n4 0.3
+get 1273
+count
+put 868 n164 59.38
+del 1592
+put 88 n86 33.7
+get 1147
+get 1580
+put 383 n666 84.38
+del 1017
+put 292 n889 98.22
+put 58 n509 23.26
+put 270 n991 7.58
+put 349 n55 11.32
+get 1582
+put 838 n448 73.7
+get 237
+put 1671 n287 16.66
+get 1653
+put 841 n434 24.34
+put 1332 n88 7.61
+count
+put 1162 n880 88.43
+del 919
+get 129
+count
+get 1434
+del 492
+get 1758
+del 1797
+del 173
+del 739
+get 247
+put 594 n356 74.56
+put 528 n183 97.24
+put 21 n766 57.75
+put 1516 n738 12.58
+get 1577
+put 181 n900 94.35
+put 1921 n619 45.81
+put 778 n146 84.38
+put 1470 n374 23.75
+del 1158
+get 194
+get 643
+put 1861 n800 78.2
+put 1097 n107 34.85
+put 1213 n913 14.5
+put 1357 n992 82.22
+get 1909
+count
+get 1400
+del 472
+get 946
+put 1622 n730 78.58
+del 880
+count
+put 1585 n611 41.9
+put 1469 n918 27.16
+put 1388 n580 11.33
+put 508 n176 15.93
+count
+get 617
+get 1247
+get 1672
+put 807 n51 85.95
+put 1483 n383 39.42
+put 1216 n600 58.89
+put 872 n732 42.0
+get 1261
+get 1411
+count
+del 794
+put 1313 n246 57.31
+put 1655 n690 94.7
+count
+get 1289
+put 1952 n769 95.74
+count
+put 353 n556 10.42
+del 673
+get 1128
+del 558
+put 1781 n708 67.51
+get 751
+del 1845
+get 52
+put 1209 n496 49.18
+put 1905 n687 37.96
+put 147 n781 22.45
+del 1725
+put 1820 n840 71.22
+put 205 n288 27.5
+get 1803
+put 1794 n849 15.34
+get 277
+put 1 n983 13.03
+put 344 n341 13.38
+del 297
+put 824 n579 58.01
+put 1479 n652 7.79
+put 228 n869 68.38
+get 1821
+del 1425
+get 1046
+count
+del 395
+put 1431 n284 53.2
+put 1170 n188 93.76
+put 1583 n327 10.91
+put 1169 n394 52.19
+get 1653
+put 1371 n655 82.99
+put 578 n368 89.85
+count
+del 1957
+get 234
+del 56
+put 720 n985 39.01
+put 948 n417 82.91
+put 1769 n16 66.19
+put 91 n188 40.61
+put 1755 n218 13.84
+put 929 n347 43.21
+put 1547 n592 54.8
+put 531 n495 2.73
+put 522 n876 71.21
+get 1947
+put 1953 n405 28.99
+del 638
+get 1545
+put 1082 n987 33.4
+del 1843
+del 1820
+get 30
+put 1110 n873 5.95
+get 1615
+put 260 n947 66.78
+del 1888
+get 1955
+count
+put 1469 n629 23.44
+del 518
+get 451
+del 487
+put 1279 n189 4.7
+put 1373 n238 26.79
+put 1046 n216 43.63
+put 878 n696 19.29
+get 558
+get 1224
+get 1926
+put 676 n473 2.58
+put 1975 n272 83.01
+get 575
+get 941
+get 977
+put 43 n143 17.59
+put 1904 n923 23.12
+del 1478
+get 172
+put 551 n787 24.52
+put 1550 n917 3.93
+put 1047 n869 51.14
+get 265
+del 1439
+put 1262 n958 43.54
+put 425 n868 77.94
+put 1228 n834 63.56
+put 1011 n308 92.47
+get 192
+del 1091
+put 1280 n10 44.25
+put 1528 n273 65.8
+get 19
+get 721
+get 1983
+put 211 n797 76.54
+put 460 n39 12.6
+get 113
+get 1949
+put 1416 n717 79.15
+put 1044 n679 48.6
+put 56 n380 82.24
+count
+get 201
+count
+put 248 n852 98.88
+get 1246
+get 1866
+get 27
+get 1435
+put 117 n470 46.17
+get 32
+put 699 n542 69.06
+put 1373 n65 71.28
+put 911 n882 95.77
+put 1775 n616 75.52
+put 1193 n533 90.0
+put 787 n849 96.36
+del 1923
+get 996
+put 723 n823 25.85
+get 1560
+get 134
+get 1862
+put 242 n514 35.14
+get 40
+get 975
+get 209
+get 376
+get 1074
+put 1575 n211 15.48
+put 1456 n670 94.78
+del 128
+get 1985
+get 1459
+del 1321
+del 1200
+put 1169 n23 78.27
+put 357 n159 32.83
+get 609
+put 419 n880 38.9
+put 1620 n328 41.78
+get 359
+put 485 n406 53.47
+get 581
+get 1230
+get 1269
+put 1481 n246 33.97
+put 30 n941 38.35
+put 573 n463 59.55
+put 203 n19 10.6
+put 267 n225 87.29
+put 1576 n747 67.36
+get 575
+del 1939
+del 95
+put 1904 n884 79.67
+put 893 n32 16.59
+put 521 n576 22.13
+put 1727 n136 9.05
+put 531 n30 12.44
+put 968 n88 36.15
+put 707 n348 58.92
+put 694 n955 33.73
+del 928
+put 523 n375 72.51
+count
+put 880 n705 41.21
+put 732 n18 43.76
+get 849
+del 805
+put 1227 n739 9.86
+put 602 n877 87.37
+put 1087 n473 50.59
+get 1777
+put 126 n82 1.66
+get 504
+put 1439 n378 89.93
+put 725 n376 70.15
+get 1400
+get 1649
+get 1413
+del 94
+put 1221 n188 99.56
+get 889
+del 729
+put 383 n774 70.06
+put 650 n268 57.57
+get 995
+get 126
+get 1745
+count
+put 990 n949 69.47
+get 622
+del 1357
+get 1959
+get 1146
+put 528 n779 74.64
+del 390
+put 424 n307 59.77
+get 1712
+put 1262 n184 5.17
+get 1280
+get 1636
+put 1027 n309 90.29
+get 1023
+get 66
+del 496
+get 1434
+count
+put 633 n411 98.98
+del 138
+count
+del 1842
+put 72 n984 33.57
+del 379
+put 361 n764 54.28
+put 836 n358 96.64
+put 1822 n551 57.07
+put 1026 n218 28.78
+put 373 n627 62.98
+get 1462
+del 1322
+get 1403
+put 370 n100 17.61
+put 1494 n761 63.14
+put 472 n958 76.2
+put 1095 n485 25.44
+put 1900 n387 72.59
+del 1896
+del 13
+put 1880 n140 91.8
+get 935
+get 62
+get 834
+del 1479
+put 1164 n711 71.62
+get 308
+put 1551 n261 89.83
+put 1425 n28 11.11
+get 1027
+put 588 n247 23.6
+del 412
+put 1312 n482 86.22
+put 378 n875 35.33
+get 1537
+get 1265
+put 784 n903 68.9
+put 793 n938 30.69
+put 974 n328 87.76
+put 1430 n388 44.94
+put 1461 n935 87.68
+count
+put 1520 n495 34.65
+get 1665
+put 1131 n875 0.04
+put 1071 n670 34.71
+del 474
+put 1307 n376 25.57
+get 572
+get 51
+put 1262 n74 36.56
+put 1653 n985 90.23
+get 1413
+get 1713
+get 1994
+put 1676 n787 33.47
+get 1857
+put 599 n111 3.52
+put 884 n16 18.6
+put 1881 n13 57.59
+del 1427
+put 731 n183 3.51
+put 1488 n443 8.17
+put 1942 n14 62.9
+del 922
+get 784
+put 328 n854 71.65
+del 1599
+get 1477
+del 1364
+put 598 n554 51.63
+get 144
+get 308
+get 517
+count
+del 533
+del 994
+get 1982
+get 31
+put 1161 n50 37.65
+get 1576
+put 1352 n953 49.63
+get 425
+get 1666
+put 1936 n890 0.68
+put 773 n881 35.67
+del 1162
+get 395
+get 1180
+count
+get 707
+del 743
+put 1721 n689 19.52
+put 1928 n394 45.69
+get 1766
+put 409 n139 79.15
+put 1375 n902 76.48
+put 1764 n62 38.86
+get 401
+del 1592
+get 1340
+put 715 n594 16.82
+get 1960
+get 1011
+get 39
+put 1903 n793 85.53
+get 1289
+put 392 n919 73.97
+del 1984
+put 1593 n768 19.67
+del 101
+del 1643
+get 1290
+get 165
+get 1398
+put 349 n130 35.99
+put 1920 n20 97.3
+get 1767
+count
+get 1039
+put 721 n729 30.45
+put 1158 n219 97.57
+get 98
+put 1692 n228 25.31
+put 1102 n961 57.03
+put 1804 n436 54.69
+del 1742
+put 1451 n242 84.16
+put 1078 n328 86.58
+put 542 n666 18.23
+put 917 n542 98.7
+del 705
+get 1066
+get 1715
+get 323
+put 1185 n480 86.57
+put 82 n295 75.95
+put 1625 n612 16.66
+count
+del 1860
+put 293 n974 54.39
+put 103 n225 51.89
+del 851
+put 1469 n634 58.55
+get 1799
+get 1009
+put 405 n272 63.54
+put 1667 n120 74.26
+get 833
+put 614 n275 80.81
+put 76 n478 65.79
+get 1274
+get 1609
+put 446 n621 11.92
+del 282
+get 1092
+put 740 n613 3.97
+put 852 n360 50.77
+put 295 n238 43.22
+put 1043 n239 63.49
+get 1341
+put 303 n387 68.27
+put 1874 n137 66.86
+put 761 n598 89.14
+count
+put 1928 n92 4.78
+put 1296 n339 79.53
+del 1179
+get 902
+get 1604
+put 484 n121 4.72
+put 1454 n879 25.78
+put 1838 n160 39.63
+get 1222
+put 62 n389 75.01
+put 1916 n639 25.38
+get 470
+put 1823 n132 73.29
+del 143
+put 1043 n903 33.01
+put 790 n237 95.81
+get 241
+count
+del 1015
+put 1480 n560 33.33
+put 504 n999 97.25
+put 59 n485 97.57
+put 606 n96 2.66
+del 163
+put 520 n320 97.34
+put 262 n373 62.44
+put 38 n795 29.09
+put 11 n837 63.71
+put 1150 n281 22.72
+put 563 n661 32.31
+get 1905
+put 967 n511 6.18
+put 1120 n527 61.01
+put 42 n307 92.86
+put 758 n749 71.32
+put 1321 n663 43.66
+put 1042 n490 64.21
+put 1916 n253 38.09
+del 119
+get 267
+put 1560 n644 25.69
+put 684 n359 80.32
+count
+put 468 n251 82.53
+get 1969
+get 1355
+put 852 n161 93.88
+get 479
+get 942
+put 1760 n488 85.74
+get 99
+get 1121
+put 1504 n40 2.82
+get 1017
+del 1655
+get 227
+put 614 n363 84.1
+put 430 n404 37.51
+get 1920
+count
+put 1110 n964 0.73
+count
+put 1868 n280 51.05
+put 1045 n635 5.54
+put 1168 n813 30.72
+del 869
+count
+get 1471
+put 841 n648 25.18
+put 536 n957 65.92
+put 1466 n416 31.86
+put 976 n373 21.7
+count
+put 1982 n156 54.5
+put 1 n785 94.03
+put 1310 n676 0.22
+del 1185
+del 1480
+put 1575 n188 17.92
+del 640
+put 276 n37 58.7
+put 820 n72 14.8
+put 1028 n714 23.77
+get 1911
+del 1471
+del 581
+get 433
+get 1825
+put 380 n183 72.95
+get 1146
+get 966
+get 1044
+get 905
+put 231 n596 38.71
+get 956
+put 1525 n541 19.61
+get 1963
+count
+put 1023 n796 83.48
+put 171 n345 28.82
+del 60
+put 848 n521 36.16
+put 427 n637 86.47
+get 533
+get 1862
+put 1995 n376 91.71
+put 843 n401 31.49
+put 886 n738 78.53
+put 1582 n170 48.45
+del 1374
+put 38 n968 17.8
+del 52
+put 643 n338 65.7
+get 137
+put 384 n175 23.32
+count
+put 643 n10 59.01
+put 981 n104 34.97
+put 350 n454 50.5
+put 134 n940 80.38
+get 1150
+get 1853
+put 946 n312 19.96
+get 781
+put 293 n381 71.89
+put 110 n849 28.78
+put 506 n902 82.02
+get 606
+count
+get 242
+put 1718 n569 41.06
+count
+get 95
+count
+get 526
+put 1853 n782 21.14
+put 630 n696 40.08
+del 532
+put 1426 n641 20.83
+get 1591
+put 814 n463 41.07
+get 1254
+put 1367 n403 32.55
+get 1321
+put 1418 n854 48.23
+put 421 n919 59.36
+get 1497
+get 1116
+put 1975 n702 25.89
+put 43 n873 48.52
+del 547
+get 853
+count
+del 1465
+put 1481 n643 64.24
+put 1782 n613 68.14
+put 124 n362 76.83
+get 1128
+get 1234
+put 1658 n794 56.12
+get 764
+put 353 n882 16.83
+put 401 n956 8.19
+get 1999
+get 797
+put 146 n276 18.35
+put 1796 n585 37.82
+put 1334 n44 75.14
+get 738
+get 64
+del 767
+get 301
+put 870 n291 9.02
+get 585
+put 400 n309 65.0
+put 522 n751 19.95
+del 1642
+put 1456 n874 12.54
+put 964 n239 51.67
+get 1207
+get 596
+put 445 n829 12.9
+put 777 n617 13.95
+count
+get 649
+put 927 n651 12.9
+get 1159
+put 1576 n469 69.7
+del 1050
+get 1186
+put 1220 n204 91.52
+get 385
+put 1734 n453 38.82
+put 197 n188 42.93
+put 1993 n21 93.05
+put 217 n665 50.94
+put 886 n311 12.0
+get 460
+del 1815
+put 934 n345 22.12
+put 1786 n353 14.47
+get 1248
+get 1721
+get 1053
+put 697 n222 15.15
+put 1438 n518 79.08
+get 1255
+del 1809
+del 1509
+put 1667 n661 42.89
+del 106
+del 1890
+get 756
+put 239 n482 30.93
+get 1195
+del 587
+count
+put 1626 n459 89.76
+put 1068 n169 54.75
+put 139 n432 69.79
+del 973
+put 1071 n894 3.3
+put 1906 n116 98.42
+put 1993 n713 22.19
+put 1916 n341 92.55
+put 1901 n592 63.37
+get 1373
+get 168
+put 279 n68 73.53
+get 1956
+put 1606 n786 61.27
+del 586
+put 262 n383 24.74
+get 328
+put 1653 n415 75.11
+put 1491 n481 0.36
+put 1144 n86 54.36
+put 1675 n126 84.41
+get 1162
+put 1114 n948 29.85
+put 752 n895 98.15
+put 1903 n177 33.9
+get 693
+put 1206 n257 93.04
+put 1505 n469 98.47
+put 1274 n445 41.39
+put 494 n954 1.04
+put 122 n239 5.0
+put 1557 n566 57.89
+count
+put 618 n125 55.98
+del 592
+put 1061 n636 38.7
+put 388 n317 71.23
+put 987 n342 90.45
+count
+put 1925 n633 53.56
+get 1531
+put 762 n266 71.44
+put 1504 n536 21.93
+put 505 n534 75.9
+put 53 n431 26.99
+put 1357 n373 41.85
+put 1886 n736 77.43
+del 1701
+del 780
+put 442 n663 13.86
+del 1210
+put 1085 n107 41.16
+get 852
+count
+put 1657 n623 59.49
+put 1593 n901 59.54
+put 1695 n80 83.94
+put 1143 n565 73.44
+put 1775 n516 8.7
+get 706
+put 100 n851 86.17
+get 124
+del 25
+get 1647
+put 135 n133 67.08
+get 22
+count
+del 1597
+put 295 n241 84.9
+get 424
+put 109 n606 14.97
+get 506
+put 1314 n742 6.62
+put 1092 n599 13.5
+get 1303
+put 1182 n632 43.26
+put 420 n117 40.61
+count
+put 70 n588 44.92
+put 1945 n968 68.36
+put 753 n637 67.2
+get 1641
+get 518
+put 422 n412 96.1
+put 798 n187 96.15
+get 379
+put 1516 n626 45.69
+put 766 n312 24.46
+count
+put 486 n638 82.68
+get 954
+get 144
+get 623
+get 1935
+get 1665
+get 91
+del 1570
+put 1151 n42 4.15
+get 700
+put 163 n886 64.13
+del 284
+get 503
+get 1601
+get 1116
+put 1320 n42 68.23
+put 1353 n240 7.24
+put 851 n633 80.32
+del 1965
+del 1074
+put 829 n287 7.88
+del 1840
+del 1121
+put 1531 n3 18.74
+put 398 n932 69.34
+get 1978
+put 1596 n636 21.86
+get 1713
+put 367 n308 41.29
+put 785 n646 45.17
+put 192 n910 65.49
+get 1589
+get 562
+put 1127 n910 74.71
+put 818 n808 80.52
+put 1580 n944 97.59
+put 783 n80 25.71
+put 1655 n687 59.75
+get 747
+put 1616 n933 47.88
+put 1187 n880 49.04
+put 1991 n518 56.78
+put 1372 n11 95.03
+get 1849
+put 1710 n762 98.57
+put 1804 n868 10.36
+put 1194 n496 79.86
+put 1577 n972 19.56
+put 1455 n448 7.99
+put 950 n564 15.5
+get 1692
+get 1455
+put 1393 n706 14.34
+put 720 n244 25.44
+get 1075
+put 1413 n949 34.48
+get 1276
+get 323
+count
+del 1150
+get 942
+del 1659
+put 1697 n598 85.37
+put 1065 n264 7.12
+del 25
+put 1732 n841 59.69
+count
+del 569
+put 757 n559 15.8
+get 1275
+put 313 n259 81.75
+del 1679
+put 118 n252 36.46
+get 1397
+count
+del 454
+put 1742 n9 42.42
+del 1187
+put 1745 n827 62.78
+put 1993 n109 86.88
+put 336 n68 48.85
+get 1417
+get 943
+put 1679 n629 18.29
+get 1814
+put 463 n10 36.11
+put 1016 n516 69.71
+count
+get 612
+get 151
+put 1185 n231 73.87
+del 1356
+del 183
+get 785
+put 521 n642 81.7
+get 1592
+put 967 n617 67.46
+put 1089 n145 23.63
+get 1641
+put 711 n997 79.98
+put 1712 n578 1.32
+get 305
+get 602
+count
+put 1486 n208 61.47
+count
+get 1534
+get 1958
+del 1109
+get 1064
+get 670
+put 1508 n226 23.68
+get 1797
+count
+del 1487
+put 1785 n234 84.97
+get 1408
+del 530
+del 162
+count
+put 129 n786 25.14
+put 287 n658 19.2
+put 1554 n650 54.05
+put 1877 n820 30.02
+put 859 n322 49.23
+get 31
+get 1702
+put 921 n817 3.37
+del 707
+get 509
+del 617
+get 1911
+del 87
+count
+get 1308
+put 726 n636 46.54
+put 117 n374 66.98
+put 1313 n707 92.45
+put 1252 n272 35.22
+put 199 n915 15.87
+get 884
+put 1696 n955 28.24
+put 730 n889 42.01
+put 801 n452 82.84
+get 655
+get 884
+put 275 n7 83.76
+put 1956 n406 26.69
+put 1190 n79 96.54
+put 797 n215 18.39
+del 1533
+put 1717 n918 95.34
+put 1021 n381 88.72
+del 276
+get 1867
+put 502 n558 38.51
+count
+put 646 n149 49.27
+del 976
+put 392 n394 44.79
+count
+get 1536
+del 1678
+put 1954 n459 8.74
+put 1932 n989 93.03
+put 431 n54 50.82
+del 688
+del 1533
+put 1223 n816 19.18
+del 758
+put 1787 n115 70.7
+put 690 n33 73.93
+get 1980
+del 1708
+del 901
+put 1160 n399 11.75
+del 1289
+put 1644 n634 29.78
+put 1288 n909 21.35
+put 1198 n551 56.78
+count
+get 299
+get 1709
+del 1240
+put 1239 n142 61.5
+del 1556
+get 1575
+get 1030
+del 788
+get 1047
+put 1378 n31 91.6
+get 1137
+get 1766
+get 1555
+put 97 n342 4.64
+put 1223 n565 98.04
+put 1036 n245 44.88
+put 1220 n201 48.5
+put 705 n976 56.01
+del 1627
+put 1518 n495 21.75
+del 734
+get 68
+get 82
+get 513
+put 508 n617 43.74
+put 910 n781 4.73
+put 10 n940 75.51
+count
+put 1506 n700 39.53
+get 1297
+get 740
+put 858 n842 70.3
+put 386 n989 52.81
+get 1119
+del 907
+del 1827
+count
+put 1134 n875 81.52
+get 1176
+put 684 n402 14.63
+put 1212 n929 87.33
+put 1766 n612 32.01
+get 1826
+put 494 n548 49.35
+get 1733
+get 1729
+get 239
+get 1875
+get 783
+get 380
+get 1212
+del 222
+put 392 n602 98.71
+get 1547
+put 1756 n777 83.77
+put 880 n640 40.44
+put 248 n829 93.43
+get 413
+get 75
+del 913
+put 1192 n196 53.88
+del 151
+get 21
+get 1596
+get 1041
+count
+put 791 n72 75.29
+count
+del 558
+put 1467 n684 83.68
+put 565 n311 76.87
+put 1421 n719 58.29
+del 1629
+get 197
+put 1316 n434 45.98
+put 1047 n863 75.07
+get 1487
+put 429 n209 39.62
+put 248 n40 3.07
+get 139
+put 1140 n197 58.48
+get 315
+put 1257 n538 64.08
+del 490
+get 872
+get 1393
+get 514
+put 1560 n629 86.03
+put 1648 n731 87.98
+del 1697
+get 889
+put 603 n138 56.8
+put 1762 n865 3.42
+get 1491
+del 710
+put 769 n195 51.87
+put 1793 n179 22.97
+get 452
+get 202
+put 1556 n148 3.85
+get 1677
+get 866
+put 1210 n148 89.77
+del 735
+put 451 n739 29.38
+del 44
+get 598
+get 1237
+put 632 n590 11.43
+put 806 n123 7.78
+put 298 n572 69.25
+put 1350 n40 21.29
+put 1765 n685 92.86
+get 596
+put 1892 n200 53.76
+put 498 n332 26.34
+put 924 n492 98.05
+get 770
+put 1175 n313 6.71
+del 26
+put 668 n81 76.81
+get 953
+get 344
+del 700
+put 1995 n823 45.95
+put 1311 n77 25.37
+put 546 n783 36.02
+put 1746 n918 2.06
+put 362 n753 61.1
+del 13
+del 259
+get 1163
+del 1290
+put 1506 n859 2.32
+get 378
+count
+put 1662 n956 65.74
+put 426 n220 30.28
+put 984 n340 11.93
+put 549 n900 81.16
+del 91
+put 157 n361 8.44
+put 1980 n760 33.17
+put 1039 n333 21.3
+get 670
+put 816 n62 11.2
+get 812
+put 812 n519 76.04
+put 811 n60 99.28
+put 1721 n1 6.65
+get 466
+put 1944 n289 54.43
+get 333
+get 187
+del 1193
+count
+put 1660 n909 84.95
+del 1886
+get 31
+get 1518
+count
+get 996
+get 668
+get 1955
+put 1742 n869 38.55
+del 378
+put 109 n244 80.69
+put 610 n590 40.7
+get 376
+put 568 n525 93.54
+del 47
+get 893
+get 929
+get 207
+del 709
+put 613 n801 18.97
+put 1238 n5 77.82
+put 84 n10 47.66
+get 1476
+get 225
+put 171 n231 21.2
+del 263
+get 1728
+get 1185
+put 1196 n312 88.67
+get 284
+get 1312
+get 1514
+get 129
+del 927
+get 341
+get 1179
+put 1555 n350 83.86
+get 551
+put 1291 n671 13.94
+get 1459
+put 628 n434 76.79
+count
+put 1727 n34 95.36
+del 1420
+count
+get 1784
+get 403
+put 1719 n83 60.12
+get 1974
+del 25
+put 1354 n933 70.05
+get 336
+get 216
+put 618 n922 0.44
+put 1311 n82 81.28
+get 957
+put 963 n502 93.69
+put 605 n538 40.09
+count
+del 819
+put 1289 n817 12.76
+put 270 n701 93.95
+put 1232 n324 67.47
+put 770 n838 10.51
+get 1640
+get 1503
+put 1021 n693 60.03
+put 1595 n64 12.2
+get 1883
+put 1330 n491 9.95
+put 1103 n759 90.64
+get 862
+del 1515
+put 13 n393 45.31
+get 356
+put 1942 n819 56.8
+del 156
+put 1491 n399 84.45
+del 1666
+put 269 n254 97.24
+put 1150 n971 99.41
+get 560
+get 1384
+put 1520 n273 6.55
+put 561 n559 37.72
+put 938 n502 94.34
+get 1990
+count
+del 1105
+put 1600 n264 89.18
+put 504 n207 72.34
+del 248
+put 1224 n602 45.66
+put 951 n910 44.18
+put 480 n941 32.73
+get 1219
+put 794 n334 53.72
+get 1598
+get 261
+put 432 n781 69.39
+put 404 n785 56.19
+count
+get 561
+count
+put 1996 n295 52.35
+put 922 n246 74.88
+put 1897 n460 9.58
+get 764
+put 513 n930 64.85
+del 1437
+get 1481
+put 1971 n78 4.91
+put 162 n970 74.63
+put 1660 n152 30.63
+put 780 n635 85.58
+put 1678 n444 84.9
+get 594
+del 744
+put 363 n142 44.41
+put 1846 n153 12.98
+put 200 n907 12.93
+del 333
+put 186 n582 49.71
+get 1751
+get 1806
+put 333 n415 16.19
+put 527 n716 58.86
+get 1112
+put 1254 n663 23.85
+del 116
+put 616 n631 93.95
+put 4 n387 85.79
+put 1604 n162 58.26
+put 530 n558 40.25
+put 1755 n174 67.06
+get 1780
+get 1650
+get 1897
+get 1028
+get 1714
+del 23
+put 44 n642 13.51
+put 956 n929 85.96
+put 1928 n157 25.11
+del 249
+del 350
+put 1094 n745 17.97
+put 1023 n611 70.23
+get 762
+put 1789 n195 58.77
+get 702
+put 1784 n386 41.35
+put 533 n88 39.78
+del 747
+put 1266 n442 32.81
+get 1321
+get 1125
+put 1193 n119 18.01
+put 1840 n535 46.67
+put 1775 n771 52.62
+del 463
+get 409
+put 1119 n677 19.76
+get 832
+count
+put 186 n373 20.37
+put 143 n94 3.52
+get 1008
+del 960
+get 935
+put 1462 n278 75.83
+put 1992 n17 3.7
+del 1757
+put 1715 n422 47.03
+put 398 n715 95.42
+put 1088 n871 37.28
+put 611 n363 87.45
+put 834 n469 16.5
+get 1529
+del 976
+get 201
+put 1409 n828 34.91
+del 841
+get 940
+put 514 n553 60.41
+put 18 n854 1.89
+put 1558 n130 47.85
+get 616
+put 492 n882 34.92
+get 838
+del 1913
+del 1923
+put 1321 n828 62.06
+get 373
+put 104 n54 26.75
+get 1435
+del 1622
+count
+del 1334
+del 1499
+del 315
+put 1129 n117 70.65
+put 902 n378 37.65
+put 1652 n409 12.1
+put 1099 n816 57.51
+del 626
+put 1891 n348 87.4
+put 310 n12 28.69
+put 1329 n207 79.1
+put 1529 n923 93.52
+put 1051 n191 43.67
+put 293 n704 24.46
+put 1841 n727 90.64
+del 287
+put 1189 n400 27.08
+get 91
+put 668 n681 47.5
+del 209
+put 578 n663 22.11
+del 1379
+del 1885
+put 1464 n917 28.43
+put 706 n580 25.62
+put 423 n289 21.66
+del 166
+put 245 n841 49.11
+put 1496 n990 14.6
+del 884
+put 1096 n446 9.5
+put 254 n76 93.21
+get 780
+count
+del 1921
+get 1206
+put 1544 n594 21.57
+put 576 n675 88.91
+put 1352 n178 76.45
+put 47 n328 44.71
+get 1079
+count
+put 187 n74 69.56
+put 1295 n857 0.64
+put 589 n293 85.15
+put 146 n770 37.29
+put 517 n172 55.39
+put 933 n105 1.96
+put 853 n661 81.68
+get 1362
+put 733 n10 57.35
+del 848
+put 1595 n943 19.55
+put 767 n363 28.8
+put 1009 n460 70.92
+put 105 n82 79.45
+put 809 n194 50.59
+put 1378 n732 81.37
+count
+put 994 n442 48.54
+get 1012
+put 498 n308 82.22
+put 1842 n817 39.4
+put 595 n226 33.79
+put 1304 n262 84.59
+put 1728 n483 34.09
+get 1913
+del 766
+get 1887
+get 1722
+get 1062
+put 1764 n652 69.94
+put 1419 n740 91.7
+del 296
+get 979
+put 311 n398 89.5
+get 771
+put 289 n272 58.0
+get 483
+get 1247
+put 1029 n320 6.99
+put 250 n19 36.45
+put 1704 n634 64.59
+put 1848 n469 28.16
+put 1269 n844 90.72
+get 1987
+put 344 n160 18.79
+get 977
+put 1846 n337 18.35
+get 163
+get 1210
+put 294 n736 16.85
+put 18 n60 98.09
+put 1702 n557 53.74
+put 1081 n660 75.05
+put 396 n336 82.75
+del 1467
+del 1362
+put 470 n398 99.0
+put 157 n119 24.18
+put 1119 n898 3.63
+put 755 n881 47.72
+get 1753
+put 1092 n789 65.64
+get 412
+get 440
+get 207
+del 1899
+put 1729 n609 10.35
+put 464 n431 62.54
+get 554
+put 184 n459 89.43
+put 1575 n852 52.8
+get 527
+put 1765 n129 11.87
+put 1720 n130 82.97
+put 1199 n622 87.32
+get 1228
+put 569 n380 69.92
+put 574 n225 85.81
+get 1105
+put 1139 n239 8.38
+put 1693 n485 46.61
+put 1149 n509 15.11
+get 1029
+get 251
+put 1386 n641 30.28
+get 1566
+put 543 n422 88.06
+count
+count
+put 275 n743 33.21
+get 520
+del 907
+del 1257
+put 992 n838 58.37
+put 968 n827 35.25
+get 391
+get 506
+get 468
+get 1081
+del 1853
+put 47 n498 13.75
+put 1088 n544 7.77
+put 49 n207 76.63
+put 1479 n599 51.77
+put 1130 n701 5.66
+get 52
+put 1475 n674 95.38
+put 1317 n419 34.97
+get 794
+get 1295
+put 936 n96 60.36
+get 1993
+put 666 n239 51.9
+put 137 n738 64.18
+get 1389
+get 1277
+put 1320 n127 2.94
+get 690
+put 1976 n723 81.61
+get 316
+put 409 n45 80.58
+put 517 n582 38.48
+get 1626
+get 279
+put 1491 n59 79.44
+get 517
+get 868
+del 1029
+count
+get 607
+get 1619
+del 924
+get 741
+del 1391
+put 1597 n87 39.06
+count
+put 747 n936 62.82
+put 1066 n448 48.76
+put 203 n57 93.27
+get 813
+put 1867 n67 61.27
+put 1981 n46 28.85
+put 1643 n254 7.07
+put 139 n184 16.49
+del 1244
+get 1503
+get 1400
+del 1121
+put 1544 n246 40.05
+del 1015
+put 555 n171 98.1
+del 1297
+get 293
+get 709
+del 1123
+get 450
+put 229 n360 98.6
+put 1451 n547 69.59
+put 1424 n3 71.61
+get 1988
+put 465 n563 39.22
+get 232
+put 1408 n671 16.59
+get 1973
+put 1318 n942 32.7
+get 990
+put 1345 n260 76.76
+put 1504 n157 92.02
+put 1524 n851 53.56
+put 1831 n16 17.96
+get 1885
+get 1961
+put 302 n292 90.74
+put 922 n10 70.0
+put 554 n457 34.31
+put 1540 n273 64.17
+put 1522 n950 33.7
+put 4 n195 0.6
+put 1937 n754 72.37
+get 1257
+get 642
+put 1866 n510 67.51
+del 1682
+del 1379
+put 995 n640 54.4
+del 1547
+put 920 n770 98.96
+put 1478 n444 0.85
+get 287
+count
+put 1908 n145 6.85
+get 1048
+put 1995 n345 87.05
+put 933 n780 48.74
+get 1138
+get 824
+count
+put 223 n761 0.44
+get 1599
+put 837 n294 60.78
+get 1547
+get 1968
+put 1217 n884 19.86
+put 1243 n719 9.01
+put 320 n686 70.1
+get 406
+put 1677 n158 60.63
+put 585 n400 85.87
+put 105 n812 8.71
+put 1709 n861 5.86
+put 814 n753 64.57
+get 988
+put 508 n868 62.4
+put 1924 n158 82.02
+put 1617 n379 9.75
+get 99
+del 1215
+put 1303 n318 24.01
+get 1220
+del 564
+get 648
+del 168
+get 283
+count
+get 479
+get 303
+put 1701 n717 62.04
+put 1371 n762 73.08
+get 1802
+put 30 n205 16.12
+get 1500
+put 67 n347 87.91
+del 945
+put 73 n661 8.88
+put 561 n15 3.46
+put 1742 n805 18.49
+get 1708
+put 600 n504 47.76
+put 1979 n428 63.62
+get 1847
+put 1653 n886 71.48
+get 963
+put 41 n971 34.1
+put 332 n51 45.12
+put 1488 n382 62.43
+put 1407 n731 78.77
+del 860
+put 1506 n474 15.95
+get 1390
+count
+put 1360 n215 42.03
+put 91 n807 43.05
+put 270 n898 21.21
+put 477 n451 51.46
+get 1441
+get 1913
+del 926
+put 1073 n845 20.49
+put 1823 n129 57.59
+get 1942
+get 885
+put 1663 n126 36.35
+put 984 n91 85.5
+get 1464
+put 1423 n298 62.35
+put 315 n232 6.98
+del 1916
+count
+del 317
+put 225 n21 81.82
+del 1274
+get 496
+del 1643
+del 1443
+put 1359 n904 59.5
+put 633 n779 12.18
+count
+put 934 n358 5.5
+put 20 n744 66.13
+put 1531 n320 49.71
+put 1145 n350 30.35
+get 1353
+get 1951
+get 1948
+put 2000 n402 10.38
+put 346 n191 78.83
+put 337 n510 94.72
+put 535 n332 58.91
+del 519
+put 505 n358 89.87
+put 1372 n417 70.53
+put 272 n13 52.87
+put 802 n589 62.5
+put 1838 n442 4.22
+get 620
+put 560 n834 37.99
+get 704
+get 875
+del 1781
+get 1378
+get 1026
+put 1881 n947 64.41
+put 1391 n978 45.37
+get 994
+get 344
+get 1929
+put 207 n763 44.17
+put 1606 n100 70.19
+put 616 n44 12.92
+put 1014 n165 65.26
+get 742
+del 1787
+put 1495 n884 69.45
+get 253
+get 1496
+put 1648 n109 13.81
+put 1077 n918 16.96
+put 225 n117 11.69
+put 1738 n786 10.49
+get 1337
+del 30
+put 444 n190 99.11
+put 558 n977 90.28
+get 933
+get 312
+put 1035 n525 92.97
+get 1420
+put 1307 n88 50.82
+put 75 n919 93.77
+put 1063 n925 78.84
+del 1764
+get 254
+put 689 n959 63.29
+count
+put 111 n561 56.6
+get 1029
+put 1396 n852 94.0
+put 1549 n521 71.55
+get 1827
+del 694
+get 547
+get 1035
+put 521 n64 24.97
+get 556
+del 1461
+get 1317
+count
+put 306 n562 63.97
+count
+put 1424 n197 75.14
+put 56 n917 51.99
+put 1477 n139 43.58
+get 68
+get 423
+get 1633
+get 438
+get 1064
+put 210 n674 47.39
+del 1054
+del 1631
+get 1831
+get 1237
+get 1835
+put 1732 n841 61.05
+put 1667 n945 70.68
+put 620 n379 40.67
+put 264 n682 66.95
+put 767 n933 99.11
+put 1229 n612 12.25
+del 966
+put 764 n308 24.91
+get 1821
+count
+put 1044 n587 90.07
+put 1454 n547 92.79
+put 349 n772 39.63
+get 609
+get 150
+put 222 n331 62.71
+get 1557
+put 689 n119 7.89
+get 1233
+get 88
+get 1369
+get 202
+put 1401 n88 78.6
+put 540 n532 71.85
+del 1617
+get 706
+get 917
+put 1588 n113 5.99
+get 1556
+get 850
+get 1213
+put 1081 n864 68.03
+put 1866 n604 16.88
+count
+del 808
+put 778 n872 98.76
+put 1675 n211 94.58
+put 1020 n948 0.38
+put 310 n980 0.04
+get 1020
+del 297
+put 97 n793 3.01
+put 1297 n987 24.51
+get 1799
+put 1344 n884 71.78
+get 1200
+put 481 n595 90.86
+get 83
+put 1625 n866 10.29
+get 960
+get 496
+del 1222
+get 684
+put 682 n561 21.46
+put 1900 n217 29.14
+count
+put 1870 n302 96.0
+put 1224 n494 1.45
+put 118 n6 62.31
+put 1851 n116 97.35
+get 1540
+put 1853 n994 10.0
+put 247 n467 69.77
+get 397
+get 620
+put 1420 n529 81.32
+put 821 n790 25.1
+put 608 n161 31.04
+put 1935 n398 38.94
+get 375
+get 1002
+get 56
+put 1025 n256 6.91
+put 1516 n131 25.37
+put 1677 n969 96.5
+get 790
+get 707
+del 1012
+put 385 n151 58.84
+del 672
+count
+put 1744 n519 65.83
+get 183
+put 1220 n570 36.19
+get 732
+put 1551 n50 66.29
+del 600
+get 9
+count
+put 155 n273 33.67
+count
+put 873 n671 31.32
+put 1320 n420 98.63
+put 1355 n74 37.63
+get 1523
+get 396
+get 1944
+get 1480
+put 840 n595 99.28
+del 906
+get 1400
+put 76 n697 68.9
+put 1123 n246 74.23
+put 68 n31 67.76
+del 301
+get 739
+del 1890
+put 212 n856 49.33
+put 527 n424 32.79
+del 947
+put 126 n176 56.48
+put 1938 n406 40.13
+put 1279 n75 74.92
+put 141 n38 50.67
+put 1274 n123 85.23
+del 1729
+get 1910
+count
+del 1307
+del 19
+put 1094 n652 50.69
+get 59
+del 1027
+put 1503 n669 0.75
+put 1385 n133 48.0
+put 1964 n84 25.25
+get 565
+put 965 n178 52.62
+count
+put 1383 n173 98.23
+put 90 n497 83.59
+put 644 n608 91.53
+del 668
+put 1696 n866 60.29
+count
+get 700
+put 187 n3 16.15
+put 893 n530 62.18
+put 22 n448 46.54
+get 1220
+put 1520 n661 78.55
+count
+put 1236 n288 87.13
+put 1911 n127 38.36
+put 1819 n425 36.7
+get 480
+put 269 n557 34.34
+put 38 n355 33.23
+put 1280 n80 10.83
+del 1609
+get 1852
+put 711 n471 99.8
+get 1092
+put 259 n707 62.78
+put 196 n190 25.02
+put 1414 n795 66.82
+get 1184
+del 1826
+put 1519 n174 94.81
+put 1351 n947 87.73
+put 1188 n263 73.05
+put 118 n204 69.49
+put 1215 n303 97.6
+get 1935
+put 1665 n128 24.31
+put 891 n464 99.43
+put 532 n845 31.42
+get 1276
+put 533 n593 42.06
+put 1201 n205 82.83
+put 1344 n586 0.02
+get 397
+put 999 n105 74.37
+count
+put 761 n293 8.78
+put 1220 n487 8.64
+put 1671 n483 14.75
+get 293
+del 1676
+get 551
+put 102 n511 75.61
+put 1410 n58 33.59
+get 733
+put 1944 n336 56.37
+put 1209 n957 15.8
+put 1191 n835 73.84
+put 1677 n889 87.66
+put 326 n435 97.41
+put 558 n146 18.28
+get 7
+del 972
+count
+del 1988
+get 1975
+put 1313 n587 70.45
+get 575
+get 106
+get 710
+put 1937 n724 28.5
+put 239 n466 36.02
+put 534 n59 26.29
+put 1602 n421 7.08
+put 607 n332 82.3
+del 1592
+put 869 n741 29.36
+put 508 n642 27.16
+get 1906
+put 843 n280 47.62
+put 752 n726 99.63
+put 1906 n960 34.03
+get 465
+put 1607 n908 2.98
+get 1758
+put 345 n806 4.18
+get 1975
+get 554
+put 417 n279 78.82
+del 929
+put 1780 n815 21.19
+del 561
+del 562
+put 158 n989 65.23
+put 1434 n985 47.22
+get 1537
+put 190 n585 69.73
+put 1647 n541 86.58
+get 1096
+del 1694
+get 535
+put 1960 n445 9.1
+del 921
+get 499
+get 151
+put 721 n104 59.54
+put 350 n275 69.69
+get 1072
+del 36
+get 586
+del 1903
+get 1085
+del 53
+del 183
+get 413
+del 483
+del 700
+put 681 n107 59.06
+get 1708
+put 123 n357 72.48
+put 1041 n438 17.27
+put 1044 n535 44.66
+del 438
+put 1798 n517 41.19
+put 1174 n505 4.85
+put 215 n608 80.85
+get 52
+put 1076 n807 29.97
+put 338 n249 3.45
+put 1953 n320 36.68
+put 1540 n162 33.89
+put 1461 n194 2.36
+put 1290 n146 34.84
+count
+put 1034 n875 54.83
+put 1584 n711 8.1
+del 722
+get 855
+del 376
+get 1343
+count
+get 424
+put 873 n81 85.53
+del 1736
+get 828
+del 716
+put 175 n931 21.52
+put 1682 n589 11.3
+del 242
+put 1390 n512 67.99
+get 56
+put 376 n787 58.46
+put 114 n999 29.32
+put 1214 n760 9.13
+get 123
+count
+count
+count
+get 1133
+get 1720
+put 250 n646 67.92
+count
+get 1121
+put 1240 n658 61.5
+del 1061
+get 1851
+get 221
+put 740 n729 60.77
+put 1793 n332 99.37
+put 1000 n319 56.15
+get 1362
+put 346 n336 8.1
+put 668 n584 7.51
+put 258 n29 49.45
+del 346
+del 79
+put 482 n441 99.61
+put 1116 n324 7.76
+put 500 n122 20.91
+put 633 n961 82.9
+put 1959 n565 11.97
+put 342 n379 18.04
+put 1231 n413 30.16
+put 1846 n670 58.42
+get 1996
+put 94 n308 25.33
+put 1200 n355 96.69
+put 71 n53 56.8
+put 1429 n224 28.83
+get 1571
+get 1317
+put 317 n990 82.95
+put 461 n922 18.36
+del 1540
+get 1813
+del 1787
+count
+put 1027 n92 5.73
+del 416
+get 1546
+put 334 n928 1.91
+get 878
+put 1334 n361 62.99
+put 1986 n581 56.23
+get 635
+get 422
+count
+del 1380
+count
+del 1841
+count
+put 1820 n205 40.77
+put 1744 n342 35.14
+count
+count
+put 889 n270 23.91
+get 605
+put 1861 n850 31.15
+put 1082 n436 26.3
+get 586
+put 809 n62 0.35
+put 1973 n763 28.25
+put 817 n841 27.74
+get 225
+get 1393
+put 1754 n523 31.26
+get 635
+put 332 n751 39.81
+put 1650 n302 52.88
+get 1010
+del 720
+get 1527
+put 970 n656 93.74
+put 1277 n483 18.76
+get 1281
+del 753
+put 323 n941 97.6
+del 242
+put 946 n544 86.3
+del 1036
+put 1870 n749 49.14
+put 1678 n462 43.04
+put 365 n251 49.58
+del 693
+get 924
+put 731 n326 4.76
+del 1074
+count
+put 94 n292 54.38
+get 874
+get 603
+put 1260 n43 84.28
+put 1765 n4 57.94
+count
+get 1694
+put 435 n658 35.44
+put 1628 n951 70.84
+get 1356
+get 1308
+put 1515 n744 12.99
+put 210 n819 99.49
+put 945 n472 67.76
+put 1411 n242 99.76
+del 1750
+put 1742 n353 54.06
+put 1653 n240 93.7
+put 1613 n293 78.75
+get 553
+put 1607 n861 89.47
+del 1306
+put 137 n403 52.09
+put 1813 n297 37.99
+get 757
+put 1996 n179 66.97
+put 620 n241 85.74
+del 1999
+del 334
+put 1470 n855 61.24
+get 205
+get 44
+put 662 n472 8.46
+get 1437
+put 1955 n712 96.68
+get 359
+del 1240
+del 72
+del 704
+count
+put 1060 n582 32.0
+get 1637
+count
+get 1088
+put 1728 n887 19.18
+count
+del 1359
+put 252 n589 30.41
+put 139 n831 61.03
+get 878
+put 1995 n237 24.67
+get 940
+put 914 n298 30.01
+put 119 n405 99.07
+put 1147 n475 97.61
+put 493 n620 54.74
+put 1889 n841 4.62
+count
+del 54
+put 1450 n809 11.89
+put 150 n723 73.19
+put 213 n267 20.49
+get 968
+del 1535
+del 991
+put 1840 n11 49.4
+put 1861 n567 84.49
+put 1852 n445 12.91
+put 1158 n158 40.51
+put 1591 n517 70.08
+get 751
+put 264 n347 40.2
+get 1056
+put 1749 n889 49.37
+put 545 n430 41.33
+count
+put 839 n276 32.23
+get 1850
+get 1962
+count
+put 703 n933 64.79
+get 21
+get 1414
+count
+put 1341 n316 41.84
+put 1069 n812 48.94
+put 1286 n400 25.63
+put 638 n74 93.7
+put 641 n651 58.64
+get 657
+put 1306 n989 76.25
+get 1547
+put 483 n303 40.91
+del 336
+put 1188 n99 71.91
+put 434 n177 80.69
+get 1254
+put 1804 n463 85.66
+put 1550 n551 48.0
+put 1991 n987 16.42
+get 1221
+del 512
+del 789
+put 813 n293 53.39
+get 1268
+get 1921
+get 965
+put 180 n49 98.58
+put 659 n887 88.31
+put 799 n919 42.91
+get 1487
+put 1337 n472 30.36
+put 854 n574 16.48
+del 518
+del 1139
+put 539 n124 95.58
+put 721 n366 28.4
+put 1355 n501 75.95
+put 1739 n862 92.83
+put 1256 n673 80.64
+put 1050 n633 64.72
+put 1117 n956 54.93
+put 967 n163 50.17
+put 1040 n996 67.46
+put 114 n825 17.03
+put 1028 n957 8.21
+put 1874 n271 4.51
+get 250
+get 872
+get 767
+del 1737
+get 1264
+put 720 n64 37.74
+get 829
+put 1987 n159 41.8
+put 690 n175 75.62
+put 821 n432 63.15
+put 382 n204 17.84
+get 1499
+get 1637
+put 1173 n822 45.93
+put 414 n385 23.54
+get 187
+put 116 n505 9.67
+del 1907
+get 351
+del 1978
+put 1359 n689 73.93
+put 1125 n663 75.78
+put 848 n658 15.46
+put 1318 n130 41.66
+get 713
+get 782
+get 1064
+del 1510
+put 639 n677 28.84
+put 20 n431 64.52
+get 276
+put 815 n484 58.36
+put 1686 n420 90.19
+put 346 n567 24.02
+put 1630 n548 7.79
+get 449
+del 311
+get 1154
+put 833 n806 10.12
+get 834
+put 1790 n800 68.74
+get 1890
+del 1301
+get 1747
+count
+count
+put 1352 n513 45.21
+put 1845 n150 50.91
+count
+put 1291 n546 32.88
+put 990 n959 63.85
+get 1423
+get 1348
+put 773 n358 17.68
+put 1121 n296 29.05
+get 23
+get 1282
+put 1165 n881 19.02
+put 1176 n377 61.64
+get 659
+put 1078 n101 35.51
+put 781 n656 31.02
+put 750 n790 82.31
+put 1602 n977 71.68
+put 1471 n258 96.69
+put 356 n480 49.17
+get 1130
+put 1259 n73 35.67
+count
+get 1253
+put 107 n716 79.44
+put 520 n356 9.49
+put 242 n664 18.06
+del 144
+put 745 n260 58.5
+del 1587
+put 1921 n707 64.3
+put 1429 n595 92.95
+get 833
+get 408
+put 87 n519 71.8
+put 1523 n767 87.85
+get 725
+put 1440 n678 86.39
+get 1326
+put 1921 n582 4.51
+get 740
+get 1116
+put 1301 n107 77.07
+count
+count
+put 792 n682 14.55
+get 968
+put 1909 n150 8.42
+put 1124 n72 16.72
+put 392 n811 29.99
+put 1048 n878 21.66
+get 1823
+put 698 n227 54.76
+put 1210 n496 66.22
+count
+get 758
+del 1638
+put 959 n81 24.65
+put 1762 n392 95.55
+put 813 n995 91.0
+get 1457
+put 1301 n260 90.11
+get 1238
+put 111 n292 62.85
+get 1690
+put 170 n450 88.01
+get 1103
+get 1403
+del 866
+get 655
+put 699 n130 36.85
+put 1709 n970 35.29
+put 1437 n357 56.59
+put 168 n760 92.93
+put 330 n168 65.6
+put 413 n416 63.95
+get 1133
+put 366 n207 47.65
+put 1813 n750 0.03
+get 1317
+put 548 n766 89.58
+put 654 n217 67.21
+put 944 n205 71.44
+put 1851 n142 34.41
+get 1119
+get 1232
+put 1371 n201 45.86
+del 1936
+get 765
+get 1234
+put 1077 n458 44.0
+get 1091
+put 608 n625 71.2
+del 248
+put 825 n434 95.47
+count
+del 289
+put 169 n635 25.85
+put 391 n774 81.15
+get 87
+put 1462 n620 41.84
+get 1911
+get 1938
+count
+put 1640 n703 72.66
+put 1929 n715 11.82
+del 1954
+put 681 n139 69.44
+put 1475 n150 74.43
+put 1064 n776 77.57
+count
+get 1102
+put 1719 n652 35.54
+get 820
+get 122
+put 311 n995 67.45
+count
+put 22 n355 98.7
+put 1121 n60 39.18
+put 1812 n431 23.42
+put 1699 n672 49.62
+put 569 n350 81.88
+put 179 n639 28.08
+put 106 n615 79.62
+put 1840 n611 21.27
+get 640
+put 523 n532 76.07
+get 1319
+get 1303
+del 1644
+put 1069 n808 86.32
+put 1028 n570 40.68
+put 182 n273 79.4
+put 555 n618 62.8
+get 1138
+get 1066
+get 501
+put 1001 n936 84.24
+get 956
+get 31
+del 1679
+del 542
+put 126 n344 65.68
+put 4 n515 52.73
+put 941 n704 12.43
+put 887 n168 9.45
+put 1596 n631 10.65
+del 1588
+get 982
+put 744 n365 65.5
+get 1079
+put 954 n222 81.86
+put 600 n349 2.07
+get 956
+put 659 n811 51.15
+get 79
+get 1920
+put 193 n957 92.83
+get 1387
+get 1749
+del 1888
+put 175 n284 97.03
+put 1582 n99 28.96
+count
+put 1806 n641 98.07
+get 766
+put 761 n611 58.28
+put 214 n472 46.21
+get 938
+put 1816 n423 15.42
+put 56 n2 23.81
+get 152
+put 163 n960 48.36
+put 544 n628 41.2
+put 948 n645 61.69
+get 1164
+get 1611
+put 1913 n368 61.77
+put 966 n91 96.27
+get 275
+put 1285 n856 5.83
+get 642
+put 479 n862 83.51
+put 888 n355 83.93
+get 1940
+get 634
+get 1217
+get 1353
+get 1545
+put 981 n258 25.67
+del 1002
+del 1048
+put 101 n134 6.76
+put 1356 n34 6.87
+del 254
+count
+put 483 n464 35.43
+get 237
+count
+put 851 n782 75.6
+del 1036
+count
+put 1133 n854 79.67
+put 234 n167 65.63
+del 1852
+del 1614
+del 1733
+del 1428
+put 971 n211 84.0
+del 1496
+del 1410
+get 1124
+get 1109
+put 1602 n663 33.73
+put 640 n277 96.66
+put 785 n112 49.36
+get 1749
+put 287 n396 54.58
+put 1430 n340 55.17
+get 805
+del 977
+del 1751
+del 1888
+put 1595 n65 42.32
+put 800 n251 37.44
+get 39
+del 1889
+del 1364
+get 1071
+put 893 n884 77.61
+count
+get 106
+put 1847 n683 93.33
+put 536 n844 56.91
+put 448 n768 50.37
+count
+get 226
+put 428 n230 61.73
+del 1593
+put 1413 n749 2.0
+put 1984 n144 66.52
+del 1334
+del 1522
+put 1664 n754 72.47
+del 1738
+put 1401 n287 60.76
+get 1489
+put 31 n389 73.91
+put 1729 n717 42.87
+put 878 n726 29.28
+get 1502
+put 808 n787 15.02
+put 1757 n536 86.8
+put 665 n251 48.66
+get 462
+put 1552 n102 91.84
+put 1746 n687 35.57
+put 1989 n131 67.61
+put 1895 n975 86.37
+put 1180 n862 71.01
+put 1547 n180 5.13
+del 736
+get 188
+get 684
+get 262
+get 67
+put 1523 n211 36.41
+put 836 n960 38.53
+put 845 n633 41.0
+put 612 n364 60.62
+get 1519
+put 1780 n181 17.63
+count
+put 134 n460 31.9
+put 1810 n454 5.72
+put 1519 n35 9.81
+get 1607
+put 914 n603 52.51
+get 1634
+get 1906
+put 298 n268 87.12
+put 607 n362 65.53
+get 1292
+get 1091
+get 286
+get 1840
+get 257
+get 788
+get 162
+get 1427
+count
+get 355
+put 1509 n136 3.1
+del 360
+count
+get 1211
+put 570 n292 70.95
+get 553
+put 349 n785 47.57
+put 1377 n458 15.66
+del 639
+del 846
+put 392 n70 83.27
+put 1681 n965 40.72
+get 586
+get 954
+get 758
+get 889
+count
+put 149 n605 84.72
+get 1043
+del 1389
+put 651 n19 22.34
+put 605 n537 67.57
+get 1865
+put 458 n728 33.87
+del 125
+del 768
+put 262 n922 7.92
+get 1698
+get 1933
+put 1019 n91 15.82
+put 1344 n49 20.39
+del 671
+get 1613
+del 343
+get 1968
+put 1209 n933 57.26
+get 1904
+del 593
+put 569 n131 64.67
+get 127
+get 1658
+put 554 n714 7.8
+put 635 n692 42.68
+put 1702 n649 5.47
+get 1654
+get 321
+get 1587
+put 1501 n760 95.27
+put 1753 n391 71.26
+put 1852 n269 98.52
+put 904 n511 96.22
+put 1800 n380 16.18
+get 613
+get 734
+get 327
+count
+put 1355 n184 30.19
+del 487
+put 1528 n119 58.11
+put 1746 n207 54.2
+put 752 n109 41.88
+put 1539 n133 76.03
+put 1794 n755 19.21
+count
+put 31 n389 29.46
+put 848 n537 69.92
+put 1648 n931 42.22
+del 786
+get 269
+put 1194 n854 23.03
+get 858
+get 1018
+get 1202
+put 281 n398 88.04
+put 1780 n204 60.31
+put 888 n25 79.17
+put 364 n155 53.4
+del 172
+get 549
+put 1446 n585 64.42
+put 523 n331 78.47
+put 1287 n71 3.65
+count
+get 1530
+del 1033
+get 411
+del 441
+put 294 n154 18.23
+get 1093
+get 1140
+del 1208
+get 24
+put 1013 n560 13.84
+put 495 n153 5.39
+del 299
+get 621
+put 728 n22 92.01
+del 855
+get 1346
+get 486
+del 1971
+put 1520 n62 74.4
+put 86 n326 4.93
+get 138
+get 1719
+put 1372 n951 34.98
+count
+put 1412 n923 31.01
+get 461
+get 318
+get 989
+put 451 n94 26.25
+get 650
+get 948
+get 79
+put 1705 n483 3.45
+put 1112 n581 92.62
+put 1556 n16 72.79
+put 1937 n289 46.43
+put 1284 n426 32.48
+get 1638
+put 1934 n822 97.54
+del 1639
+put 76 n766 84.31
+put 715 n834 62.95
+get 747
+count
+get 1687
+put 225 n237 94.45
+get 1918
+get 230
+put 1098 n438 77.82
+put 1999 n370 32.57
+put 1443 n529 1.45
+put 1355 n905 20.27
+get 1138
+get 696
+put 622 n277 96.09
+del 949
+get 491
+get 912
+get 514
+put 848 n295 57.62
+put 1398 n203 28.38
+get 1138
+put 1402 n49 27.82
+get 313
+put 953 n390 20.59
+del 653
+put 739 n220 91.22
+get 1160
+del 757
+del 1563
+del 1680
+get 793
+put 86 n431 40.07
+get 1600
+put 577 n271 41.82
+get 1029
+del 1079
+get 850
+del 113
+get 696
+put 988 n722 43.18
+get 1699
+get 1978
+put 1303 n40 87.51
+put 454 n460 46.3
+get 558
+put 1464 n618 50.9
+put 1744 n861 98.33
+put 1936 n758 25.75
+get 1112
+del 1313
+put 999 n778 19.32
+get 1317
+get 233
+put 1069 n223 74.41
+get 1043
+del 768
+put 424 n456 11.11
+del 36
+del 802
+put 1959 n753 3.72
+put 1363 n743 56.93
+put 1856 n169 43.78
+put 848 n415 32.44
+put 834 n148 53.67
+put 1889 n551 63.07
+put 1437 n776 96.62
+count
+put 1325 n717 8.43
+put 1388 n257 73.85
+get 104
+get 98
+put 1495 n675 45.56
+put 1948 n273 81.45
+put 1579 n669 80.98
+put 945 n389 55.79
+get 254
+put 526 n143 9.92
+put 1649 n284 56.5
+del 915
+get 1163
+get 1055
+get 1376
+put 1770 n265 6.65
+get 1915
+put 1766 n680 47.26
+put 1814 n716 49.45
+count
+get 67
+del 896
+put 1361 n884 5.39
+count
+count
+del 717
+put 1809 n37 27.76
+put 1766 n954 38.49
+put 1929 n925 4.32
+count
+get 435
+put 1780 n657 10.68
+get 258
+put 885 n9 99.71
+put 1244 n995 21.03
+put 1226 n242 0.56
+put 790 n619 31.39
+put 1115 n53 87.69
+get 1530
+get 1671
+put 943 n523 5.8
+del 581
+get 404
+put 1487 n840 44.36
+del 742
+put 1947 n712 83.39
+put 1645 n782 63.74
+put 234 n373 30.79
+put 1087 n16 3.43
+put 1090 n101 49.0
+get 190
+put 1693 n466 23.94
+put 951 n283 51.62
+put 1866 n77 58.76
+put 1192 n133 8.22
+put 1082 n200 87.1
+del 1816
+put 488 n237 56.04
+get 46
+get 1704
+get 226
+put 1144 n710 94.51
+put 1536 n771 81.18
+put 1578 n544 11.77
+put 1960 n818 48.8
+get 9
+get 1944
+del 1644
+get 780
+get 1726
+put 1675 n513 13.66
+get 1830
+put 1189 n388 18.64
+put 1115 n594 95.16
+del 1332
+put 297 n978 95.73
+put 1436 n121 60.88
+put 8 n819 37.89
+get 1080
+put 639 n924 82.94
+put 1770 n278 27.82
+count
+put 873 n513 4.94
+del 148
+get 1075
+get 136
+put 442 n194 49.2
+put 921 n529 24.32
+put 320 n941 29.18
+put 1702 n173 45.69
+get 1347
+put 1732 n263 90.73
+get 734
+put 533 n263 54.33
+put 404 n527 48.09
+del 1015
+del 450
+put 1913 n7 31.53
+put 1872 n854 93.37
+put 916 n207 16.77
+get 200
+get 228
+count
+del 80
+get 178
+del 1897
+del 1922
+get 1903
+put 447 n663 99.9
+put 1580 n684 1.95
+put 1377 n572 84.96
+put 1316 n145 98.35
+put 1460 n823 69.96
+del 1089
+get 1816
+put 249 n828 91.97
+get 1404
+put 1519 n309 70.05
+del 150
+get 1854
+get 1288
+get 76
+get 1883
+get 1622
+put 1093 n897 1.7
+del 507
+put 1019 n648 15.13
+put 1848 n582 67.68
+put 848 n398 89.02
+count
+get 325
+put 510 n489 13.7
+put 267 n119 80.9
+put 954 n535 20.59
+get 1830
+put 186 n625 99.9
+get 455
+get 630
+del 529
+get 968
+count
+del 361
+get 159
+get 269
+get 558
+count
+put 1490 n816 68.59
+del 137
+put 496 n764 45.04
+put 336 n859 89.75
+get 1314
+put 1402 n72 63.57
+get 1183
+get 368
+del 824
+get 86
+put 1872 n330 13.96
+get 89
+put 1293 n750 19.95
+del 1269
+get 1093
+put 1905 n824 81.02
+get 279
+get 1077
+get 59
+get 1649
+get 1057
+put 220 n710 61.24
+get 72
+put 1187 n866 51.62
+get 1098
+put 1305 n944 25.15
+put 1329 n33 98.94
+put 280 n420 55.35
+put 1465 n804 21.3
+put 1013 n764 42.09
+del 1503
+put 589 n653 48.69
+del 480
+del 57
+count
+get 1982
+put 1892 n319 60.96
+del 1195
+del 472
+get 497
+put 282 n259 75.55
+get 885
+get 1612
+get 1885
+del 1329
+put 778 n216 11.6
+put 825 n424 40.43
+get 1197
+get 25
+put 1945 n352 77.19
+put 1459 n49 35.78
+put 1988 n500 8.4
+get 1420
+get 389
+get 1417
+put 1347 n168 89.32
+put 150 n139 9.38
+put 1564 n327 66.94
+get 655
+put 1781 n497 56.87
+put 1387 n905 95.82
+get 297
+put 24 n380 58.74
+put 1316 n799 80.98
+put 502 n109 65.05
+put 416 n114 30.01
+put 1984 n765 62.17
+get 997
+get 932
+get 567
+put 1439 n694 31.42
+del 1884
+put 772 n244 91.1
+get 20
+put 331 n347 61.22
+get 1053
+put 1533 n509 95.21
+put 1575 n606 66.14
+put 957 n583 29.21
+count
+put 1350 n449 34.03
+get 770
+get 1327
+put 1089 n602 35.62
+get 1223
+put 843 n761 28.32
+put 819 n668 84.89
+put 1060 n850 62.51
+del 1376
+put 185 n652 17.34
+put 899 n646 99.75
+get 286
+put 923 n579 60.36
+put 1962 n580 39.37
+del 161
+put 1709 n411 11.09
+get 1630
+put 1239 n157 71.57
+put 983 n720 67.55
+del 893
+put 1791 n630 91.0
+count
+put 1513 n266 97.21
+get 1959
+get 1376
+put 1410 n117 22.9
+get 731
+put 251 n273 82.81
+put 1354 n922 78.13
+put 1466 n758 37.95
+put 410 n81 16.87
+put 1185 n197 60.14
+del 638
+del 1446
+del 1088
+put 1454 n32 61.21
+get 1790
+put 127 n538 58.24
+del 1966
+put 637 n995 12.52
+get 1887
+get 1422
+del 97
+put 521 n55 65.92
+get 827
+put 1666 n183 20.33
+count
+put 220 n33 90.53
+put 52 n813 78.75
+get 82
+put 756 n602 49.75
+get 704
+count
+put 1639 n472 68.27
+put 1545 n549 14.07
+count
+del 1157
+put 1268 n214 90.92
+get 420
+put 1031 n128 81.24
+put 870 n370 90.73
+put 203 n56 29.8
+put 856 n745 55.23
+put 1176 n695 85.7
+get 166
+get 470
+get 884
+put 447 n819 70.94
+put 1076 n918 53.76
+count
+get 1163
+put 1117 n80 77.89
+del 323
+del 1148
+del 163
+put 703 n746 45.25
+put 53 n203 50.86
+get 1586
+get 618
+put 1214 n210 22.28
+put 235 n898 40.58
+put 1415 n681 36.63
+put 530 n679 69.17
+put 621 n87 17.78
+put 1924 n50 69.42
+count
+get 1419
+count
+get 1533
+put 1753 n62 82.3
+get 62
+put 198 n643 76.87
+count
+del 1823
+get 51
+put 1468 n666 86.8
+del 1161
+del 576
+put 1438 n596 61.4
+put 1051 n771 28.51
+del 732
+get 1004
+get 1002
+del 857
+put 1943 n82 43.33
+put 1515 n621 92.74
+put 1403 n100 12.19
+put 1292 n519 48.15
+put 556 n109 22.79
+get 105
+put 1548 n743 65.51
+get 1562
+put 1405 n76 78.09
+put 946 n630 25.79
+put 993 n757 86.92
+get 931
+put 1504 n743 6.07
+put 1725 n773 66.38
+del 1344
+del 1910
+del 1416
+get 1816
+put 555 n28 35.84
+put 918 n395 85.09
+put 1940 n528 76.05
+put 1332 n933 85.26
+put 397 n533 46.65
+put 270 n603 24.63
+get 421
+put 256 n301 32.88
+put 1441 n498 23.66
+put 1183 n99 78.93
+del 642
+del 206
+del 1528
+put 645 n826 84.37
+put 210 n409 78.08
+put 869 n129 72.03
+get 712
+put 1382 n669 28.02
+put 1925 n858 17.68
+put 908 n902 96.76
+put 891 n916 36.35
+get 1601
+put 1397 n365 18.73
+put 335 n721 99.02
+put 869 n218 35.33
+put 1315 n11 36.09
+put 1340 n590 21.72
+put 1718 n394 32.35
+get 100
+get 1554
+put 1357 n715 76.0
+put 1148 n337 19.41
+del 520
+get 815
+del 1108
+get 1165
+put 1339 n128 45.99
+put 1278 n792 84.24
+put 905 n492 6.48
+put 1201 n725 8.53
+get 1292
+put 900 n788 67.22
+put 1638 n726 33.37
+del 117
+get 1748
+put 28 n94 83.53
+put 1510 n901 21.96
+get 672
+put 1015 n878 50.79
+count
+put 37 n475 84.07
+put 642 n225 70.01
+put 822 n683 11.46
+put 834 n868 82.68
+put 425 n287 85.51
+get 569
+count
+put 536 n51 68.2
+put 1823 n989 22.59
+count
+put 1204 n549 82.02
+get 1201
+get 1958
+del 1994
+get 1361
+put 790 n845 37.33
+put 1144 n420 18.84
+count
+get 125
+del 728
+put 38 n419 80.0
+count
+put 1133 n2 11.1
+put 1415 n134 65.53
+put 427 n6 45.26
+get 924
+put 1330 n941 40.1
+put 1815 n670 54.14
+put 779 n690 12.47
+get 870
+get 1274
+del 841
+get 104
+get 1091
+get 1635
+del 719
+put 604 n425 12.85
+put 1670 n227 87.96
+put 367 n351 99.74
+get 1640
+put 178 n20 4.26
+get 1941
+put 1138 n504 61.52
+get 274
+put 422 n19 56.56
+get 1330
+get 537
+put 532 n313 71.18
+put 453 n636 14.05
+count
+del 1974
+get 579
+get 1492
+get 336
+put 1752 n557 30.24
+put 1540 n709 46.95
+put 1768 n666 88.47
+put 847 n657 31.12
+del 1091
+get 303
+put 1910 n109 40.61
+put 1202 n322 43.02
+put 772 n486 76.43
+put 1540 n912 96.64
+put 609 n539 51.81
+put 699 n752 48.85
+put 516 n225 60.09
+put 1468 n747 28.16
+put 1397 n899 97.05
+put 834 n822 36.15
+get 405
+put 1067 n740 80.85
+get 356
+get 757
+del 1395
+get 454
+put 1088 n690 19.61
+del 79
+put 967 n919 4.06
+put 1720 n503 76.67
+del 1504
+get 1122
+put 878 n200 10.93
+put 1701 n65 33.24
+get 620
+get 1402
+del 1703
+put 665 n227 15.59
+put 215 n323 0.49
+del 650
+del 993
+get 1171
+get 464
+put 1788 n688 57.38
+put 1164 n40 96.22
+get 970
+get 1999
+put 1955 n59 43.23
+put 201 n755 14.01
+put 1278 n86 14.67
+put 62 n965 77.46
+put 860 n176 18.42
+put 146 n208 78.6
+get 937
+del 884
+put 1489 n277 43.11
+get 1845
+put 1086 n854 75.31
+put 1529 n83 62.19
+get 527
+get 661
+put 1864 n643 36.24
+put 266 n746 27.89
+put 146 n664 20.04
+get 392
+put 80 n673 35.94
+put 599 n442 92.68
+put 1930 n142 90.43
+put 968 n11 28.95
+put 1150 n557 27.94
+put 537 n847 69.31
+put 1809 n517 20.93
+del 1332
+put 420 n11 30.4
+put 177 n315 60.51
+put 1236 n987 74.64
+put 1310 n876 31.43
+get 1874
+put 1486 n292 34.41
+put 890 n475 81.16
+put 197 n126 66.68
+put 770 n771 27.42
+get 946
+count
+put 309 n442 78.47
+put 1391 n862 25.5
+get 355
+get 848
+put 224 n276 82.92
+put 122 n541 84.6
+put 171 n533 12.32
+put 320 n495 68.26
+del 112
+put 369 n111 2.43
+put 170 n961 6.13
+put 1780 n72 50.63
+put 1758 n934 76.25
+count
+del 1203
+put 1142 n359 97.47
+get 6
+count
+del 913
+put 1835 n49 90.8
+put 50 n96 53.23
+put 871 n575 69.89
+del 960
+get 1538
+del 407
+del 1017
+put 963 n96 80.69
+put 1523 n695 22.51
+get 1090
+put 1355 n564 71.01
+get 1055
+put 1742 n871 26.5
+put 1236 n740 21.81
+get 1232
+get 195
+get 1341
+put 322 n553 51.31
+put 1105 n842 98.32
+get 1005
+put 520 n141 99.34
+get 603
+put 1004 n810 15.76
+put 1610 n790 57.77
+del 1814
+put 377 n726 33.33
+put 819 n477 43.27
+put 546 n139 31.8
+get 944
+put 7 n146 4.57
+put 123 n583 76.54
+put 133 n192 12.52
+get 1675
+del 1095
+put 602 n721 86.33
+put 1894 n40 36.98
+count
+put 1224 n650 91.49
+del 1016
+del 670
+get 1725
+get 892
+put 1894 n545 26.4
+del 1955
+put 1879 n377 36.52
+get 1511
+put 1471 n566 20.86
+get 1325
+put 1284 n80 63.43
+put 341 n130 29.6
+put 633 n749 76.62
+get 990
+del 1611
+put 1965 n337 66.91
+get 1290
+del 1884
+put 1915 n342 80.13
+put 664 n632 76.79
+get 1503
+put 1994 n465 90.68
+get 858
+get 1674
+del 1617
+get 877
+del 1875
+get 512
+put 1264 n919 53.15
+put 563 n709 21.11
+del 916
+put 983 n135 74.17
+get 706
+put 442 n172 36.1
+count
+get 1814
+put 623 n218 83.31
+put 949 n627 35.25
+del 831
+get 1688
+get 616
+get 652
+get 58
+put 1856 n989 40.11
+put 390 n450 33.21
+put 1517 n748 7.16
+get 1342
+put 696 n644 66.46
+put 312 n443 38.3
+del 1039
+put 667 n834 77.25
+get 422
+put 1254 n576 41.34
+del 1005
+put 1744 n776 23.56
+del 667
+del 1214
+put 438 n810 74.31
+put 1338 n814 10.12
+get 1161
+put 615 n912 54.47
+put 509 n260 33.19
+put 1532 n244 1.87
+put 1023 n362 34.45
+get 947
+put 830 n704 47.58
+put 10 n215 8.82
+put 1724 n221 11.48
+count
+put 1957 n820 43.5
+put 778 n79 89.18
+get 1236
+get 1651
+get 1448
+put 1157 n239 79.11
+get 768
+count
+put 530 n775 83.29
+put 741 n773 91.18
+del 481
+put 1882 n62 24.63
+put 1311 n516 2.72
+get 1166
+count
+put 1525 n957 40.73
+del 660
+get 651
+put 1867 n190 61.24
+del 270
+put 523 n546 96.67
+get 969
+get 1182
+put 1805 n186 37.38
+get 693
+put 1201 n956 36.07
+del 461
+put 860 n476 10.79
+put 1320 n724 49.19
+put 1852 n158 8.14
+get 1505
+get 1035
+put 997 n437 74.98
+put 902 n481 39.25
+put 1963 n539 80.71
+del 1682
+count
+put 866 n80 11.17
+get 1557
+put 1301 n685 74.34
+put 527 n394 10.01
+put 1342 n753 28.5
+put 476 n783 32.69
+put 849 n417 32.71
+put 1909 n654 82.18
+get 629
+del 1633
+del 1493
+put 790 n67 12.95
+del 502
+put 1501 n361 73.71
+put 1777 n733 54.58
+count
+put 1863 n960 57.8
+get 798
+put 912 n847 72.53
+get 1109
+get 441
+put 1165 n130 34.65
+get 1765
+get 437
+put 1996 n310 96.37
+put 1440 n694 21.56
+get 790
+get 771
+put 1718 n362 92.87
+put 985 n195 44.71
+get 1485
+put 1907 n190 14.87
+put 1752 n836 60.59
+put 368 n649 53.81
+count
+put 211 n238 82.43
+put 1900 n592 63.89
+put 660 n701 91.73
+put 860 n387 55.02
+get 1848
+get 1621
+put 918 n796 97.6
+put 672 n4 39.94
+get 264
+count
+del 107
+put 1198 n201 60.01
+put 1460 n477 59.6
+get 1170
+put 1906 n669 3.08
+count
+get 1518
+get 1824
+put 1893 n140 12.7
+count
+get 399
+count
+put 61 n905 29.83
+put 133 n472 6.15
+get 1256
+count
+get 1727
+get 132
+put 689 n962 19.07
+get 1999
+count
+get 965
+put 1368 n809 83.59
+put 1637 n647 54.26
+put 157 n78 5.34
+del 802
+get 958
+put 1497 n774 71.36
+get 1494
+put 704 n609 77.19
+put 817 n449 21.51
+put 278 n369 45.67
+put 964 n648 49.18
+put 331 n578 43.03
+put 1865 n180 74.67
+del 639
+put 238 n417 33.04
+put 1874 n558 4.19
+put 1139 n228 99.93
+get 1034
+del 411
+put 1327 n603 46.83
+put 1879 n464 73.33
+get 768
+del 1764
+put 811 n741 46.07
+del 1185
+get 1151
+put 1730 n93 20.73
+del 48
+get 490
+put 1427 n5 38.37
+put 1662 n586 42.7
+get 269
+count
+put 1012 n77 80.48
+put 1776 n229 11.72
+put 1576 n283 11.57
+put 744 n224 14.87
+put 1376 n6 25.95
+put 73 n817 61.65
+put 1099 n273 36.2
+put 1189 n570 30.5
+put 1701 n542 20.41
+del 59
+put 107 n349 61.76
+del 545
+get 1088
+del 774
+put 193 n783 10.77
+put 357 n83 27.41
+get 1663
+put 1021 n336 50.22
+get 73
+put 1934 n632 81.17
+del 1241
+put 258 n863 46.23
+put 198 n216 53.02
+del 919
+put 925 n518 22.43
+get 1585
+get 425
+del 1407
+put 1612 n290 47.91
+get 1476
+put 811 n538 79.49
+get 1355
+del 1041
+del 1328
+put 1896 n127 63.76
+get 206
+put 1973 n167 44.11
+count
+get 146
+count
+del 335
+get 1070
+put 665 n387 32.86
+get 1315
+put 1771 n213 72.69
+del 999
+put 202 n764 79.17
+put 792 n862 84.07
+put 237 n34 13.48
+get 950
+del 958
+put 375 n557 5.65
+put 1566 n352 80.39
+put 1799 n306 22.28
+put 1053 n549 39.01
+get 846
+del 528
+put 1234 n908 16.81
+put 1457 n583 75.64
+put 871 n442 72.26
+put 1125 n992 20.93
+put 1796 n91 41.44
+put 1015 n386 3.12
+put 388 n432 18.23
+put 565 n903 31.15
+put 1008 n693 63.35
+put 992 n806 37.01
+put 328 n948 50.96
+count
+put 1961 n19 22.84
+put 1201 n983 38.08
+get 1555
+del 1637
+put 1662 n952 56.07
+put 721 n979 45.96
+get 761
+put 131 n423 39.55
+put 1584 n608 59.37
+put 1388 n394 30.03
+put 1093 n202 72.47
+get 669
+get 761
+del 423
+del 365
+count
+put 903 n679 30.41
+get 1823
+get 1374
+del 286
+put 107 n891 52.79
+put 1788 n594 9.14
+put 1342 n125 12.68
+put 384 n253 38.47
+del 103
+get 1755
+get 648
+del 567
+del 69
+put 1817 n544 1.62
+put 1287 n230 83.47
+del 594
+put 1407 n615 47.57
+put 1 n192 28.18
+put 623 n893 64.2
+get 1354
+put 1775 n901 4.24
+put 1191 n484 33.04
+del 1722
+get 1340
+put 25 n550 10.0
+get 570
+get 1142
+get 647
+get 1024
+get 855
+put 941 n954 47.44
+put 1984 n834 60.42
+del 1881
+put 66 n962 30.44
+put 1751 n395 28.46
+del 775
+put 88 n319 65.77
+count
+put 705 n675 61.64
+del 1293
+get 1787
+get 1348
+del 474
+del 635
+get 1862
+put 141 n662 54.79
+del 812
+put 196 n41 14.79
+put 1408 n948 90.98
+get 116
+del 1600
+put 1018 n448 29.62
+put 723 n484 92.15
+put 379 n312 17.87
+get 820
+get 1264
+del 1220
+get 1849
+del 440
+put 340 n414 87.81
+put 1550 n736 68.59
+put 370 n431 51.22
+get 618
+del 1119
+get 1531
+put 1658 n962 44.92
+del 282
+put 1816 n929 29.99
+get 1600
+del 128
+put 876 n324 7.83
+put 1036 n414 34.18
+del 1169
+put 1006 n165 65.92
+put 887 n748 4.88
+get 1431
+put 1424 n401 47.76
+put 506 n736 44.12
+get 598
+put 1095 n844 49.34
+del 1422
+put 6 n329 15.55
+get 1779
+get 1733
+get 1986
+put 258 n636 10.58
+count
+get 1815
+put 1035 n318 65.29
+put 560 n427 79.36
+put 12 n68 8.41
+put 495 n211 50.4
+put 1118 n75 20.5
+put 1624 n294 86.39
+get 561
+put 311 n512 12.64
+put 1793 n641 77.36
+put 1925 n943 64.79
+del 841
+put 655 n323 75.41
+get 70
+put 1033 n351 17.7
+put 1262 n59 8.68
+get 1466
+get 327
+get 1943
+put 1052 n922 70.01
+get 1066
+put 1195 n37 10.84
+del 1109
+count
+put 260 n377 1.66
+put 1154 n583 52.02
+del 98
+put 293 n360 6.66
+put 1155 n176 90.43
+get 1657
+put 1583 n438 52.7
+get 766
+get 999
+get 1828
+get 1620
+get 1
+del 1500
+get 1206
+get 1111
+put 127 n77 11.49
+put 643 n116 68.18
+get 1225
+put 268 n83 34.87
+get 1187
+get 1878
+put 54 n377 32.1
+put 629 n365 30.26
+get 1883
+put 1666 n221 54.13
+get 1209
+count
+put 439 n997 12.88
+put 1463 n500 56.19
+del 261
+get 913
+get 1843
+put 1667 n941 87.69
+del 1219
+count
+put 1474 n916 0.78
+put 316 n272 91.64
+put 967 n81 45.79
+put 1795 n287 77.75
+put 401 n348 88.02
+get 758
+del 1801
+get 955
+count
+get 1231
+put 831 n860 4.09
+count
+count
+get 1041
+get 893
+put 1953 n720 51.68
+count
+put 405 n352 34.84
+put 744 n439 15.37
+get 279
+put 360 n28 86.25
+get 1706
+put 1446 n574 8.14
+put 1929 n186 41.97
+get 102
+put 679 n829 41.94
+get 1944
+put 1285 n512 36.66
+put 380 n351 99.37
+get 338
+put 1486 n88 10.83
+get 516
+count
+put 295 n730 48.37
+put 775 n798 40.2
+put 65 n55 46.54
+get 174
+put 1167 n552 20.36
+put 1025 n541 23.64
+put 819 n598 47.93
+put 336 n768 95.55
+del 913
+put 264 n891 82.35
+put 579 n273 25.51
+put 901 n871 15.56
+put 371 n44 31.78
+get 736
+put 1859 n730 46.43
+put 807 n100 39.9
+put 766 n834 2.31
+put 1974 n604 22.56
+put 1307 n253 24.24
+put 920 n827 55.64
+get 1323
+get 1743
+del 276
+put 1394 n190 71.13
+get 1898
+del 1961
+put 1991 n547 11.98
+put 1384 n491 69.44
+put 296 n65 19.26
+get 90
+put 214 n527 12.81
+put 699 n517 20.66
+del 63
+get 1591
+del 1709
+del 877
+put 653 n255 2.15
+get 1056
+del 584
+put 589 n575 94.19
+get 1680
+get 686
+del 1799
+del 16
+del 174
+get 1452
+put 1343 n74 73.23
+put 1302 n80 12.0
+get 442
+put 391 n999 28.97
+get 72
+del 787
+get 1505
+put 510 n98 69.47
+del 144
+del 441
+get 168
+put 1616 n498 62.07
+del 232
+put 459 n508 92.27
+put 140 n630 34.21
+del 873
+put 1336 n425 97.04
+get 1771
+put 1362 n394 68.35
+count
+put 952 n889 71.92
+del 1990
+put 780 n156 37.66
+put 1635 n731 65.2
+put 1006 n15 16.02
+put 322 n479 58.28
+put 1403 n82 10.69
+get 915
+put 492 n283 73.59
+del 859
+del 774
+del 160
+put 569 n356 48.6
+get 1065
+del 463
+del 1449
+put 1248 n177 28.92
+get 1404
+put 223 n196 88.04
+get 1918
+put 861 n324 33.72
+del 1798
+put 1120 n183 34.09
+get 448
+put 1268 n710 91.53
+put 725 n321 47.1
+put 1019 n698 42.91
+get 1268
+put 1959 n143 82.27
+put 636 n903 66.86
+del 1952
+get 1585
+get 1557
+put 694 n384 36.18
+put 898 n754 74.92
+put 722 n792 55.12
+get 780
+put 1279 n788 65.65
+put 111 n763 64.33
+get 1134
+del 1525
+put 928 n657 62.71
+put 1448 n246 78.43
+count
+get 918
+del 254
+put 1654 n101 49.46
+get 1543
+put 421 n592 76.59
+get 596
+get 996
+del 1238
+put 35 n99 59.95
+get 801
+put 1512 n58 7.73
+put 315 n325 9.94
+put 1103 n154 65.3
+put 275 n246 64.11
+put 800 n678 69.23
+count
+put 1580 n129 6.89
+get 1739
+put 1604 n914 55.98
+put 1043 n668 56.2
+put 1930 n85 85.94
+get 1130
+get 1749
+get 1077
+del 1845
+get 1105
+put 360 n755 74.38
+put 887 n287 22.12
+get 775
+del 1103
+get 1095
+put 1333 n963 34.45
+get 882
+put 1600 n358 9.68
+del 588
+get 198
+put 641 n637 9.16
+get 1929
+put 886 n127 84.46
+get 6
+put 71 n508 57.72
+put 505 n348 48.04
+count
+put 4 n782 8.39
+get 628
+put 1948 n198 83.76
+put 1515 n461 15.3
+put 792 n618 2.93
+put 1586 n734 86.4
+del 1982
+count
+del 330
+put 826 n941 42.87
+put 973 n982 18.73
+get 1145
+put 1877 n593 88.93
+get 1923
+get 668
+put 777 n910 88.2
+get 920
+put 1857 n329 76.27
+get 1549
+put 622 n646 77.61
+del 1978
+del 1156
+get 1282
+put 275 n581 18.74
+get 724
+get 1734
+put 1729 n192 65.29
+put 286 n217 97.92
+put 522 n212 71.11
+del 1802
+get 823
+del 8
+put 1280 n946 22.86
+count
+count
+put 1309 n559 11.27
+count
+put 418 n583 79.59
+del 755
+put 1062 n652 30.06
+del 1845
+put 1921 n796 56.38
+put 629 n449 45.84
+count
+get 1851
+get 269
+del 1912
+count
+put 1200 n966 85.48
+put 711 n471 99.64
+get 86
+get 1634
+put 378 n969 8.22
+put 1271 n704 63.84
+put 1185 n597 60.15
+put 1550 n502 52.19
+get 1934
+put 1007 n404 70.57
+put 1185 n167 43.66
+put 291 n975 49.36
+put 235 n963 7.37
+put 1771 n52 39.04
+count
+put 157 n669 56.67
+put 1398 n595 65.62
+put 586 n788 81.0
+put 1157 n318 43.85
+count
+del 1205
+put 212 n58 12.62
+put 1831 n567 22.49
+put 1314 n469 20.44
+get 1887
+put 1749 n590 95.65
+put 1257 n572 53.33
+get 200
+put 6 n929 7.26
+put 994 n227 69.99
+put 1629 n439 89.28
+get 414
+put 552 n491 82.33
+del 1426
+count
+put 762 n767 17.99
+del 131
+put 439 n603 10.89
+put 355 n720 35.52
+get 1545
+put 728 n615 93.36
+get 1975
+put 672 n808 55.71
+del 1697
+put 1340 n988 33.81
+count
+get 64
+put 82 n466 30.49
+get 793
+put 1351 n68 17.85
+del 1967
+put 133 n879 6.64
+get 1700
+count
+put 309 n960 44.98
+del 1573
+put 1420 n666 51.38
+del 1802
+get 530
+put 1878 n328 84.58
+put 602 n807 52.86
+put 1202 n662 29.41
+put 116 n872 83.58
+del 1317
+put 724 n896 1.76
+get 1110
+get 1848
+put 1490 n537 93.59
+put 1100 n664 35.58
+del 1431
+get 1536
+put 1379 n855 42.57
+del 295
+get 497
+get 720
+get 835
+put 34 n571 82.3
+put 1218 n702 55.75
+put 202 n422 58.35
+put 556 n525 37.28
+get 479
+put 1567 n556 67.57
+put 1588 n156 15.8
+get 382
+get 1594
+del 1404
+put 1434 n532 73.14
+put 8 n965 88.68
+count
+count
+put 535 n99 99.69
+put 809 n173 70.74
+put 810 n821 88.55
+get 627
+get 1361
+del 93
+get 481
+get 1997
+put 944 n723 32.26
+put 1296 n752 47.2
+put 1996 n37 66.67
+put 1684 n746 78.94
+get 573
+get 699
+count
+put 1974 n484 94.75
+get 386
+get 278
+get 349
+get 1512
+get 606
+put 981 n786 0.88
+put 1790 n341 93.08
+put 1776 n669 99.19
+get 273
+put 1807 n909 22.64
+del 960
+put 1371 n639 91.05
+get 1386
+get 1360
+get 1788
+get 755
+put 1259 n899 19.46
+put 1906 n462 43.34
+count
+get 744
+get 145
+put 1259 n194 73.18
+put 138 n29 76.6
+put 1778 n855 58.01
+put 1412 n901 21.9
+del 1898
+put 454 n988 98.5
+del 340
+get 80
+del 1631
+put 397 n358 7.93
+put 958 n482 54.89
+get 166
+put 1640 n963 99.1
+put 1698 n377 66.74
+put 433 n422 0.75
+put 239 n335 51.25
+del 1268
+put 1160 n580 97.21
+count
+get 480
+get 1978
+put 168 n194 83.07
+put 1678 n563 40.87
+del 761
+put 1077 n324 9.96
+del 1563
+put 1988 n696 88.26
+del 1429
+get 1116
+get 1992
+del 1179
+put 1143 n145 5.18
+get 22
+get 1450
+put 110 n420 90.57
+put 46 n137 53.38
+put 1783 n901 84.53
+del 1797
+put 1238 n711 73.84
+get 1224
+put 1845 n140 7.33
+put 771 n223 20.03
+get 1465
+get 1240
+get 856
+put 460 n894 95.45
+del 1482
+get 1295
+get 643
+put 1695 n169 94.49
+put 580 n626 26.05
+put 625 n165 53.13
+get 1741
+put 697 n822 14.32
+put 403 n569 54.13
+put 1745 n239 58.93
+put 287 n454 43.42
+get 581
+put 1728 n776 82.34
+put 1254 n77 8.95
+get 1584
+put 697 n252 39.12
+put 1728 n707 75.85
+put 165 n583 41.15
+put 1451 n773 50.0
+del 938
+get 160
+count
+count
+put 414 n975 74.13
+get 469
+put 890 n127 95.53
+get 1800
+put 135 n382 13.75
+get 1919
+del 641
+put 1386 n464 25.94
+put 1867 n239 27.11
+put 1188 n746 60.98
+put 483 n192 64.44
+get 309
+put 596 n507 92.87
+del 1360
+count
+put 1695 n198 28.99
+put 1964 n575 74.88
+count
+put 222 n284 16.82
+get 216
+put 845 n301 39.0
+get 1742
+put 1629 n101 96.43
+put 743 n127 26.66
+get 1882
+put 1732 n269 31.81
+get 1144
+get 1394
+del 482
+get 919
+put 1043 n348 35.68
+count
+put 1099 n578 15.35
+del 1363
+get 1705
+put 382 n763 48.91
+del 244
+del 1461
+get 823
+put 1742 n982 8.86
+put 681 n484 30.21
+put 119 n263 61.59
+put 1094 n135 82.79
+del 415
+put 478 n39 77.26
+put 328 n815 13.56
+put 1304 n680 57.03
+get 1096
+put 958 n372 33.84
+put 964 n35 74.33
+put 1290 n528 21.05
+get 1950
+get 1153
+get 1494
+put 1064 n322 27.86
+get 1962
+put 543 n861 56.28
+count
+get 1773
+put 138 n980 43.41
+del 143
+put 124 n944 55.64
+put 394 n141 31.66
+get 537
+get 40
+del 1996
+get 270
+get 1354
+get 495
+put 211 n588 65.84
+put 312 n152 64.11
+put 1705 n984 99.28
+put 1073 n991 97.79
+put 386 n606 62.35
+count
+put 793 n937 10.43
+put 547 n312 82.01
+put 886 n46 15.56
+count
+put 1158 n503 33.03
+get 902
+put 1553 n666 63.72
+get 199
+del 23
+get 1196
+del 1530
+put 1689 n783 71.63
+put 122 n160 99.91
+get 1340
+get 1395
+get 1508
+get 318
+put 1194 n265 90.6
+put 49 n932 63.76
+put 975 n893 81.82
+get 968
+put 576 n219 57.48
+put 653 n508 64.86
+put 1386 n257 5.24
+put 1432 n938 40.12
+put 1328 n46 2.25
+put 36 n851 19.05
+put 1145 n452 76.06
+del 1749
+get 425
+put 1580 n730 69.59
+get 60
+get 166
+del 1089
+put 204 n987 47.21
+get 518
+get 1065
+del 860
+put 1344 n747 18.94
+get 1543
+get 291
+del 74
+get 1063
+del 766
+put 1438 n986 20.97
+get 200
+put 140 n705 90.3
+get 470
+put 217 n155 50.39
+put 1330 n399 55.69
+count
+get 1346
+count
+get 1375
+get 1968
+del 734
+count
+put 1273 n509 32.8
+get 596
+count
+put 1633 n406 11.21
+del 143
+del 434
+del 1593
+put 289 n700 16.76
+del 1368
+get 1018
+put 878 n244 57.94
+get 1258
+put 443 n780 88.81
+put 37 n414 24.22
+del 444
+put 1838 n90 68.72
+put 502 n706 96.58
+del 1359
+get 1636
+get 1764
+get 308
+get 533
+put 925 n706 25.95
+put 723 n778 41.92
+put 1377 n586 88.88
+put 1084 n825 92.42
+put 771 n673 23.12
+put 69 n623 47.54
+put 1408 n863 15.15
+put 542 n157 66.74
+put 537 n561 70.8
+get 59
+get 350
+put 1749 n288 68.16
+put 1255 n912 45.49
+count
+put 1667 n743 95.77
+put 270 n211 14.65
+put 1835 n88 4.26
+count
+del 490
+del 986
+put 1851 n130 55.27
+put 1899 n869 36.44
+put 848 n282 76.52
+put 540 n444 35.9
+get 140
+put 162 n478 27.31
+get 813
+put 1262 n743 5.76
+put 776 n884 96.56
+put 1169 n509 11.11
+del 221
+put 283 n873 56.61
+put 1299 n139 12.54
+del 673
+put 637 n762 92.1
+put 215 n387 0.5
+put 451 n188 49.08
+get 21
+put 235 n265 1.42
+get 363
+del 1821
+del 368
+get 1114
+get 59
+put 122 n289 74.58
+get 1955
+get 1368
+put 1039 n447 33.39
+put 821 n595 10.91
+put 646 n870 24.03
+count
+get 81
+get 1265
+del 1145
+put 781 n442 5.41
+put 152 n296 62.54
+put 702 n191 92.62
+put 516 n783 65.1
+put 1243 n9 48.87
+get 564
+del 1679
+put 1780 n642 81.48
+put 766 n620 66.46
+get 1046
+del 451
+del 1633
+put 1906 n588 21.41
+put 533 n154 79.26
+get 1832
+del 1424
+put 1957 n906 31.62
+put 1035 n709 37.9
+del 1254
+put 1746 n55 57.61
+get 825
+put 765 n969 83.58
+put 1473 n340 3.6
+get 1052
+get 856
+get 1394
+del 236
+count
+put 1475 n341 72.79
+put 446 n721 74.46
+put 1107 n469 11.87
+del 682
+del 470
+put 8 n847 9.26
+del 135
+count
+count
+get 1580
+put 435 n660 30.62
+get 1770
+del 272
+put 1793 n65 28.77
+get 1582
+count
+put 506 n283 20.72
+put 1521 n46 48.83
+put 476 n634 66.8
+count
+put 34 n355 48.27
+put 1566 n368 66.72
+put 791 n362 15.41
+put 685 n810 4.98
+get 1735
+get 618
+del 1244
+put 1205 n425 18.88
+del 99
+put 1808 n569 61.57
+put 784 n899 23.96
+put 417 n135 28.45
+get 87
+put 366 n189 12.73
+get 1642
+get 51
+del 85
+put 50 n549 94.6
+get 1004
+put 1834 n416 36.67
+get 850
+get 399
+count
+count
+get 23
+del 160
+put 317 n264 35.96
+del 1615
+put 894 n272 96.27
+put 169 n759 44.54
+get 310
+put 1747 n594 53.22
+get 163
+put 1121 n58 79.02
+get 614
+get 1579
+get 404
+get 262
+put 532 n876 55.07
+put 1446 n248 62.51
+del 926
+put 1970 n286 56.63
+put 1302 n676 50.9
+put 624 n252 7.27
+put 712 n561 18.98
+put 452 n239 77.93
+put 351 n781 72.0
+put 1771 n37 27.51
+put 632 n598 29.85
+put 1033 n64 73.1
+get 1591
+put 302 n229 87.69
+put 1247 n445 88.88
+get 1395
+put 894 n730 59.35
+get 1859
+get 1200
+put 1496 n690 1.27
+get 1764
+put 1401 n719 32.85
+get 1942
+put 1428 n500 74.84
+get 1733
+del 1397
+del 1890
+get 527
+get 1430
+get 1211
+put 1215 n472 95.12
+get 1234
+get 1725
+put 1496 n667 32.19
+put 1600 n67 51.54
+get 1944
+del 1149
+get 1054
+put 865 n300 41.87
+put 1322 n784 49.37
+count
+get 1028
+del 446
+del 1957
+get 1093
+get 351
+count
+put 915 n175 27.72
+get 457
+put 1869 n732 53.26
+put 44 n188 78.64
+del 1608
+put 1417 n25 60.11
+del 1948
+put 1110 n485 5.94
+put 271 n889 7.8
+get 1495
+get 522
+del 303
+del 351
+get 1639
+put 306 n33 0.03
+put 1900 n967 53.08
+count
+put 1086 n248 93.35
+get 264
+get 357
+put 1148 n323 58.89
+put 419 n600 23.38
+del 1714
+put 1076 n769 6.72
+get 499
+del 848
+del 37
+get 923
+get 1058
+del 186
+get 1898
+put 1879 n517 88.78
+put 193 n381 26.35
+put 1509 n311 20.28
+get 816
+put 1920 n213 7.49
+put 1372 n677 67.33
+put 153 n313 50.83
+get 1044
+get 239
+del 1446
+get 1373
+put 538 n154 13.4
+put 989 n92 19.94
+get 815
+put 283 n886 8.73
+put 459 n629 53.49
+put 243 n29 88.03
+get 224
+get 1472
+put 1623 n371 67.61
+count
+put 1167 n424 46.85
+get 461
+put 501 n429 54.41
+get 1649
+get 914
+put 185 n7 50.32
+get 1077
+put 543 n915 25.66
+get 557
+put 448 n365 99.62
+put 1042 n728 10.08
+put 1807 n457 38.97
+get 222
+get 85
+get 429
+get 973
+put 1299 n167 63.15
+put 1823 n592 57.93
+get 572
+get 717
+put 1497 n410 10.27
+put 164 n223 31.73
+put 1663 n433 56.88
+put 390 n497 20.68
+put 1507 n600 47.12
+del 1613
+put 489 n558 30.64
+put 1712 n240 0.1
+del 766
+put 1800 n288 66.83
+del 307
+del 524
+get 1914
+put 177 n198 14.96
+get 1031
+get 714
+put 1771 n197 21.06
+put 1665 n132 44.83
+put 1691 n205 99.3
+put 1378 n333 0.31
+get 1370
+get 1338
+del 656
+put 1234 n54 87.18
+put 1538 n429 26.72
+put 499 n230 44.99
+get 1238
+put 151 n15 78.93
+get 1827
+put 405 n258 88.62
+put 1657 n645 48.98
+put 66 n912 22.53
+put 1396 n884 15.03
+put 1060 n951 96.72
+put 258 n476 29.41
+put 800 n911 97.7
+put 1829 n787 5.9
+put 1275 n88 10.87
+del 1282
+del 1946
+put 1796 n164 64.7
+put 645 n70 38.65
+get 1058
+put 709 n922 19.21
+get 48
+get 487
+put 1798 n224 91.51
+get 1022
+put 998 n967 27.3
+put 1652 n445 41.96
+put 1963 n326 6.82
+put 676 n786 36.62
+put 917 n288 2.1
+put 621 n207 23.29
+put 202 n673 19.13
+get 246
+get 537
+get 1902
+get 678
+put 968 n851 57.05
+put 918 n89 53.98
+get 837
+del 769
+put 1949 n907 45.07
+put 1442 n29 75.28
+get 462
+get 1170
+put 117 n221 76.97
+count
+del 294
+put 1199 n648 35.2
+get 14
+put 1531 n106 1.41
+put 193 n303 62.08
+put 68 n757 97.87
+put 321 n733 10.65
+put 525 n96 64.34
+put 1698 n126 43.55
+del 1338
+get 1803
+get 977
+put 405 n818 49.95
+get 789
+count
+get 1457
+put 895 n950 19.53
+put 1881 n899 67.42
+del 1078
+get 1333
+get 486
+get 854
+get 1649
+put 1506 n648 27.01
+put 1850 n75 53.85
+get 105
+count
+put 99 n269 82.23
+count
+put 1861 n537 93.19
+put 752 n720 48.98
+put 1226 n803 48.11
+get 1834
+put 102 n44 5.87
+get 1715
+put 440 n518 85.05
+get 418
+count
+put 1046 n593 66.65
+get 1222
+put 1795 n150 63.96
+get 1022
+del 390
+del 1225
+put 691 n874 38.0
+put 388 n127 48.84
+get 1547
+del 1044
+put 1165 n849 41.73
+count
+put 811 n194 21.25
+del 1471
+put 1727 n976 74.36
+count
+put 1532 n513 93.16
+put 1713 n835 39.06
+put 176 n283 8.86
+put 1396 n847 2.21
+get 1955
+put 103 n364 73.34
+get 509
+put 1686 n402 7.95
+put 148 n638 81.36
+put 1078 n524 92.85
+put 1081 n110 30.25
+count
+put 263 n349 32.61
+put 506 n503 25.6
+put 675 n393 64.32
+put 1936 n630 99.57
+del 1071
+get 122
+count
+put 1301 n695 55.46
+put 1541 n573 24.71
+get 257
+get 1636
+del 831
+put 1285 n135 69.08
+put 918 n275 70.19
+get 561
+get 570
+put 1718 n635 39.51
+get 647
+del 1438
+put 779 n877 39.51
+count
+del 1337
+put 806 n12 81.15
+get 1413
+put 1671 n289 1.92
+put 609 n572 80.29
+put 1192 n219 25.54
+del 1855
+put 1005 n484 58.96
+del 726
+del 724
+put 831 n586 10.85
+get 1633
+del 683
+count
+put 1559 n73 17.71
+del 198
+put 1901 n965 41.8
+put 1213 n807 40.06
+put 925 n157 34.55
+put 1984 n561 68.5
+put 1604 n26 4.83
+put 1471 n223 43.53
+del 459
+put 773 n190 10.43
+get 203
+put 214 n100 81.81
+put 60 n200 20.16
+get 1976
+get 1092
+del 1238
+put 1651 n227 26.4
+get 184
+put 1079 n260 2.02
+get 733
+get 1875
+get 920
+get 1439
+put 1197 n207 22.45
+put 28 n606 53.78
+put 208 n398 9.13
+put 633 n698 52.08
+del 1398
+get 927
+put 1426 n26 57.6
+put 1208 n652 83.46
+get 1714
+put 1428 n593 1.91
+put 920 n443 55.64
+put 1431 n155 50.35
+put 1644 n666 1.85
+del 38
+get 722
+get 115
+put 662 n802 47.05
+put 1379 n339 29.75
+del 1670
+get 213
+get 1202
+put 375 n742 25.73
+put 103 n65 81.78
+put 721 n120 87.59
+get 1012
+put 278 n323 31.92
+get 329
+get 1932
+put 907 n234 38.37
+put 1598 n949 93.07
+put 1236 n18 75.41
+put 949 n991 41.41
+del 1345
+get 389
+get 890
+get 348
+put 1631 n331 70.76
+get 1903
+get 768
+put 1284 n668 77.28
+get 1114
+get 1643
+put 182 n464 76.18
+get 1528
+put 315 n362 42.36
+del 1615
+get 862
+put 434 n640 99.46
+get 1235
+get 423
+put 500 n714 57.76
+put 1104 n749 47.63
+count
+get 1096
+put 1954 n558 4.08
+put 287 n400 85.26
+put 1018 n843 15.73
+get 870
+put 1620 n689 76.27
+get 1619
+count
+get 236
+del 312
+get 1641
+del 1602
+put 1527 n352 88.8
+put 989 n810 32.43
+del 1157
+del 3
+put 1392 n47 76.22
+put 1454 n512 40.42
+get 441
+get 1474
+put 1175 n397 53.89
+put 248 n319 47.78
+del 1402
+put 1833 n761 44.04
+count
+del 1803
+put 1177 n27 21.91
+del 1772
+put 215 n583 52.97
+put 411 n837 79.1
+put 1022 n524 32.39
+count
+put 1227 n321 80.19
+get 781
+count
+del 1663
+del 238
+put 1429 n445 12.94
+put 1635 n196 89.49
+put 1697 n898 26.31
+put 383 n617 77.21
+del 527
+put 115 n31 82.61
+del 1947
+put 1374 n771 66.78
+get 1827
+del 326
+get 1803
+put 1835 n869 64.31
+put 1625 n323 63.85
+del 1647
+get 724
+get 1567
+put 257 n355 34.92
+count
+get 533
+put 61 n52 54.62
+get 1808
+put 875 n730 41.98
+del 1505
+del 121
+get 1362
+put 1193 n357 64.6
+put 1077 n801 56.47
+put 1448 n328 64.05
+get 988
+put 148 n906 87.25
+put 440 n361 41.56
+put 467 n944 72.78
+del 1498
+del 333
+count
+get 888
+put 374 n998 39.01
+put 711 n776 32.71
+get 804
+del 1212
+get 879
+get 1363
+get 1489
+put 1121 n979 99.12
+put 1286 n134 63.68
+get 765
+put 1644 n866 20.21
+get 1508
+count
+del 664
+put 48 n159 17.87
+put 179 n119 52.01
+put 1347 n975 45.91
+put 1011 n200 68.95
+get 1390
+put 206 n83 84.81
+count
+put 1919 n151 81.35
+del 1271
+get 1699
+put 286 n188 71.3
+get 881
+del 1261
+put 290 n428 10.87
+get 1124
+put 1401 n687 80.73
+put 50 n161 94.05
+get 1924
+get 1591
+put 210 n378 0.69
+put 142 n791 25.19
+put 573 n477 61.63
+count
+put 1481 n814 77.41
+get 1941
+put 1319 n462 40.61
+del 1736
+put 1504 n726 11.66
+put 935 n552 18.0
+del 1698
+put 1461 n8 2.72
+put 918 n370 77.46
+put 1048 n593 37.73
+put 575 n396 3.79
+put 1449 n695 34.87
+put 849 n362 37.62
+get 1201
+put 574 n416 47.21
+get 620
+put 861 n283 20.87
+del 337
+get 1506
+get 887
+del 890
+del 1286
+put 638 n850 53.79
+put 761 n604 67.81
+get 578
+del 1963
+put 1587 n178 20.56
+get 10
+count
+put 993 n942 0.18
+get 719
+put 857 n60 62.58
+put 256 n434 48.08
+put 935 n647 42.1
+del 135
+get 441
+put 199 n402 29.1
+put 343 n676 33.32
+put 278 n675 65.65
+put 711 n976 62.55
+get 479
+get 1971
+count
+put 1026 n617 98.03
+put 1237 n762 43.57
+put 1168 n392 5.34
+put 190 n365 79.91
+put 902 n144 51.55
+put 963 n906 89.72
+put 813 n628 88.84
+put 1764 n965 57.87
+put 1615 n67 62.12
+put 872 n447 51.3
+del 1748
+del 270
+put 724 n120 9.05
+put 1148 n750 43.68
+del 1666
+get 1037
+put 1088 n858 42.99
+put 1432 n511 81.87
+get 1741
+count
+put 1120 n326 24.93
+get 359
+get 1795
+put 45 n249 29.28
+del 929
+put 1266 n19 62.24
+put 1535 n616 15.23
+count
+put 1161 n192 93.86
+put 1212 n269 35.79
+put 445 n524 86.04
+put 466 n159 84.35
+get 1657
+del 1462
+del 290
+put 303 n833 46.12
+put 668 n94 71.4
+put 292 n895 22.76
+get 1643
+get 1540
+get 1406
+put 820 n520 32.84
+put 962 n418 58.04
+get 55
+del 1177
+del 1759
+put 1946 n488 15.51
+get 1978
+count
+del 1548
+get 1393
+put 1323 n725 75.19
+get 790
+del 1362
+get 778
+get 814
+put 1411 n164 23.04
+del 1194
+put 1642 n830 23.03
+put 1588 n438 92.15
+put 1281 n889 3.14
+del 1553
+get 1047
+get 1863
+put 1651 n748 20.57
+put 407 n11 48.63
+get 1065
+put 511 n513 94.36
+get 1728
+put 435 n551 9.23
+put 1723 n771 21.8
+del 611
+put 331 n599 9.25
+get 1487
+del 930
+put 1117 n425 84.19
+get 1564
+put 1134 n637 61.37
+get 1543
+del 1731
+put 608 n287 17.2
+get 891
+put 561 n663 12.66
+get 1318
+get 111
+put 279 n590 65.87
+get 674
+put 801 n599 2.38
+put 1637 n874 92.77
+put 1171 n102 71.23
+get 629
+put 367 n738 18.38
+put 1690 n51 77.27
+get 168
+get 1013
+get 564
+put 849 n828 24.88
+get 134
+del 1431
+put 686 n100 60.27
+put 670 n195 88.18
+del 1026
+put 1512 n239 27.36
+put 893 n300 23.32
+put 351 n823 4.82
+put 1142 n845 64.19
+get 1332
+put 757 n308 77.07
+del 1366
+get 466
+get 1397
+put 120 n965 34.21
+get 1325
+count
+get 41
+put 1587 n679 81.9
+del 886
+put 1465 n31 7.56
+get 1645
+put 748 n197 53.23
+put 916 n617 50.75
+put 1221 n291 72.39
+put 1981 n384 19.75
+put 1469 n167 69.15
+get 1413
+count
+del 409
+get 391
+get 1456
+del 478
+put 1258 n541 6.58
+del 1536
+get 1436
+put 319 n823 55.84
+get 674
+put 957 n309 15.8
+put 1227 n324 33.98
+put 686 n217 58.0
+get 1799
+put 1154 n901 15.22
+put 194 n777 79.43
+get 1533
+put 1955 n477 63.44
+put 504 n656 5.15
+get 920
+get 223
+get 1003
+put 1642 n99 18.71
+count
+get 1014
+del 1976
+put 781 n174 10.48
+get 734
+get 1848
+get 39
+put 1275 n323 54.38
+put 1225 n39 51.96
+put 73 n759 91.62
+get 1197
+get 570
+del 626
+del 1169
+get 506
+put 169 n241 17.66
+del 717
+get 894
+put 901 n78 56.1
+put 234 n20 88.42
+put 1058 n965 30.61
+put 720 n818 29.46
+del 900
+put 1146 n888 81.15
+put 182 n153 20.25
+put 301 n813 67.92
+put 196 n790 82.01
+put 961 n916 50.05
+put 1399 n638 78.68
+del 78
+put 1232 n539 18.14
+get 937
+put 1711 n234 31.45
+put 719 n526 58.51
+count
+put 1612 n85 53.85
+put 157 n130 80.96
+put 338 n246 17.39
+get 934
+get 1822
+put 1182 n20 47.25
+put 971 n192 29.59
+put 550 n784 91.19
+put 1966 n521 14.91
+get 1959
+put 1619 n260 83.32
+count
+put 1105 n983 55.75
+del 1086
+get 690
+get 210
+count
+put 1801 n127 94.48
+put 1077 n591 21.44
+put 1778 n148 3.45
+put 337 n263 61.67
+get 277
+get 1522
+put 1502 n36 26.57
+get 746
+get 1140
+put 1845 n598 57.62
+count
+del 1241
+get 1664
+put 1445 n312 57.6
+get 737
+get 1546
+del 1381
+get 1773
+put 123 n615 83.51
+get 688
+count
+del 1235
+get 1025
+put 1495 n900 2.08
+get 1017
+put 623 n541 62.79
+del 324
+get 306
+put 1653 n131 8.09
+put 1008 n111 18.8
+put 1188 n901 40.64
+count
+del 460
+put 604 n925 74.82
+count
+get 542
+get 284
+put 1581 n552 92.09
+get 1804
+get 1472
+get 1190
+put 887 n77 71.82
+del 1749
+del 1382
+count
+get 1076
+put 855 n69 94.27
+get 1943
+put 856 n951 57.52
+count
+get 344
+put 1905 n830 78.09
+del 890
+count
+put 1032 n450 11.81
+del 1713
+put 1312 n761 61.65
+get 731
+put 1402 n889 47.59
+get 1333
+del 1500
+put 971 n171 28.98
+get 328
+del 1992
+put 750 n986 85.77
+put 1500 n495 13.35
+get 1578
+del 526
+put 984 n782 86.78
+del 1064
+put 1132 n418 52.98
+get 1119
+put 249 n89 33.62
+get 910
+get 56
+del 1532
+get 1251
+get 191
+put 1927 n413 85.68
+del 956
+put 105 n366 19.92
+put 574 n658 14.55
+put 842 n992 11.81
+put 1233 n600 69.34
+del 569
+put 1214 n746 35.46
+get 436
+put 1305 n741 63.45
+get 489
+get 616
+put 1874 n818 66.19
+put 527 n132 70.35
+put 8 n803 54.32
+del 1590
+put 829 n460 60.77
+del 1021
+put 932 n274 49.87
+del 1621
+put 1353 n412 20.28
+put 500 n89 96.25
+put 1442 n528 63.97
+get 1841
+get 752
+del 448
+del 620
+get 13
+put 453 n302 99.07
+get 1186
+put 848 n28 74.31
+get 1710
+put 1568 n180 97.35
+get 1564
+put 1990 n797 15.66
+put 36 n640 6.05
+put 705 n248 96.19
+get 954
+get 1049
+put 476 n591 97.89
+get 311
+count
+put 400 n601 92.61
+del 1127
+put 951 n582 93.63
+put 1643 n944 34.32
+put 1280 n832 1.21
+get 883
+put 1897 n428 20.56
+put 287 n918 86.04
+put 1126 n650 78.3
+get 1188
+put 648 n281 16.26
+get 1099
+del 1951
+count
+put 658 n113 14.97
+get 1716
+get 393
+get 1043
+get 1016
+put 448 n745 49.22
+get 706
+get 85
+del 1212
+count
+count
+del 503
+get 211
+put 341 n677 81.37
+get 1077
+get 1950
+get 1234
+get 289
+put 109 n750 4.07
+del 541
+get 908
+count
+get 580
+put 143 n820 13.24
+count
+del 1011
+get 279
+put 1737 n242 15.48
+put 1798 n438 16.34
+get 1741
+get 5
+put 1308 n387 63.92
+get 1908
+del 918
+put 244 n723 23.12
+get 1456
+put 996 n931 64.58
+put 332 n315 21.88
+get 1724
+get 505
+put 1549 n229 63.91
+get 836
+put 398 n112 28.56
+put 1070 n108 0.76
+put 520 n345 53.95
+put 363 n569 95.77
+put 948 n893 75.24
+put 1272 n30 41.59
+count
+put 157 n993 98.73
+count
+put 916 n854 54.64
+put 749 n155 26.08
+get 1538
+put 1938 n628 89.27
+del 975
+get 109
+put 897 n300 88.4
+del 1216
+put 137 n365 27.09
+put 1669 n156 21.87
+get 1705
+get 1118
+put 990 n491 42.04
+get 307
+put 635 n828 91.55
+put 1097 n780 14.79
+get 1176
+put 864 n163 53.55
+get 157
+del 1107
+put 1804 n494 41.48
+put 1815 n95 92.91
+get 1901
+put 884 n201 26.38
+get 1849
+put 1898 n442 70.63
+get 1534
+put 1169 n792 53.61
+get 1877
+put 1274 n100 16.31
+put 1796 n626 14.31
+put 1920 n69 38.81
+put 633 n99 78.92
+put 810 n762 7.23
+del 936
+put 1861 n494 61.32
+del 1889
+get 1228
+del 1624
+put 1860 n964 56.5
+get 539
+put 550 n45 84.96
+put 1140 n439 15.4
+del 1276
+put 1363 n379 62.08
+get 824
+get 314
+put 1459 n755 15.62
+put 1183 n141 35.42
+get 1351
+get 150
+put 828 n581 29.94
+get 981
+put 250 n925 85.75
+put 868 n823 25.77
+put 275 n828 4.73
+get 1019
+put 580 n820 97.18
+get 1225
+get 327
+put 598 n200 24.01
+get 1660
+get 1788
+get 742
+put 1416 n311 65.94
+put 1956 n214 37.41
+get 729
+get 793
+count
+get 1739
+del 1057
+put 997 n335 22.65
+put 775 n570 48.01
+put 1206 n450 42.68
+put 1185 n686 11.76
+put 1498 n499 94.95
+get 1307
+put 1890 n406 15.54
+del 217
+put 1840 n266 56.92
+get 1412
+count
+put 1845 n473 35.55
+count
+put 153 n845 83.24
+del 1451
+count
+get 1817
+get 330
+get 257
+put 1067 n673 32.88
+put 346 n132 49.13
+get 1734
+put 433 n79 48.3
+put 932 n165 91.46
+get 748
+put 1876 n102 41.4
+put 1980 n233 77.61
+put 681 n269 47.15
+put 482 n868 69.62
+get 910
+put 1817 n558 83.69
+put 1275 n283 94.23
+del 527
+get 190
+get 1681
+del 500
+get 524
+put 54 n255 91.29
+get 892
+put 1238 n362 61.82
+count
+del 1807
+get 301
+put 1411 n353 8.11
+get 1356
+get 885
+del 307
+get 495
+get 982
+put 1826 n191 55.32
+put 596 n63 2.43
+put 39 n646 42.39
+put 732 n204 53.45
+del 1997
+put 727 n26 14.25
+put 176 n500 25.75
+put 924 n50 40.12
+put 223 n961 32.82
+put 524 n184 50.41
+put 346 n715 1.78
+put 1264 n543 19.74
+get 1810
+put 657 n407 35.76
+get 1262
+put 1549 n8 5.23
+del 35
+del 519
+put 18 n335 86.69
+get 1411
+get 855
+count
+get 1228
+put 1367 n112 11.86
+get 476
+put 1234 n89 40.31
+put 853 n138 16.06
+get 399
+put 213 n890 46.78
+put 918 n734 63.0
+put 891 n459 53.88
+get 763
+put 1012 n68 63.98
+get 1932
+put 1824 n394 97.6
+del 186
+get 1307
+put 1362 n203 87.79
+put 1655 n707 93.54
+get 716
+put 676 n433 15.95
+del 974
+get 1498
+get 1809
+put 1832 n401 22.07
+del 1767
+put 1213 n642 29.29
+get 1301
+get 211
+get 214
+count
+put 358 n9 45.32
+get 592
+del 438
+get 1414
+put 636 n969 47.67
+put 273 n418 63.19
+put 549 n482 17.35
+put 1419 n54 0.63
+put 1087 n883 77.28
+put 1519 n422 4.93
+get 221
+put 1174 n919 88.84
+put 1684 n987 91.45
+get 120
+get 1921
+get 524
+put 489 n236 51.21
+del 999
+get 263
+put 1105 n896 27.25
+put 679 n194 55.19
+put 1696 n734 59.2
+del 253
+del 1499
+put 70 n753 7.27
+get 1248
+put 28 n201 29.4
+del 886
+count
+put 355 n26 25.0
+del 561
+put 1684 n271 68.73
+count
+del 1143
+put 762 n157 4.25
+get 1907
+get 129
+get 269
+del 1060
+get 743
+get 1822
+del 512
+get 327
+get 1731
+get 290
+get 1898
+get 917
+put 1316 n239 70.35
+put 1597 n473 48.39
+del 1401
+put 1724 n662 47.62
+get 224
+put 1358 n691 42.73
+put 282 n739 6.79
+get 1017
+get 195
+del 542
+put 654 n562 80.88
+del 765
+del 822
+get 453
+get 1930
+get 1265
+put 281 n781 84.89
+get 1221
+put 43 n215 26.9
+put 809 n424 66.25
+get 334
+put 387 n577 24.42
+get 1291
+get 1797
+get 539
+get 563
+put 1266 n165 3.27
+get 1208
+put 787 n960 33.33
+put 1904 n642 21.17
+put 720 n240 0.17
+put 100 n430 80.89
+put 1235 n572 21.37
+count
+put 730 n435 78.08
+put 788 n970 26.26
+get 918
+get 900
+del 1428
+put 258 n458 82.06
+put 1395 n122 29.27
+get 1796
+del 1513
+put 839 n520 5.47
+del 1950
+get 146
+del 563
+put 1850 n779 78.2
+put 630 n870 15.66
+put 1938 n608 55.7
+put 1048 n736 98.18
+put 928 n440 26.0
+put 862 n894 40.26
+put 7 n763 38.56
+put 1501 n361 57.9
+get 92
+del 577
+put 1536 n258 21.65
+put 1924 n220 48.68
+get 1792
+put 331 n830 76.28
+put 477 n60 91.13
+get 22
+put 1830 n339 61.21
+get 1031
+get 1825
+put 1520 n255 3.27
+get 939
+get 1989
+get 281
+get 983
+put 1175 n378 32.14
+put 426 n964 33.66
+get 994
+count
+get 581
+get 558
+get 1503
+put 680 n218 11.37
+get 1778
+put 518 n406 60.49
+del 15
+get 248
+get 1310
+put 242 n878 47.04
+put 155 n547 34.39
+put 103 n539 18.31
+put 1882 n692 11.55
+put 1999 n716 95.25
+get 715
+get 724
+put 750 n214 98.79
+put 327 n960 40.13
+put 1047 n164 6.68
+get 1365
+put 177 n722 37.35
+count
+get 1881
+del 231
+put 295 n451 87.45
+get 900
+count
+get 427
+get 1405
+get 1685
+count
+get 25
+get 1177
+put 480 n681 77.21
+get 981
+get 1752
+del 1182
+put 1867 n551 99.77
+put 1800 n66 89.21
+del 1215
+get 1006
+put 1409 n524 13.81
+put 1010 n695 27.96
+del 1714
+put 1932 n950 39.66
+put 548 n902 13.94
+del 878
+get 10
+get 1253
+put 1216 n609 5.84
+del 407
+put 1045 n825 88.07
+get 970
+get 424
+put 491 n385 87.85
+get 1362
+del 884
+put 1855 n827 47.84
+put 440 n156 71.37
+put 1180 n819 25.16
+put 1945 n134 96.62
+put 723 n284 95.88
+get 766
+del 522
+put 1210 n699 95.12
+put 1888 n151 2.99
+count
+get 1330
+get 117
+put 1815 n694 42.2
+put 2 n572 50.78
+put 262 n440 87.67
+del 888
+put 138 n431 50.88
+put 285 n906 71.76
+put 1285 n56 19.8
+count
+put 116 n278 67.74
+del 774
+put 125 n553 26.22
+put 1202 n402 16.84
+put 843 n375 56.65
+put 1877 n541 37.34
+put 1346 n319 12.48
+put 1441 n68 9.4
+get 1940
+del 1339
+put 965 n252 78.79
+count
+put 651 n609 65.64
+put 997 n767 1.06
+put 132 n114 80.71
+get 1776
+get 1523
+del 1733
+put 722 n647 22.16
+get 1768
+get 856
+put 1827 n143 96.09
+put 1155 n19 6.25
+del 762
+put 1175 n336 38.82
+del 1248
+put 1000 n598 47.78
+get 840
+put 1281 n442 49.15
+count
+get 819
+get 1384
+get 1300
+put 1452 n504 86.17
+put 998 n445 81.95
+del 94
+get 13
+del 540
+put 411 n183 56.51
+put 1573 n727 69.04
+put 1844 n32 14.1
+put 939 n451 90.92
+del 1013
+del 1903
+put 1828 n750 2.41
+put 1896 n39 53.02
+put 308 n903 94.52
+put 1058 n954 5.38
+del 409
+get 24
+del 1540
+put 299 n138 97.06
+get 583
+put 820 n849 15.01
+put 1602 n44 97.97
+put 689 n331 13.15
+get 1831
+put 343 n217 67.41
+get 338
+get 456
+put 661 n333 4.48
+put 640 n759 80.1
+put 1519 n42 79.8
+put 1947 n336 11.94
+put 937 n324 54.16
+put 839 n79 3.34
+get 465
+count
+get 912
+put 716 n372 19.94
+put 936 n242 16.31
+put 1657 n892 17.42
+put 453 n311 5.3
+get 586
+put 1814 n180 40.12
+put 1119 n376 17.76
+get 1115
+get 805
+get 787
+put 1430 n335 0.94
+count
+put 1639 n572 31.08
+put 1529 n118 39.89
+put 503 n869 73.21
+put 988 n693 8.25
+get 961
+del 1891
+put 1773 n598 94.07
+put 162 n159 76.46
+get 1679
+put 922 n816 38.53
+del 75
+get 415
+put 874 n27 21.92
+put 55 n564 63.55
+put 180 n550 73.22
+get 379
+del 33
+del 46
+del 335
+get 452
+put 433 n864 0.11
+put 183 n359 57.02
+count
+del 1838
+put 1922 n944 24.52
+del 104
+put 1007 n678 87.17
+put 1805 n854 55.83
+put 813 n715 19.16
+get 776
+put 229 n793 64.91
+put 373 n391 94.86
+put 600 n688 4.84
+put 1358 n388 37.83
+put 496 n639 65.29
+put 1766 n867 73.45
+get 1496
+get 464
+put 1355 n991 84.45
+del 590
+put 1159 n855 46.68
+del 1379
+put 1071 n60 22.5
+get 342
+put 314 n813 49.87
+get 1449
+put 1515 n671 53.51
+get 613
+put 1581 n497 73.9
+del 1687
+get 1382
+get 498
+put 1666 n273 6.68
+put 1177 n98 98.55
+put 1507 n784 92.22
+put 974 n804 31.17
+put 1072 n62 1.77
+get 1096
+put 630 n95 41.02
+put 231 n740 33.86
+put 1609 n277 51.11
+put 1173 n383 42.15
+put 285 n195 24.99
+get 1690
+get 1846
+del 1911
+put 1365 n256 21.87
+put 1045 n647 36.11
+get 648
+get 1746
+get 1987
+get 834
+put 541 n566 54.22
+get 1893
+get 579
+put 1396 n845 55.84
+put 1683 n50 61.65
+put 1208 n149 13.82
+get 978
+del 636
+put 1192 n183 88.31
+put 152 n622 95.0
+del 1007
+put 1700 n39 11.57
+put 835 n298 54.29
+put 833 n85 74.46
+put 746 n632 82.35
+get 607
+put 31 n858 60.01
+put 767 n680 97.61
+put 1137 n81 95.29
+del 1065
+get 326
+get 1893
+get 1489
+put 1974 n850 53.16
+put 1902 n393 95.85
+get 1407
+del 345
+put 799 n218 18.05
+put 55 n269 34.77
+put 1133 n644 23.15
+put 449 n494 49.59
+get 1754
+put 392 n928 83.42
+put 146 n832 30.36
+get 751
+get 452
+del 509
+get 1201
+put 1629 n787 70.23
+get 1413
+del 856
+get 1570
+del 433
+get 1375
+get 1709
+get 1969
+put 122 n895 19.5
+put 343 n182 90.61
+get 1718
+get 1273
+del 831
+del 1798
+put 1076 n657 69.13
+put 814 n858 19.32
+put 1123 n680 8.65
+get 328
+count
+get 563
+get 1583
+del 521
+del 1575
+put 1878 n608 99.37
+put 267 n824 27.67
+get 1521
+get 1530
+put 38 n8 30.07
+put 512 n365 72.56
+put 149 n822 96.49
+put 530 n784 74.22
+put 244 n487 14.5
+put 1663 n756 22.0
+get 491
+get 1989
+put 320 n3 66.09
+get 978
+del 295
+put 718 n311 41.1
+put 538 n265 71.21
+get 1970
+get 876
+get 1626
+put 443 n698 56.33
+get 468
+get 1417
+get 1638
+put 1891 n352 68.95
+del 1404
+put 256 n657 14.93
+put 1633 n393 38.6
+put 1816 n222 8.04
+get 966
+get 948
+put 14 n133 86.99
+put 526 n284 80.48
+del 1212
+put 752 n727 50.37
+del 828
+get 273
+get 493
+put 593 n523 26.12
+count
+get 1156
+put 978 n271 11.07
+put 1920 n601 77.13
+put 1509 n230 70.46
+put 755 n335 44.26
+get 1161
+put 1692 n351 44.38
+put 799 n945 34.92
+put 1399 n443 83.33
+put 1330 n435 44.27
+count
+put 1177 n674 14.39
+put 753 n850 6.67
+get 886
+put 624 n371 94.4
+get 1297
+put 1852 n146 71.0
+put 1747 n349 42.49
+put 208 n228 68.04
+del 303
+get 1452
+del 1885
+get 927
+get 1753
+put 1782 n632 62.09
+get 1658
+put 359 n65 70.92
+put 442 n218 7.13
+put 1964 n667 65.15
+put 725 n700 40.4
+get 1697
+get 1927
+get 1543
+put 711 n316 33.19
+put 796 n308 13.97
+put 1156 n755 37.5
+put 1237 n690 93.36
+put 91 n713 78.71
+get 1705
+count
+get 175
+del 1230
+get 871
+get 457
+put 532 n272 99.06
+put 460 n40 52.09
+put 1936 n890 78.2
+del 1274
+get 1228
+count
+count
+put 1693 n819 86.22
+put 881 n513 50.8
+put 784 n159 55.53
+count
+put 572 n429 88.42
+put 1056 n946 19.57
+get 1083
+get 1537
+count
+get 1519
+del 80
+put 890 n466 58.15
+get 1292
+get 1484
+put 1897 n77 24.81
+get 1805
+get 728
+get 540
+get 102
+get 869
+put 1375 n259 7.88
+del 830
+get 1213
+del 923
+put 1521 n229 94.87
+put 771 n916 78.25
+get 143
+put 1366 n705 5.61
+del 1363
+get 63
+get 1740
+get 16
+get 575
+count
+get 1916
+del 1229
+count
+get 1080
+put 1323 n474 19.0
+del 313
+put 37 n822 69.64
+put 799 n280 96.11
+get 543
+put 742 n382 9.98
+put 358 n585 76.45
+get 192
+put 1373 n825 5.44
+get 1490
+put 973 n997 83.73
+put 1773 n712 5.47
+put 1071 n863 23.07
+del 515
+put 60 n513 71.07
+put 766 n638 51.49
+get 1016
+put 419 n452 49.53
+get 763
+put 442 n425 25.74
+put 1532 n463 5.85
+put 508 n475 82.22
+put 524 n620 30.61
+get 1329
+put 447 n338 9.45
+get 1021
+put 840 n746 28.3
+get 1507
+put 1192 n279 58.46
+del 1003
+put 1176 n790 92.39
+put 1794 n269 86.36
+put 786 n730 31.94
+put 1354 n974 27.14
+put 825 n203 8.03
+put 1804 n81 70.67
+get 1611
+put 1367 n763 52.07
+put 248 n618 19.39
+get 1041
+get 1874
+del 1704
+get 279
+del 1089
+put 530 n420 89.04
+put 1020 n472 23.3
+get 1277
+get 983
+del 1387
+del 1121
+put 1062 n961 67.95
+put 1880 n21 26.91
+put 1111 n514 27.18
+put 202 n833 61.02
+put 565 n249 52.42
+put 97 n510 14.36
+put 519 n335 27.53
+put 960 n466 37.36
+del 1000
+count
+put 640 n831 5.52
+put 489 n625 87.58
+put 1927 n33 9.38
+get 695
+put 1435 n670 77.6
+put 1875 n226 18.51
+del 1403
+get 1228
+put 1447 n288 5.8
+del 1617
+count
+count
+put 778 n307 50.54
+get 1713
+get 1303
+get 906
+get 1148
+del 1250
+put 1563 n632 18.59
+put 1120 n90 48.21
+get 1975
+put 482 n445 18.54
+put 663 n314 56.41
+put 1575 n944 86.92
+count
+count
+get 31
+get 497
+get 141
+get 1161
+put 800 n324 47.64
+count
+del 812
+put 1338 n477 94.94
+get 474
+get 127
+put 786 n677 47.51
+put 1839 n662 53.26
+put 288 n374 4.03
+put 602 n245 48.08
+get 519
+put 1018 n141 89.09
+put 1672 n133 67.13
+del 448
+get 45
+put 71 n868 21.45
+put 837 n379 0.3
+put 118 n965 97.26
+put 496 n530 83.77
+get 826
+put 1054 n418 96.65
+put 1422 n944 42.74
+get 410
+put 936 n683 68.77
+get 553
+put 1249 n367 99.83
+get 1357
+put 416 n231 17.97
+get 1866
+put 1622 n445 67.5
+put 187 n212 22.31
+del 1551
+put 1332 n920 34.66
+put 765 n783 92.02
+del 1425
+get 481
+get 1199
+get 257
+get 531
+put 1761 n198 43.78
+put 1528 n107 60.27
+get 699
+get 1768
+put 1787 n664 46.69
+get 1418
+put 302 n81 61.4
+get 95
+get 349
+put 240 n875 97.61
+count
+put 767 n155 30.24
+get 1533
+put 1435 n670 96.65
+get 1617
+del 1513
+put 1904 n67 54.99
+put 2000 n191 62.51
+put 901 n304 44.24
+put 1890 n367 15.36
+put 1530 n298 68.48
+get 1676
+put 1531 n785 54.6
+del 1775
+count
+del 130
+del 1366
+put 1247 n105 79.58
+put 1377 n944 48.38
+put 1237 n480 40.02
+put 1491 n433 16.34
+get 1476
+put 82 n110 91.07
+put 1992 n403 76.85
+put 1646 n771 90.77
+put 973 n332 17.11
+get 1490
+put 1525 n36 7.2
+get 132
+put 292 n182 50.65
+put 893 n195 86.75
+put 1340 n383 49.29
+put 1776 n784 99.64
+get 708
+put 1823 n469 9.0
+put 1251 n428 74.79
+put 555 n166 46.59
+get 828
+put 1485 n642 65.85
+get 994
+del 538
+put 16 n482 78.03
+count
+put 464 n412 27.77
+get 989
+put 653 n922 4.1
+get 400
+get 403
+get 1535
+put 1348 n911 45.56
+get 187
+put 1686 n447 11.95
+put 1637 n744 89.72
+get 1342
+get 937
+put 1116 n713 75.32
+get 1894
+get 776
+get 1707
+get 1693
+put 549 n38 59.45
+put 576 n668 7.52
+put 579 n765 78.35
+put 542 n301 0.33
+get 17
+put 1314 n600 0.3
+put 1053 n149 91.15
+put 1175 n208 22.61
+del 191
+put 956 n390 52.36
+get 1854
+get 317
+get 910
+put 1897 n545 25.54
+put 580 n708 19.93
+del 1551
+put 1238 n601 12.75
+put 268 n376 42.0
+put 492 n297 86.89
+get 1207
+count
+put 1422 n39 29.15
+put 1981 n232 14.26
+del 1216
+put 1056 n681 16.34
+put 667 n658 67.15
+put 489 n394 60.74
+put 1215 n960 67.16
+put 861 n367 88.0
+put 444 n196 70.17
+get 953
+put 1634 n537 52.63
+put 1273 n341 82.69
+del 1403
+del 292
+del 349
+del 277
+get 1107
+put 1997 n797 83.3
+put 356 n772 60.64
+put 948 n972 92.46
+put 524 n662 1.06
+count
+put 1809 n247 32.45
+put 1488 n447 26.71
+put 922 n258 69.05
+count
+count
+get 275
+put 1126 n942 24.89
+del 537
+get 97
+get 1708
+get 1091
+put 288 n927 34.0
+put 1221 n169 53.07
+put 1526 n803 43.67
+put 1967 n371 97.78
+del 1270
+del 287
+put 1383 n461 45.37
+get 358
+put 1022 n532 75.12
+get 1266
+put 1204 n555 71.63
+put 83 n662 51.67
+count
+del 65
+put 1738 n227 57.3
+put 539 n353 17.92
+del 850
+get 746
+get 1075
+del 1748
+get 1367
+put 1802 n566 90.47
+put 113 n48 88.07
+put 652 n95 47.59
+put 1880 n554 55.65
+put 559 n31 58.8
+get 1902
+put 1524 n589 41.73
+put 1366 n815 63.9
+get 598
+del 1807
+put 213 n414 92.57
+put 1577 n624 15.1
+put 1739 n257 24.41
+put 1018 n142 15.24
+get 437
+get 751
+put 678 n860 88.51
+count
+get 1615
+count
+put 872 n645 32.22
+count
+get 1085
+put 845 n413 65.18
+del 1327
+get 1990
+put 898 n858 48.78
+put 779 n703 46.78
+get 1776
+get 139
+put 138 n205 65.78
+put 420 n470 27.21
+get 1519
+put 1923 n682 72.1
+del 938
+del 630
+put 1693 n764 16.16
+del 814
+put 1552 n805 18.81
+del 711
+put 1690 n657 15.11
+put 435 n696 26.46
+put 330 n300 90.03
+get 471
+get 1744
+get 1516
+del 1467
+put 1468 n979 85.05
+get 1060
+del 1294
+get 1038
+put 143 n512 41.91
+get 1655
+del 611
+del 1078
+get 972
+get 714
+put 652 n431 36.73
+put 1772 n599 83.2
+put 904 n980 17.74
+put 1275 n826 0.23
+get 1622
+put 243 n928 10.56
+put 898 n304 4.78
+count
+put 1308 n589 93.66
+get 94
+put 1783 n192 5.74
+get 1786
+put 981 n82 71.47
+put 381 n155 35.67
+del 672
+put 224 n809 40.72
+get 1811
+get 1851
+put 594 n57 52.44
+put 1545 n868 36.21
+del 678
+get 292
+put 54 n519 19.61
+del 1482
+del 942
+put 1994 n305 82.09
+del 712
+get 64
+put 1008 n735 83.7
+put 1902 n10 58.06
+del 189
+put 519 n946 80.44
+get 1586
+del 591
+put 1045 n744 15.94
+get 931
+put 1592 n373 18.42
+get 1197
+del 964
+put 997 n134 74.8
+put 1350 n719 78.59
+get 1339
+get 1112
+get 723
+count
+count
+get 1131
+put 1628 n115 67.69
+get 1819
+get 107
+del 514
+put 1319 n583 30.22
+get 1205
+put 1062 n516 16.0
+del 1846
+count
+put 132 n879 13.99
+get 1599
+put 1703 n935 1.35
+del 1494
+put 1476 n557 87.53
+count
+get 512
+put 1419 n437 31.05
+get 682
+get 436
+get 1060
+get 1882
+count
+put 874 n266 69.45
+put 785 n812 16.77
+get 650
+put 794 n568 48.8
+put 1913 n591 25.97
+put 1235 n52 58.31
+put 689 n370 13.21
+get 1638
+del 543
+put 1023 n338 28.28
+put 1605 n480 14.61
+put 1005 n459 19.95
+put 380 n744 91.23
+put 1160 n383 69.78
+get 1769
+put 1311 n25 39.66
+get 1549
+put 1447 n78 88.38
+del 1392
+get 31
+put 1175 n704 41.45
+get 1545
+put 625 n755 55.44
+put 1320 n935 40.23
+put 421 n494 48.0
+get 1840
+get 780
+get 634
+put 2 n578 16.99
+count
+put 32 n468 2.32
+del 926
+put 1774 n604 57.68
+put 311 n911 36.42
+get 442
+put 51 n0 65.69
+put 413 n914 22.14
+put 1286 n928 65.55
+put 1389 n696 82.42
+del 1814
+put 1382 n683 14.82
+put 1856 n212 16.18
+get 700
+del 557
+get 900
+get 1389
+put 529 n657 51.44
+get 514
+put 921 n442 97.47
+get 923
+get 1708
+get 1081
+get 1339
+put 584 n609 81.34
+put 1495 n110 3.61
+del 1596
+put 1204 n260 62.8
+get 450
+put 1382 n247 70.24
+put 498 n772 32.05
+put 1190 n233 76.23
+get 1057
+put 721 n78 46.39
+put 638 n220 14.94
+put 1833 n844 7.78
+put 947 n485 29.44
+put 642 n161 65.33
+del 1150
+del 1479
+get 1172
+put 845 n762 48.07
+del 355
+put 1362 n141 69.46
+del 500
+put 113 n21 25.28
+del 345
+put 490 n584 66.51
+put 255 n937 69.94
+put 1171 n266 75.37
+put 1410 n468 49.01
+del 1989
+get 1216
+get 60
+get 737
+count
+put 1057 n638 75.81
+get 1985
+get 379
+count
+put 1365 n346 89.49
+put 1490 n609 17.47
+get 19
+get 345
+put 1456 n445 48.64
+put 1465 n854 60.53
+put 1432 n21 13.36
+put 1960 n782 72.42
+del 1215
+get 1587
+get 860
+get 793
+put 1647 n567 23.17
+put 346 n676 25.34
+get 531
+get 764
+del 1402
+put 588 n616 29.5
+put 1237 n501 12.9
+get 86
+put 1122 n567 78.39
+get 479
+count
+put 1369 n941 81.26
+put 1266 n931 11.25
+del 63
+get 397
+put 806 n931 63.05
+get 812
+put 1512 n935 91.01
+put 1842 n831 34.97
+put 1177 n376 50.46
+count
+get 796
+put 1078 n171 91.88
+get 1837
+put 1355 n611 93.85
+del 1556
+put 1854 n109 90.46
+get 1396
+get 1213
+put 539 n217 33.05
+put 174 n13 19.74
+put 324 n376 12.49
+get 1937
+del 1654
+put 1072 n105 61.31
+del 963
+put 557 n914 99.34
+put 1085 n178 75.87
+put 1019 n914 70.69
+get 864
+get 383
+get 179
+get 1732
+del 1449
+put 391 n744 55.3
+get 364
+get 789
+count
+put 1836 n330 51.53
+get 1801
+get 1534
+get 693
+put 1999 n178 40.25
+del 1044
+put 1877 n646 48.0
+get 1694
+put 1654 n245 8.77
+count
+get 475
+put 1800 n792 31.61
+del 1298
+get 348
+put 1784 n41 16.98
+get 1399
+put 1103 n223 3.82
+put 931 n143 58.76
+put 741 n283 90.42
+get 223
+put 607 n130 83.43
+put 622 n739 46.78
+del 740
+get 403
+del 1458
+put 730 n496 79.1
+put 1137 n403 7.08
+put 982 n717 45.72
+put 1565 n873 86.84
+count
+get 809
+put 161 n860 62.96
+put 1762 n904 13.05
+get 748
+put 1862 n16 7.96
+put 616 n493 86.57
+get 1995
+get 152
+put 1126 n181 54.46
+put 186 n583 76.74
+get 1393
+get 1569
+get 1759
+get 1827
+get 180
+count
+put 478 n508 15.11
+put 1740 n656 41.6
+get 1226
+put 1022 n658 65.09
+put 301 n135 19.74
+get 1079
+get 478
+get 761
+put 1243 n353 19.41
+put 134 n754 74.74
+put 1943 n403 44.94
+get 1316
+put 700 n187 73.75
+get 1882
+del 791
+put 1231 n402 14.96
+get 420
+put 519 n137 67.0
+get 1404
+put 879 n915 40.92
+put 564 n221 95.89
+put 1696 n848 94.45
+del 572
+count
+put 1497 n370 52.08
+get 1447
+put 1441 n917 52.47
+put 144 n249 33.21
+put 1521 n575 39.65
+put 757 n640 65.12
+del 1675
+put 1897 n111 41.9
+del 1333
+put 129 n502 71.93
+get 1913
+put 381 n660 92.59
+get 185
+put 1632 n700 1.86
+put 1564 n934 88.18
+put 745 n996 95.22
+get 1548
+del 531
+put 953 n611 81.33
+del 921
+put 250 n553 6.64
+put 1225 n148 35.45
+get 791
+put 1370 n314 33.36
+get 1630
+put 1483 n930 46.83
+count
+get 1042
+get 1708
+put 638 n308 40.48
+get 395
+count
+count
+get 1320
+get 1764
+put 1426 n917 65.4
+del 1667
+put 177 n893 74.76
+del 1224
+get 1443
+put 905 n131 38.95
+put 1735 n137 15.07
+get 673
+del 21
+put 182 n0 58.94
+get 1235
+get 1486
+get 1807
+del 128
+put 365 n81 8.84
+get 104
+put 1679 n434 36.72
+get 1244
+put 1854 n368 55.82
+put 1098 n727 44.43
+get 29
+put 1685 n824 86.16
+del 1857
+put 1877 n608 83.09
+put 44 n996 23.91
+put 714 n483 49.86
+put 887 n859 18.18
+get 450
+get 1627
+del 443
+get 247
+del 1653
+put 390 n268 16.3
+put 731 n816 84.39
+get 1163
+get 1165
+put 1337 n341 40.59
+put 1949 n720 93.74
+put 1152 n447 69.99
+put 1886 n269 10.44
+put 268 n576 34.73
+get 1308
+put 1441 n90 5.59
+count
+put 1316 n89 35.71
+get 701
+del 492
+put 434 n459 51.67
+get 1002
+get 890
+del 392
+get 838
+get 1323
+put 26 n659 99.94
+get 1615
+put 594 n839 11.3
+get 95
+count
+put 1838 n796 65.06
+count
+get 1152
+put 1936 n173 24.88
+get 1817
+get 226
+put 287 n35 41.0
+get 219
+put 856 n883 27.32
+put 1794 n267 87.06
+put 1813 n164 36.39
+get 363
+del 466
+put 1132 n289 75.42
+get 1075
+put 1464 n393 38.64
+get 1882
+put 821 n406 48.08
+get 1174
+put 1576 n868 0.98
+put 824 n604 76.26
+put 98 n218 66.54
+put 1807 n603 3.64
+put 388 n637 96.79
+del 119
+put 1388 n959 10.49
+put 701 n530 3.02
+del 1384
+get 1392
+put 1998 n209 35.44
+put 1843 n191 65.58
+del 1716
+put 1572 n993 55.3
+put 1125 n724 63.61
+put 443 n422 29.81
+get 1031
+del 1021
+get 571
+put 476 n563 1.69
+put 1846 n465 84.95
+put 699 n247 16.97
+put 1129 n215 81.73
+put 1037 n301 74.42
+get 331
+put 1262 n29 84.4
+del 74
+put 318 n846 67.97
+get 1168
+get 91
+get 54
+get 440
+count
+get 95
+get 1816
+get 1989
+put 1259 n650 6.42
+put 1194 n332 27.69
+del 1699
+del 1583
+put 596 n794 0.95
+get 453
+get 1264
+get 676
+get 373
+del 685
+get 29
+get 1472
+put 205 n351 65.85
+put 1384 n401 55.96
+get 1036
+get 955
+put 1092 n136 20.09
+put 26 n189 90.41
+put 1558 n583 62.7
+put 85 n328 29.06
+del 683
+del 1738
+get 1275
+get 825
+del 1765
+put 1430 n101 45.86
+get 1619
+put 1145 n542 15.22
+get 566
+put 1712 n629 30.86
+put 1918 n422 82.32
+get 135
+get 1606
+count
+del 1647
+put 1920 n721 55.37
+del 1568
+del 982
+put 1335 n3 71.68
+get 743
+get 75
+put 1094 n81 51.28
+put 1702 n657 20.29
+del 172
+get 183
+put 1294 n864 43.74
+get 439
+del 839
+put 715 n142 92.2
+put 459 n124 26.09
+put 216 n595 77.02
+get 1577
+put 171 n421 45.58
+put 1357 n768 41.14
+put 474 n510 53.07
+put 1160 n840 18.37
+del 228
+get 123
+put 274 n550 4.16
+put 1795 n977 67.6
+put 1375 n132 35.56
+get 41
+del 1993
+put 1570 n668 93.15
+put 1567 n907 57.43
+put 576 n709 64.85
+get 877
+get 1310
+get 1451
+put 966 n371 20.51
+count
+put 89 n497 32.44
+put 1027 n108 86.44
+del 1389
+put 1821 n127 76.62
+put 1067 n646 18.04
+put 215 n327 70.0
+put 991 n518 21.31
+put 853 n645 59.1
+put 126 n805 28.43
+put 1824 n190 59.92
+del 820
+put 1278 n666 84.0
+put 1855 n529 58.92
+del 1673
+put 1751 n420 91.09
+put 754 n834 40.1
+put 1222 n684 97.92
+put 771 n207 47.89
+get 766
+get 229
+get 1106
+put 238 n432 38.74
+get 1200
+get 1134
+get 1664
+put 28 n735 16.98
+count
+count
+put 130 n17 96.84
+put 1164 n981 54.34
+put 1954 n43 13.2
+del 451
+get 1072
+get 1933
+put 172 n55 98.75
+put 721 n56 59.65
+get 1062
+put 851 n309 95.72
+put 351 n243 90.7
+get 110
+del 1119
+put 348 n306 76.61
+put 406 n203 15.87
+del 286
+get 424
+count
+get 1285
+get 1239
+del 985
+get 516
+count
+put 808 n572 93.86
+del 293
+put 1107 n282 90.97
+put 1890 n723 65.75
+put 1967 n785 38.06
+del 379
+get 289
+put 1585 n936 42.66
+del 1045
+del 1674
+del 915
+count
+put 289 n476 53.27
+put 307 n942 22.18
+get 13
+put 1907 n406 61.64
+del 1586
+get 1932
+get 1621
+put 530 n45 32.34
+get 568
+get 490
+put 949 n771 11.45
+put 1129 n678 27.69
+put 484 n264 61.37
+get 472
+get 590
+del 80
+put 938 n576 29.25
+get 711
+put 964 n618 50.87
+get 721
+put 600 n872 47.23
+get 1132
+put 1082 n599 72.37
+get 1466
+put 1718 n989 49.98
+put 1387 n763 44.0
+get 1245
+del 1158
+put 573 n97 22.31
+put 1718 n143 58.43
+put 1903 n129 93.56
+put 1402 n391 98.78
+put 191 n688 16.26
+get 1346
+count
+del 262
+del 1560
+del 127
+put 1926 n703 98.05
+put 972 n332 41.55
+get 1565
+put 1875 n240 27.84
+put 52 n634 43.01
+put 1076 n284 31.31
+get 1617
+put 1134 n573 43.16
+put 1994 n171 70.31
+get 1179
+put 1927 n173 16.72
+del 956
+del 646
+put 962 n226 44.51
+del 1342
+put 1112 n181 45.18
+del 360
+put 291 n842 46.85
+put 1915 n909 15.96
+put 583 n567 61.53
+get 266
+get 1674
+del 1488
+get 1841
+put 708 n576 71.75
+del 1654
+del 1248
+get 1220
+get 1981
+put 1406 n129 16.64
+count
+del 755
+del 1237
+get 1356
+del 191
+put 160 n333 71.84
+put 1032 n446 31.22
+get 1513
+put 901 n63 72.08
+put 920 n933 82.0
+del 1911
+put 1871 n510 6.29
+put 1339 n110 25.71
+del 1983
+put 1746 n748 62.94
+get 1010
+count
+put 1530 n951 27.75
+put 1026 n303 52.64
+put 811 n856 68.05
+get 883
+get 1568
+get 1997
+put 1111 n675 78.85
+del 1917
+del 1361
+del 1642
+get 644
+del 1097
+put 1415 n807 77.55
+count
+count
+count
+put 1932 n868 47.31
+get 911
+del 1978
+count
+put 991 n458 80.96
+put 1216 n228 96.26
+get 473
+del 1408
+put 87 n608 32.77
+del 460
+put 1165 n968 44.03
+get 1429
+get 422
+get 1581
+del 686
+put 385 n189 83.2
+get 1661
+put 569 n828 45.65
+get 43
+del 1241
+get 757
+put 1895 n372 75.31
+put 119 n850 27.77
+put 509 n250 49.76
+put 1422 n676 19.35
+del 655
+get 854
+get 271
+get 171
+del 1561
+get 333
+get 506
+put 276 n455 74.53
+get 1127
+get 344
+put 993 n301 29.32
+put 1687 n837 47.64
+put 1539 n868 33.74
+get 1514
+get 404
+put 552 n934 18.95
+get 1641
+put 1674 n707 52.76
+get 1969
+get 1566
+count
+del 863
+del 1001
+put 493 n89 89.47
+get 294
+get 154
+put 1322 n165 19.72
+put 1478 n149 8.9
+put 1762 n199 68.73
+get 592
+put 1822 n167 83.74
+get 996
+del 1479
+get 1599
+put 848 n812 70.1
+get 1351
+get 1709
+count
+put 1261 n447 91.18
+get 1790
+get 405
+put 226 n142 93.36
+put 1147 n244 94.16
+put 837 n424 43.53
+put 1711 n611 68.55
+get 493
+put 1874 n609 79.03
+del 973
+put 141 n874 95.3
+del 799
+get 1532
+count
+del 516
+put 728 n681 99.8
+put 1264 n315 38.17
+get 234
+get 1557
+get 879
+del 682
+put 733 n966 47.74
+get 1482
+get 1550
+count
+put 505 n286 25.63
+put 322 n437 47.53
+put 922 n710 74.41
+get 1002
+get 466
+del 221
+put 1802 n233 21.09
+put 1346 n946 54.61
+put 1848 n645 64.62
+get 483
+put 512 n797 76.89
+put 1964 n224 4.46
+put 1041 n393 67.26
+get 449
+put 1035 n1 21.09
+get 935
+get 1091
+get 874
+get 1798
+get 654
+get 1468
+put 34 n622 7.41
+put 796 n751 29.85
+get 606
+del 279
+put 1327 n417 51.69
+del 1499
+put 1533 n326 34.65
+get 306
+put 505 n592 6.53
+put 185 n664 91.77
+put 303 n237 16.29
+get 988
+count
+put 594 n151 38.12
+get 496
+put 1295 n220 49.55
+put 1667 n694 86.42
+put 1338 n843 19.76
+put 1335 n657 26.96
+put 1462 n756 83.55
+put 1527 n219 6.69
+get 1505
+get 800
+put 422 n656 80.06
+del 1782
+put 248 n209 88.81
+put 829 n799 82.9
+put 752 n354 34.09
+put 1738 n236 81.97
+put 1104 n4 0.59
+get 219
+put 1049 n191 96.15
+put 1545 n189 70.8
+put 410 n938 42.94
+put 698 n659 83.24
+put 231 n484 20.32
+put 1804 n684 91.74
+get 1547
+del 1984
+del 1679
+get 958
+del 1052
+get 437
+put 717 n448 84.32
+put 1984 n149 43.45
+get 1848
+get 4
+get 1553
+put 340 n587 94.18
+put 875 n709 32.83
+get 774
+put 261 n302 81.6
+get 1518
+del 424
+put 1562 n257 40.09
+get 1324
+get 1358
+get 110
+put 678 n243 88.1
+get 1450
+get 552
+get 75
+put 114 n191 50.7
+put 1334 n968 85.69
+put 106 n652 62.38
+del 8
+del 401
+put 311 n341 75.11
+get 552
+get 348
+put 1450 n645 9.53
+del 18
+put 1167 n664 72.43
+del 1045
+put 1022 n490 57.21
+put 436 n968 73.26
+get 147
+get 500
+put 1133 n156 9.27
+put 1005 n201 76.47
+get 202
+put 709 n168 14.78
+put 933 n367 83.14
+put 731 n796 9.53
+put 1776 n760 91.16
+put 334 n420 26.2
+put 1158 n315 87.63
+put 957 n141 74.19
+put 1756 n297 21.2
+get 1801
+count
+del 271
+del 562
+get 1515
+put 1578 n340 84.08
+del 1132
+put 1681 n448 27.13
+put 1787 n488 68.92
+put 1120 n801 63.93
+put 55 n742 10.34
+get 790
+get 1456
+del 602
+del 1317
+put 902 n351 74.9
+del 1105
+del 77
+put 1305 n364 47.15
+put 669 n96 73.99
+get 546
+del 17
+del 832
+del 611
+get 671
+put 4 n924 19.65
+put 139 n999 4.29
+get 622
+put 1183 n826 66.82
+get 1851
+del 673
+get 1117
+get 1468
+count
+get 596
+del 1765
+put 1940 n779 55.2
+get 468
+put 509 n278 66.62
+get 1199
+get 1997
+put 1355 n361 94.87
+del 120
+get 1142
+get 821
+get 1200
+put 951 n860 18.85
+get 598
+del 1312
+put 1817 n927 1.5
+put 1278 n307 33.36
+count
+put 1124 n192 80.48
+put 1356 n159 79.38
+put 1113 n92 1.82
+put 1419 n927 61.69
+get 449
+put 179 n931 13.3
+get 1094
+put 1373 n282 77.68
+put 1881 n336 40.62
+put 679 n390 94.29
+get 1662
+get 1207
+get 1926
+del 601
+put 1116 n657 38.1
+put 1268 n69 10.49
+put 728 n739 81.72
+del 35
+get 896
+put 173 n75 42.66
+get 896
+put 1277 n631 15.65
+del 1462
+get 26
+put 1167 n753 96.82
+put 1443 n626 79.73
+get 1792
+put 1434 n547 44.69
+get 663
+put 1103 n396 79.01
+put 1364 n161 90.93
+get 1938
+get 1819
+del 537
+put 803 n938 77.29
+put 1011 n399 6.08
+del 1241
+get 710
+get 647
+put 1185 n589 33.59
+put 717 n765 69.78
+put 1663 n396 50.47
+del 1252
+put 1423 n392 27.63
+get 1720
+count
+get 493
+put 664 n324 4.22
+put 299 n21 21.85
+put 19 n285 79.64
+put 1990 n353 35.54
+get 303
+del 987
+get 597
+del 868
+get 463
+get 847
+get 2000
+put 362 n996 90.75
+get 1878
+del 1163
+get 1291
+count
+get 1663
+put 1054 n618 9.71
+del 482
+put 1478 n303 81.53
+put 1646 n574 44.87
+get 705
+del 184
+get 47
+get 1425
+del 280
+get 1370
+get 404
+put 76 n49 77.73
+get 1489
+get 1180
+count
+put 988 n657 59.09
+count
+get 1389
+put 1390 n30 36.62
+del 1570
+del 1578
+put 1240 n904 1.17
+del 1508
+put 936 n748 42.09
+put 221 n95 56.13
+del 81
+del 1825
+put 615 n662 77.81
+put 836 n693 66.59
+put 1281 n439 59.67
+get 1509
+put 402 n931 0.11
+count
+get 1324
+put 160 n705 19.05
+get 626
+put 476 n174 85.89
+del 1508
+put 610 n986 60.03
+del 58
+put 1188 n742 23.14
+get 323
+put 681 n157 44.43
+put 466 n872 9.11
+put 493 n864 42.91
+get 1317
+del 287
+put 1836 n645 12.96
+put 1531 n237 10.97
+get 11
+put 1325 n6 85.44
+get 1080
+count
+del 221
+put 775 n831 71.93
+put 602 n413 9.96
+get 1658
+count
+put 1806 n288 12.14
+put 1278 n8 2.42
+count
+get 100
+get 618
+put 663 n224 7.66
+get 1715
+del 1527
+get 3
+get 1584
+put 1241 n33 22.25
+del 772
+get 664
+put 848 n58 87.67
+put 1970 n240 66.31
+put 1744 n483 19.48
+put 1454 n246 98.99
+del 270
+put 806 n106 37.72
+count
+put 55 n396 34.99
+get 1427
+put 390 n645 70.36
+get 1230
+put 1450 n850 53.35
+put 1814 n407 14.05
+put 76 n698 21.31
+put 1674 n306 60.47
+del 183
+get 61
+put 523 n381 71.03
+put 790 n892 6.96
+get 771
+put 1730 n535 28.35
+del 631
+put 1050 n68 29.98
+put 1275 n378 29.84
+put 1315 n718 16.79
+count
+get 1554
+put 1376 n698 29.12
+del 440
+get 1680
+put 969 n306 74.47
+get 1141
+del 996
+put 410 n858 86.23
+del 267
+count
+count
+put 686 n788 58.06
+get 810
+del 1603
+del 313
+put 176 n675 57.64
+put 426 n487 38.04
+put 1578 n832 52.78
+put 1148 n881 37.77
+count
+put 1696 n991 76.05
+put 1875 n863 23.43
+del 1205
+put 1353 n421 29.63
+put 1552 n418 34.84
+get 1459
+get 1644
+put 1269 n132 77.62
+get 1448
+get 1694
+del 606
+put 909 n657 11.67
+put 445 n153 92.66
+get 1256
+put 1927 n193 74.24
+get 1202
+get 339
+put 1798 n711 99.0
+put 1739 n107 14.36
+put 1791 n838 29.89
+put 1583 n130 54.77
+get 442
+get 1935
+del 1857
+get 1166
+put 489 n711 36.64
+get 405
+put 870 n813 86.62
+put 779 n982 50.52
+get 734
+get 1344
+get 1102
+get 444
+put 1678 n125 21.74
+get 1738
+del 435
+del 660
+put 400 n865 82.77
+get 1841
+get 1348
+put 1634 n811 11.76
+put 1150 n527 0.93
+count
+put 669 n910 59.14
+put 1616 n560 86.51
+put 260 n235 9.43
+put 315 n107 2.33
+del 1456
+get 657
+put 517 n240 92.85
+put 1086 n397 69.77
+del 1845
+put 473 n6 70.65
+get 1651
+put 1838 n892 4.2
+put 36 n781 2.83
+del 1754
+put 251 n866 37.16
+put 1281 n6 85.21
+put 486 n795 2.86
+count
+get 1580
+put 1154 n806 60.38
+put 1948 n473 22.58
+put 86 n980 75.39
+put 123 n635 38.96
+del 552
+get 727
+get 530
+del 1585
+put 250 n936 21.62
+del 639
+put 213 n933 39.08
+get 480
+del 334
+get 1125
+put 645 n432 92.49
+get 505
+put 1936 n718 92.73
+put 1255 n562 45.69
+del 656
+put 380 n12 80.93
+get 1758
+del 1892
+put 1085 n768 95.98
+put 64 n372 19.39
+count
+put 652 n809 22.58
+put 1692 n520 82.14
+put 1897 n334 5.36
+put 655 n160 27.39
+get 1544
+put 788 n473 3.09
+del 914
+put 556 n505 36.8
+get 805
+get 431
+put 814 n470 28.73
+put 857 n487 75.53
+put 355 n740 68.16
+get 1248
+put 1265 n133 9.77
+put 1439 n351 73.77
+get 1722
+put 1293 n526 60.22
+get 1351
+put 1054 n467 11.7
+get 1842
+del 431
+put 92 n54 42.76
+put 1929 n961 16.59
+get 1535
+get 339
+put 173 n914 19.44
+del 1692
+del 1097
+put 346 n457 68.35
+put 644 n627 8.13
+get 880
+del 359
+put 295 n277 5.53
+put 511 n511 58.15
+put 1426 n460 91.23
+put 1546 n632 46.52
+del 1055
+get 699
+del 135
+del 914
+del 558
+put 857 n967 56.59
+get 84
+get 784
+del 807
+del 167
+get 836
+put 1579 n428 15.13
+put 437 n495 7.01
+get 1571
+put 288 n506 17.19
+del 1373
+get 381
+get 923
+get 436
+put 263 n597 50.33
+get 1436
+get 475
+get 862
+put 1642 n196 86.85
+put 493 n495 37.51
+put 46 n743 86.1
+get 1033
+del 340
+put 1358 n854 26.88
+put 1803 n474 75.64
+count
+put 651 n577 100.0
+del 328
+put 102 n918 53.86
+get 1859
+put 829 n35 4.77
+put 296 n921 8.08
+get 1809
+put 896 n291 62.38
+put 1804 n491 92.49
+put 1318 n552 80.86
+put 230 n632 6.98
+put 1456 n548 16.22
+put 1109 n722 18.4
+get 74
+put 1063 n15 62.09
+put 942 n84 8.41
+put 393 n203 42.46
+get 1596
+get 885
+put 1530 n521 49.57
+count
+get 1550
+put 697 n561 35.0
+get 816
+put 1241 n839 14.96
+get 702
+put 446 n807 61.55
+put 1693 n386 70.51
+get 557
+get 1153
+put 1626 n346 72.67
+put 747 n588 90.13
+del 1909
+put 1914 n146 15.13
+put 45 n410 64.06
+put 381 n561 45.94
+get 495
+del 1013
+get 375
+get 1331
+put 1910 n204 35.61
+get 1940
+get 1277
+put 956 n665 17.49
+put 1953 n831 16.71
+put 430 n278 85.09
+get 706
+get 207
+get 1888
+get 1406
+put 428 n281 85.14
+del 1794
+del 1178
+put 760 n624 13.36
+get 1283
+get 750
+put 961 n423 93.39
+get 1919
+del 1977
+del 1604
+put 562 n263 93.19
+put 1103 n857 31.83
+put 27 n569 43.34
+put 459 n911 76.29
+put 1562 n912 69.49
+get 491
+put 1168 n245 65.21
+put 566 n288 4.46
+get 1861
+del 605
+put 831 n236 47.41
+put 1461 n430 99.76
+del 622
+put 1523 n587 90.83
+put 227 n919 91.44
+put 1680 n787 11.85
+put 111 n702 64.91
+put 1924 n113 87.21
+put 1953 n27 59.84
+get 556
+count
+put 1046 n59 59.68
+put 626 n95 62.37
+get 984
+count
+put 1577 n820 21.0
+put 394 n66 76.25
+get 7
+put 683 n370 26.38
+put 302 n81 71.44
+get 1092
+get 1885
+get 723
+put 265 n204 83.78
+del 1781
+del 602
+del 363
+get 423
+del 469
+put 248 n179 43.1
+put 1405 n418 84.55
+get 881
+del 1685
+put 1221 n145 89.6
+put 1717 n861 32.75
+get 124
+del 593
+put 828 n627 13.74
+put 1710 n953 14.21
+put 1014 n162 56.55
+del 1472
+put 1207 n345 93.12
+get 169
+count
+get 792
+get 703
+del 1171
+put 1614 n456 44.14
+put 616 n26 37.12
+get 1993
+put 431 n673 84.23
+get 439
+put 1366 n345 72.21
+put 1737 n24 47.83
+put 1092 n864 53.48
+put 1853 n397 47.84
+get 119
+put 785 n399 29.69
+get 772
+put 144 n499 95.25
+del 1876
+get 1816
+put 1561 n456 80.48
+del 1953
+get 983
+put 139 n770 30.17
+put 343 n508 5.84
+get 1319
+put 598 n331 29.1
+get 1019
+put 400 n281 14.97
+put 288 n716 75.08
+put 1729 n910 45.09
+put 166 n611 65.16
+del 306
+put 1595 n922 60.08
+get 1600
+put 398 n840 39.64
+put 1499 n823 7.88
+del 1477
+del 145
+put 1041 n250 4.72
+del 1506
+put 871 n910 46.85
+get 513
+put 446 n974 40.67
+put 432 n121 98.73
+get 895
+put 330 n53 37.96
+get 1432
+get 1463
+get 1539
+del 679
+put 687 n375 55.92
+get 1541
+put 33 n697 23.21
+get 1369
+get 1748
+del 457
+put 330 n780 93.32
+del 1306
+del 36
+put 830 n478 90.96
+get 67
+count
+del 545
+del 170
+put 1463 n535 0.5
+put 947 n125 0.16
+put 826 n230 93.51
+count
+get 605
+get 433
+put 1514 n801 17.09
+put 139 n293 67.74
+put 930 n919 10.26
+get 1110
+put 918 n576 92.52
+put 1221 n21 92.06
+put 1811 n362 31.97
+get 221
+get 98
+put 276 n557 93.25
+put 753 n743 36.31
+put 195 n431 42.04
+put 1374 n160 99.7
+put 414 n770 34.83
+put 1409 n284 49.73
+count
+del 668
+get 1437
+put 9 n311 73.04
+put 552 n32 83.08
+get 232
+put 47 n56 59.1
+get 804
+del 1752
+put 1378 n181 24.08
+count
+put 1321 n8 12.25
+put 558 n386 62.1
+put 402 n76 73.8
+put 694 n551 84.53
+put 1436 n570 63.17
+count
+put 447 n207 10.81
+del 1927
+put 1529 n100 56.67
+count
+get 351
+del 728
+put 172 n48 18.12
+get 942
+put 1120 n821 20.05
+get 1219
+put 1810 n379 33.26
+put 1628 n243 13.37
+put 1798 n391 33.8
+del 50
+put 1913 n623 40.93
+get 1113
+get 975
+put 605 n705 63.4
+get 1716
+get 527
+put 935 n725 41.53
+put 1676 n924 82.02
+put 539 n415 43.5
+count
+get 362
+put 1330 n983 26.76
+put 1161 n432 80.25
+get 1943
+put 1325 n430 0.57
+get 815
+del 261
+put 251 n70 11.15
+get 739
+count
+get 1733
+get 1297
+get 1374
+put 1480 n396 61.73
+put 601 n283 5.17
+put 451 n268 59.62
+put 949 n335 85.02
+get 1626
+get 1357
+get 1376
+put 407 n855 1.65
+get 222
+get 892
+put 1702 n319 73.14
+get 1485
+put 1296 n836 66.22
+put 459 n302 5.52
+del 1751
+put 268 n881 41.01
+put 1802 n475 0.36
+get 250
+put 1351 n350 48.2
+count
+put 48 n575 46.97
+put 1232 n46 50.36
+get 544
+del 92
+put 1214 n159 89.17
+put 1619 n431 46.19
+del 90
+get 412
+get 1524
+del 1469
+put 1191 n720 75.95
+put 1360 n169 25.04
+get 1506
+count
+get 910
+put 911 n860 32.44
+get 1292
+get 1794
+del 1008
+put 1003 n407 29.83
+put 359 n307 50.52
+put 654 n917 64.74
+put 746 n297 61.96
+put 828 n103 97.2
+put 1256 n243 33.93
+count
+put 1198 n421 4.52
+get 1843
+get 285
+count
+put 1278 n385 6.67
+get 372
+put 1761 n772 82.38
+put 620 n88 80.1
+put 1023 n507 31.44
+get 531
+put 1076 n388 25.04
+put 118 n923 10.61
+put 1679 n698 8.56
+put 1599 n869 41.01
+put 1574 n130 39.65
+put 291 n71 16.31
+get 1109
+get 1534
+put 162 n634 27.28
+put 1196 n389 7.11
+put 1246 n715 85.6
+put 1055 n312 14.22
+put 1053 n588 77.51
+put 1455 n432 64.46
+put 1925 n954 38.33
+get 670
+put 1995 n212 50.23
+get 300
+put 1075 n871 18.49
+get 1136
+get 1343
+del 650
+put 1968 n487 65.54
+del 489
+put 1747 n607 66.41
+del 121
+put 1399 n852 77.5
+get 1016
+del 925
+get 1145
+del 465
+get 1462
+put 1367 n333 86.96
+put 990 n21 96.09
+put 916 n188 55.91
+put 1045 n300 94.45
+put 78 n281 29.63
+get 471
+put 34 n165 73.44
+del 652
+put 242 n165 13.24
+del 489
+del 963
+get 1183
+get 965
+get 1722
+put 675 n350 11.74
+put 1872 n465 56.55
+count
+del 66
+put 893 n591 66.51
+get 130
+put 1431 n730 47.2
+del 332
+del 138
+get 350
+del 79
+put 732 n769 89.19
+put 860 n899 34.74
+put 1954 n9 44.36
+del 1495
+put 1123 n868 89.89
+put 954 n917 51.56
+put 1435 n535 7.41
+put 1509 n596 92.66
+del 1378
+put 1088 n863 37.83
+put 1935 n553 22.39
+put 212 n75 82.97
+put 1573 n597 50.59
+get 1462
+put 471 n15 11.43
+put 1468 n815 14.93
+get 1834
+put 1071 n673 91.87
+put 385 n970 20.12
+del 586
+put 1780 n32 39.38
+put 1318 n131 42.31
+put 363 n602 75.07
+get 1420
+get 766
+get 755
+del 1558
+put 1928 n543 97.28
+del 1191
+get 920
+put 1274 n817 5.67
+put 1936 n557 28.56
+get 1349
+put 1400 n364 46.59
+put 962 n573 30.36
+put 991 n115 58.93
+put 1375 n271 97.8
+put 359 n756 70.7
+get 301
+get 1697
+put 1521 n492 14.61
+del 574
+get 1469
+count
+del 985
+get 994
+get 134
+put 1502 n536 28.13
+get 80
+count
+get 1128
+del 1324
+put 1005 n476 85.93
+put 173 n201 61.45
+del 1755
+put 1811 n29 35.97
+put 1565 n369 49.13
+count
+del 1354
+put 936 n491 21.22
+get 1
+get 681
+get 299
+put 688 n640 15.31
+put 567 n168 14.55
+put 895 n776 64.89
+put 1682 n833 92.93
+get 1585
+get 469
+get 1993
+put 210 n819 42.96
+del 1537
+get 892
+put 663 n487 96.65
+del 1591
+put 1239 n442 10.8
+put 1681 n217 63.75
+get 1536
+put 1502 n531 28.94
+put 1258 n544 83.6
+put 1074 n883 2.14
+get 80
+put 1845 n216 99.48
+put 1938 n274 74.03
+count
+put 205 n156 3.77
+get 509
+get 1083
+put 26 n811 86.33
+get 1696
+del 599
+put 839 n219 90.82
+put 99 n710 6.83
+put 346 n196 59.34
+del 1162
+put 1449 n984 51.73
+put 641 n675 24.55
+put 299 n709 55.24
+get 1881
+get 1152
+get 397
+del 1590
+del 1870
+put 45 n674 36.71
+put 1354 n410 36.97
+put 1105 n465 10.58
+del 543
+put 1963 n139 53.31
+get 759
+put 165 n39 84.15
+put 1195 n474 60.93
+put 369 n673 78.39
+put 194 n174 77.46
+put 813 n737 32.05
+get 1121
+put 518 n14 40.82
+put 1970 n2 59.43
+get 1105
+put 1904 n202 8.04
+put 95 n821 8.03
+count
+count
+put 610 n810 33.1
+put 1392 n911 12.54
+get 1277
+put 612 n540 75.25
+put 972 n197 1.46
+put 1511 n143 20.69
+put 282 n439 5.51
+put 1689 n226 81.57
+del 1378
+get 722
+count
+put 1654 n253 51.15
+get 1558
+del 768
+put 430 n134 32.16
+put 1140 n321 42.32
+put 753 n566 7.52
+put 1729 n840 44.45
+put 1711 n915 75.46
+put 831 n687 75.28
+del 1635
+put 1006 n668 96.81
+count
+put 1742 n742 67.87
+del 226
+put 1248 n82 29.18
+put 593 n170 31.89
+put 1535 n726 61.16
+count
+get 1601
+put 268 n748 59.68
+put 841 n164 78.14
+put 6 n114 34.23
+get 1528
+del 366
+get 1564
+get 1014
+del 792
+get 797
+put 494 n616 88.05
+get 1636
+get 1887
+del 1213
+put 973 n643 29.65
+del 200
+put 233 n775 29.1
+put 212 n955 77.84
+put 1030 n774 92.04
+put 215 n116 32.19
+put 592 n307 19.95
+get 1106
+put 539 n322 42.49
+put 900 n741 70.62
+put 305 n893 53.84
+put 1498 n434 78.03
+put 1997 n271 30.93
+put 291 n376 95.87
+del 48
+put 906 n207 59.71
+get 272
+put 529 n891 47.84
+get 39
+del 1644
+put 1279 n486 5.01
+put 661 n783 91.75
+get 1327
+put 137 n654 19.03
+put 927 n874 10.95
+put 920 n487 58.98
+put 754 n936 97.08
+put 261 n472 91.0
+put 130 n572 20.53
+get 1908
+put 1681 n678 32.49
+put 447 n294 42.66
+del 501
+get 595
+put 1418 n825 77.16
+get 1306
+count
+put 678 n821 66.91
+get 1843
+put 722 n738 22.16
+put 895 n252 49.26
+put 1207 n884 13.21
+get 454
+get 515
+get 1299
+count
+put 837 n838 73.73
+put 678 n255 68.85
+put 1430 n39 60.15
+get 548
+get 308
+put 64 n895 29.48
+put 35 n57 94.28
+count
+del 63
+count
+put 1947 n71 46.27
+get 19
+get 138
+get 1212
+put 825 n936 8.54
+del 1938
+put 985 n576 89.94
+get 730
+put 426 n57 51.91
+del 1756
+del 1254
+get 812
+get 1928
+get 1692
+del 1849
+put 924 n194 74.85
+put 983 n751 79.26
+put 253 n134 59.46
+put 1144 n229 27.66
+get 434
+del 1514
+put 1281 n930 38.05
+del 50
+put 1180 n13 18.87
+count
+put 969 n106 21.11
+put 1191 n263 50.61
+put 1308 n848 70.95
+put 328 n834 54.39
+get 1025
+get 1862
+put 1691 n114 10.5
+put 332 n723 99.49
+put 1351 n569 30.78
+del 1259
+put 374 n972 64.52
+get 708
+get 1992
+put 1989 n522 27.43
+get 1533
+get 1360
+del 388
+del 1592
+del 290
+put 1894 n608 98.38
+put 1893 n526 68.21
+put 1802 n9 92.29
+put 669 n678 72.05
+get 571
+get 965
+get 22
+get 1552
+put 1837 n873 90.93
+put 164 n353 66.0
+get 1739
+del 408
+put 792 n973 62.88
+put 485 n416 37.98
+count
+put 767 n617 80.24
+put 60 n830 64.96
+del 1144
+get 1449
+put 796 n997 60.48
+put 1850 n520 45.91
+get 1551
+get 284
+put 1260 n741 60.76
+get 1164
+del 1990
+del 827
+get 1287
+put 1046 n907 15.65
+put 420 n616 45.05
+put 1738 n128 54.62
+put 839 n877 86.94
+put 73 n158 49.85
+get 691
+put 273 n696 86.21
+put 93 n312 30.76
+get 1818
+get 1380
+get 1747
+put 1409 n775 71.78
+put 500 n970 75.33
+get 154
+put 49 n751 6.12
+del 1403
+put 724 n444 77.72
+get 1232
+get 1082
+put 1438 n756 56.53
+put 45 n894 65.94
+put 1464 n299 97.89
+get 205
+put 255 n773 4.19
+get 667
+get 434
+put 1539 n92 23.74
+put 212 n710 54.94
+put 1981 n271 63.33
+del 168
+put 745 n153 36.54
+get 1743
+del 54
+put 1849 n544 34.57
+get 737
+put 1943 n149 48.96
+del 1880
+put 773 n445 67.79
+put 1208 n287 85.66
+put 196 n713 71.18
+get 1621
+put 347 n212 11.61
+get 861
+get 1766
+get 1647
+get 1373
+get 55
+get 842
+get 1573
+put 1287 n488 20.17
+del 1578
+put 503 n978 66.74
+put 991 n817 52.1
+put 182 n456 54.34
+get 1893
+get 1543
+get 1199
+put 1022 n60 54.0
+get 757
+get 1174
+get 1486
+del 80
+del 363
+get 1036
+del 1511
+put 403 n827 68.78
+del 1044
+del 480
+get 843
+put 1721 n906 47.58
+put 565 n100 18.96
+get 551
+get 526
+get 1719
+put 625 n326 5.53
+count
+del 1129
+put 1786 n853 97.19
+get 1699
+put 1358 n367 2.19
+put 418 n521 74.2
+put 1343 n599 30.6
+get 941
+count
+get 51
+get 1531
+put 586 n623 68.21
+get 648
+put 428 n368 34.56
+put 1346 n236 0.41
+get 711
+put 1871 n131 99.24
+get 194
+del 1509
+put 1572 n345 3.98
+get 1257
+del 214
+get 76
+put 154 n819 48.07
+get 1254
+put 163 n601 13.17
+put 1502 n946 61.06
+put 363 n962 44.49
+get 1911
+get 1931
+get 1000
+put 1214 n891 58.08
+del 1275
+get 1786
+get 463
+get 1805
+get 160
+get 1479
+get 302
+get 1269
+put 388 n339 78.62
+put 295 n162 11.91
+put 283 n683 78.88
+put 451 n132 0.18
+put 1123 n738 15.15
+get 1647
+put 672 n797 26.25
+get 986
+put 267 n213 9.39
+get 1801
+put 1380 n308 11.19
+put 1585 n676 36.73
+del 1054
+put 937 n549 21.85
+get 420
+del 416
+put 375 n973 37.74
+get 524
+count
+get 1682
+get 1261
+put 690 n987 94.94
+del 1751
+count
+get 1752
+put 1960 n276 77.88
+get 460
+put 201 n403 65.36
+put 1963 n118 75.27
+put 1634 n682 61.56
+del 1036
+get 1257
+put 1631 n362 52.42
+put 33 n280 38.71
+put 1092 n910 79.72
+put 1238 n529 82.7
+get 528
+del 990
+put 113 n9 9.82
+put 1162 n994 87.15
+get 137
+del 1503
+get 1640
+del 1113
+put 995 n1 47.35
+put 1901 n787 3.44
+put 483 n62 37.75
+del 448
+get 1203
+del 407
+get 1056
+put 1387 n614 31.86
+put 328 n325 94.73
+del 1962
+get 152
+get 766
+get 1574
+put 150 n535 47.16
+get 56
+put 12 n47 92.7
+put 1485 n785 95.57
+get 1405
+put 1118 n450 18.51
+get 819
+get 1038
+put 1679 n881 10.97
+del 701
+get 1091
+del 1107
+del 252
+put 1722 n910 71.92
+put 1912 n579 29.06
+get 1386
+get 78
+get 1622
+get 1500
+get 316
+get 411
+put 1869 n84 6.1
+put 77 n76 92.14
+put 433 n69 43.95
+get 259
+get 454
+put 574 n330 12.73
+get 1271
+del 502
+put 129 n166 61.65
+put 211 n771 30.45
+get 1741
+get 986
+del 1687
+count
+del 1274
+put 256 n730 47.82
+get 880
+get 1339
+del 1299
+get 1484
+put 152 n863 30.11
+del 1818
+put 471 n848 46.65
+put 1120 n502 19.7
+get 504
+get 1179
+put 1634 n499 60.95
+put 1033 n389 36.7
+get 78
+count
+get 1084
+get 218
+del 887
+put 535 n995 3.82
+put 1078 n847 59.07
+get 74
+get 1029
+count
+put 596 n455 76.24
+get 1436
+put 51 n926 78.27
+get 871
+get 120
+get 1514
+put 1555 n596 74.51
+get 1319
+put 1211 n131 11.78
+put 1096 n401 29.84
+get 1974
+get 561
+put 1995 n446 30.67
+get 1904
+del 616
+put 675 n607 67.0
+put 846 n398 92.53
+put 345 n252 33.93
+get 194
+get 221
+put 1018 n506 11.31
+get 1209
+put 812 n116 72.08
+put 803 n875 54.7
+put 1954 n601 53.69
+put 453 n226 68.56
+put 850 n850 53.28
+put 1213 n740 30.32
+put 1086 n905 75.18
+put 153 n399 40.77
+get 461
+del 1207
+del 523
+put 1194 n399 59.06
+put 636 n34 15.77
+put 402 n888 31.91
+get 1661
+get 160
+put 1629 n574 67.67
+put 1682 n972 94.83
+put 671 n136 35.72
+put 1047 n788 75.31
+put 995 n900 68.5
+del 1069
+put 709 n777 69.83
+get 193
+get 739
+get 1165
+put 490 n808 41.1
+get 1529
+put 1713 n544 30.74
+put 424 n104 60.61
+put 400 n274 6.88
+put 1821 n902 99.87
+del 998
+get 1256
+get 420
+get 928
+get 1004
+put 1897 n49 0.3
+del 1464
+put 437 n646 73.49
+put 1554 n546 26.66
+put 1664 n695 48.95
+get 438
+put 1990 n190 55.19
+put 40 n536 93.65
+get 1540
+del 230
+put 1672 n250 24.66
+del 1218
+put 248 n783 79.4
+get 1779
+put 1668 n529 98.33
+del 1129
+put 1249 n607 31.76
+get 1841
+count
+del 1161
+put 1446 n939 7.22
+get 1329
+put 1037 n754 62.65
+del 1348
+del 67
+get 1782
+del 1711
+get 275
+get 353
+put 1544 n888 4.8
+put 700 n602 50.24
+del 958
+put 538 n890 38.16
+put 1279 n480 76.92
+put 1491 n5 38.87
+put 1924 n352 8.18
+get 1187
+get 1811
+get 1064
+put 265 n258 25.93
+put 697 n294 21.94
+put 1171 n368 92.72
+get 1055
+get 1402
+put 1260 n104 0.88
+put 663 n707 31.2
+count
+del 1225
+put 168 n388 59.57
+put 535 n2 9.22
+put 896 n2 87.07
+put 1476 n373 64.85
+put 1614 n139 14.34
+get 796
+put 1362 n63 63.41
+get 1903
+del 1310
+get 1123
+put 744 n47 70.88
+put 194 n18 37.07
+get 420
+get 876
+put 569 n63 10.07
+get 1500
+get 901
+get 79
+put 942 n275 86.39
+del 1507
+put 1457 n59 36.57
+get 1463
+count
+put 1621 n670 32.06
+get 1690
+get 948
+del 803
+put 1991 n260 21.93
+put 1794 n599 35.77
+count
+put 1711 n514 23.93
+put 1845 n546 39.27
+put 120 n203 17.43
+put 1610 n863 79.11
+count
+put 621 n942 88.83
+put 793 n365 39.86
+put 1799 n112 47.85
+put 1481 n143 62.67
+put 1832 n362 62.31
+del 548
+put 279 n502 77.93
+del 619
+del 584
+get 718
+get 754
+put 417 n307 85.01
+get 1901
+get 792
+put 194 n865 56.4
+get 1994
+put 1066 n214 14.78
+put 834 n942 40.59
+put 193 n718 44.02
+put 1080 n232 95.73
+get 1047
+get 1910
+count
+put 73 n355 8.19
+put 100 n680 65.97
+get 265
+get 979
+del 185
+put 1098 n750 87.15
+get 1329
+del 526
+put 1200 n949 28.63
+put 606 n827 96.09
+del 721
+put 1303 n630 50.26
+get 1337
+put 561 n44 81.65
+get 1052
+put 1528 n128 79.12
+put 536 n723 21.45
+del 1752
+put 189 n172 7.47
+del 1413
+get 437
+get 1808
+put 1242 n581 94.14
+get 1972
+put 1407 n2 67.01
+put 1146 n526 10.22
+put 51 n122 35.52
+count
+put 178 n619 61.29
+put 1544 n857 36.59
+put 161 n310 97.42
+count
+put 659 n275 33.61
+del 1047
+get 1813
+del 817
+count
+get 236
+del 830
+put 1055 n595 30.76
+del 1616
+get 1556
+put 1720 n568 21.22
+put 738 n6 83.71
+del 1504
+count
+put 1902 n694 49.01
+del 1755
+put 1753 n448 98.62
+put 527 n503 74.56
+get 793
+put 182 n331 13.55
+get 1825
+get 259
+put 1947 n456 66.69
+get 1720
+del 337
+get 293
+put 1259 n631 47.17
+get 489
+get 978
+put 1793 n386 86.32
+count
+put 1367 n438 10.44
+get 295
+get 787
+get 1962
+put 1800 n3 5.31
+put 1334 n221 31.74
+count
+del 1276
+get 1790
+get 1598
+put 386 n153 73.61
+put 1978 n574 90.28
+put 951 n464 98.52
+put 924 n670 63.17
+put 1520 n453 41.0
+put 1911 n571 47.09
+del 1823
+put 25 n518 39.21
+put 564 n184 61.8
+put 728 n157 52.94
+put 63 n530 88.75
+put 658 n577 59.05
+get 1390
+count
+put 249 n81 24.53
+get 1872
+put 253 n0 65.41
+put 1761 n540 30.84
+put 1136 n365 96.16
+put 1852 n266 67.22
+put 873 n60 84.29
+put 29 n823 48.97
+del 714
+get 1259
+put 842 n700 38.04
+put 1074 n419 81.6
+del 1553
+get 1628
+put 244 n915 42.9
+put 388 n101 89.58
+count
+del 1231
+put 1249 n440 42.53
+put 896 n154 1.96
+put 389 n997 98.33
+put 1631 n558 22.84
+get 368
+put 182 n655 8.14
+put 1903 n558 60.83
+get 399
+put 740 n847 33.74
+put 1903 n307 2.11
+put 1224 n497 73.03
+get 52
+put 266 n274 83.89
+put 1121 n917 8.62
+put 1737 n322 99.12
+count
+put 1339 n648 44.98
+get 568
+put 590 n541 99.19
+count
+get 801
+put 1836 n727 75.92
+put 25 n904 66.78
+put 1713 n420 87.27
+put 597 n583 69.07
+get 1675
+get 116
+get 657
+put 1939 n54 60.74
+put 1106 n296 35.96
+put 883 n757 14.1
+count
+get 684
+put 1295 n108 92.0
+get 1535
+del 274
+put 1116 n725 56.57
+put 1301 n343 13.78
+put 1372 n38 72.18
+put 472 n423 26.35
+del 1002
+get 1866
+get 757
+del 1642
+count
+put 1991 n260 95.04
+del 286
+get 947
+put 928 n810 57.39
+get 932
+put 526 n573 70.42
+put 608 n82 73.33
+del 1131
+put 342 n561 57.05
+del 1405
+del 637
+put 1828 n273 48.23
+put 652 n825 41.47
+get 838
+get 1542
+get 1548
+get 944
+put 362 n993 89.08
+put 129 n562 67.49
+put 1275 n351 88.57
+get 95
+put 1420 n457 73.85
+get 1922
+get 1804
+put 228 n558 84.44
+get 522
+put 311 n552 79.92
+put 1000 n808 25.04
+put 1771 n54 19.52
+get 694
+put 353 n421 30.22
+count
+put 424 n679 31.05
+count
+get 533
+put 710 n335 82.42
+get 225
+get 1915
+get 705
+put 1937 n393 32.9
+del 749
+get 115
+put 1218 n109 26.63
+del 786
+put 1786 n840 58.22
+put 1171 n848 87.87
+get 737
+get 875
+get 1603
+del 1678
+put 912 n424 74.95
+put 246 n360 36.27
+put 849 n555 62.05
+put 1082 n191 25.59
+get 1184
+put 1848 n769 89.5
+get 832
+put 1200 n102 97.73
+count
+del 1105
+put 1012 n626 10.41
+put 839 n779 16.46
+get 658
+put 1215 n298 61.85
+del 1515
+del 27
+count
+put 1962 n26 73.38
+put 1186 n862 0.26
+put 1316 n78 28.11
+put 309 n9 69.71
+put 1015 n273 57.66
+del 560
+del 750
+get 1176
+get 1529
+count
+get 158
+put 963 n926 33.94
+del 1953
+del 674
+put 1120 n363 87.14
+put 1725 n37 73.91
+put 137 n664 16.98
+get 1901
+put 1682 n842 76.94
+get 1926
+get 944
+put 542 n557 79.77
+put 860 n617 6.61
+get 1028
+get 1035
+del 1402
+put 1456 n687 36.07
+put 1618 n416 24.77
+put 1921 n753 59.22
+get 1185
+put 65 n188 38.19
+count
+get 1189
+put 1546 n647 99.7
+put 547 n938 42.36
+del 1579
+put 1473 n41 39.78
+get 1229
+del 1580
+get 947
+del 259
+get 1644
+get 1470
+get 1129
+get 600
+get 1599
+get 1715
+del 589
+get 129
+count
+put 793 n255 25.73
+get 1075
+put 1479 n658 1.58
+put 1270 n134 72.33
+put 361 n817 43.57
+get 1168
+put 587 n300 92.93
+put 492 n608 30.89
+del 67
+del 1690
+del 352
+get 177
+get 922
+get 961
+get 1320
+get 1321
+get 504
+count
+count
+get 1090
+put 1109 n840 68.63
+get 1138
+count
+del 751
+get 766
+put 607 n167 65.05
+del 436
+del 113
+get 1683
+del 393
+put 1259 n93 54.55
+del 1883
+get 395
+put 743 n494 15.87
+put 369 n159 19.43
+del 527
+put 1652 n792 17.78
+del 1480
+del 650
+put 1533 n909 23.43
+del 979
+get 1488
+put 844 n302 45.1
+del 1595
+put 1546 n47 11.02
+del 397
+get 388
+put 340 n772 20.73
+get 1076
+put 401 n10 12.54
+put 924 n456 20.92
+get 1196
+get 397
+get 1831
+get 1233
+put 918 n225 55.51
+put 878 n368 48.69
+get 726
+get 621
+put 1798 n584 52.05
+put 521 n40 74.23
+del 320
+get 1826
+count
+put 1053 n922 20.99
+put 157 n208 13.87
+put 481 n1 87.64
+get 61
+put 1676 n186 4.35
+put 1538 n233 65.41
+put 24 n110 18.57
+get 1898
+get 973
+del 436
+put 1102 n159 25.44
+del 1334
+put 710 n627 84.1
+del 1566
+put 1451 n444 77.73
+put 256 n764 18.82
+get 384
+put 472 n1 23.75
+get 343
+put 1968 n867 97.99
+del 1659
+get 465
+put 869 n543 24.7
+put 1821 n243 29.56
+del 1446
+get 1420
+put 1761 n639 16.14
+del 204
+put 1618 n931 30.8
+get 204
+put 271 n519 11.0
+put 1425 n596 19.71
+put 1693 n412 77.21
+count
+get 168
+get 1490
+put 641 n221 64.97
+put 594 n928 47.28
+get 1811
+count
+get 283
+put 319 n593 93.31
+del 1604
+del 718
+get 378
+put 1004 n182 53.92
+put 1174 n803 59.84
+get 1148
+put 1305 n270 59.82
+get 862
+get 390
+put 517 n904 59.87
+put 1909 n594 85.29
+get 925
+get 209
+get 102
+put 688 n736 62.74
+get 1197
+get 1287
+get 1874
+put 66 n129 55.44
+count
+put 691 n913 43.35
+put 1023 n657 95.81
+get 359
+get 1403
+get 901
+get 1436
+get 1365
+get 994
+get 954
+get 1081
+count
+get 1899
+del 230
+put 216 n472 13.93
+put 1233 n315 61.75
+del 1277
+put 1702 n365 14.39
+get 1277
+get 1419
+put 35 n276 66.49
+put 428 n598 3.31
+del 554
+del 1465
+put 1528 n324 33.8
+del 302
+get 1179
+get 229
+put 1450 n883 60.42
+count
+count
+get 113
+put 25 n588 71.56
+put 1909 n249 43.42
+put 1909 n144 90.68
+put 503 n299 82.6
+get 1402
+put 1142 n425 18.95
+put 465 n766 20.55
+put 1075 n322 6.56
+get 1866
+get 286
+put 1740 n411 33.77
+count
+get 1891
+del 1185
+put 213 n921 83.34
+get 1918
+del 465
+put 499 n559 53.18
+del 1797
+put 755 n904 30.51
+put 1509 n769 2.03
+get 76
+get 579
+put 1830 n126 35.73
+put 552 n43 41.38
+put 100 n871 65.12
+get 1128
+put 585 n91 15.84
+get 1015
+get 1936
+get 1408
+get 674
+get 1719
+get 1040
+put 1492 n35 51.26
+put 1476 n617 41.7
+put 736 n886 93.65
+get 1555
+del 638
+get 982
+get 1075
+put 900 n76 72.47
+del 1345
+get 771
+put 820 n510 36.69
+put 1438 n799 47.53
+get 1215
+get 1573
+put 987 n987 37.17
+put 1858 n416 74.44
+put 467 n506 33.58
+put 1596 n543 96.31
+get 171
+get 1725
+del 820
+get 1225
+put 1568 n67 84.83
+put 1509 n742 23.84
+del 1937
+put 563 n734 85.41
+get 1701
+put 1724 n52 96.37
+put 1431 n276 68.15
+put 1423 n534 30.29
+put 473 n735 8.05
+put 920 n172 86.66
+count
+count
+put 996 n533 77.11
+put 48 n966 45.45
+put 921 n912 65.95
+put 1934 n679 33.77
+put 1412 n290 25.55
+count
+del 851
+put 1278 n685 74.4
+put 1423 n267 95.78
+put 200 n910 39.93
+count
+del 1616
+put 806 n819 67.84
+put 403 n100 99.49
+put 485 n405 92.1
+put 689 n407 71.75
+count
+put 1802 n269 57.76
+put 66 n214 19.71
+put 1702 n363 50.19
+put 1315 n700 67.8
+put 852 n521 93.19
+put 592 n122 57.92
+get 1166
+del 1643
+put 673 n932 97.5
+put 1499 n641 70.73
+get 944
+get 236
+put 381 n267 62.35
+get 1233
+put 274 n415 45.66
+del 379
+get 1422
+put 1269 n70 95.51
+put 1413 n362 29.9
+put 1209 n213 41.11
+put 1917 n772 21.95
+count
+del 286
+del 890
+count
+put 52 n245 69.76
+get 250
+put 1523 n922 88.24
+get 1757
+get 910
+put 1446 n671 8.19
+put 54 n401 21.18
+put 1098 n659 92.99
+del 1532
+put 618 n462 89.98
+del 1330
+put 866 n510 18.02
+get 716
+count
+del 530
+get 9
+put 464 n130 86.52
+put 1329 n751 94.98
+count
+get 1697
+put 774 n199 74.72
+put 605 n211 60.76
+put 265 n454 71.66
+get 974
+put 1608 n452 81.82
+put 1923 n151 17.23
+put 172 n122 26.9
+get 469
+put 1120 n882 43.12
+get 873
+put 255 n816 30.09
+get 876
+get 1839
+del 669
+put 1732 n377 64.53
+put 381 n964 42.85
+put 996 n820 58.19
+get 1195
+count
+put 175 n863 28.46
+count
+put 999 n472 33.1
+put 502 n141 80.05
+put 1151 n680 42.07
+del 1479
+put 79 n356 51.74
+put 1506 n657 74.68
+del 458
+put 1261 n875 9.04
+put 1822 n361 21.74
+get 1890
+put 331 n946 76.03
+put 79 n732 73.02
+get 1680
+put 780 n445 0.13
+put 1112 n520 50.68
+del 1145
+get 741
+put 1652 n641 30.46
+put 1452 n260 94.49
+put 1994 n248 27.62
+put 803 n688 87.22
+put 1742 n767 86.1
+put 1836 n171 92.8
+count
+put 1142 n514 67.61
+del 791
+get 399
+put 958 n893 80.72
+get 387
+get 1185
+get 36
+put 1456 n391 83.23
+put 768 n762 31.23
+del 1086
+del 459
+get 1346
+put 1227 n188 25.05
+put 853 n372 90.88
+get 1959
+get 1274
+put 1993 n682 78.62
+put 918 n626 57.44
+get 16
+put 1240 n106 67.2
+put 1617 n97 97.23
+put 512 n212 93.39
+put 1185 n205 16.49
+put 1940 n341 98.23
+del 80
+del 1615
+get 1682
+put 1463 n5 85.37
+put 1428 n490 91.26
+put 1679 n370 33.07
+del 844
+put 1939 n10 95.28
+put 903 n61 95.85
+put 1368 n91 76.02
+get 142
+del 1710
+get 1650
+put 1485 n700 21.56
+get 644
+get 549
+get 1235
+put 1610 n333 27.09
+get 1755
+del 1485
+get 1522
+del 756
+del 818
+put 437 n546 9.91
+put 979 n43 3.81
+get 274
+del 1583
+get 883
+put 389 n645 86.15
+count
+del 894
+put 1003 n9 54.53
+del 22
+put 377 n916 99.17
+get 463
+del 1536
+put 744 n747 76.2
+get 1411
+put 1739 n529 14.53
+put 1809 n667 45.01
+get 1553
+put 950 n192 66.22
+put 266 n65 19.93
+get 1471
+put 540 n451 86.96
+get 961
+get 520
+get 98
+put 1213 n300 73.66
+put 1956 n560 23.51
+put 1589 n10 65.89
+get 1095
+get 1692
+get 818
+put 1377 n837 35.09
+put 653 n617 85.28
+get 1859
+put 1819 n291 40.25
+get 515
+get 164
+put 440 n456 75.22
+put 261 n430 12.76
+del 1708
+del 111
+put 1387 n896 18.27
+put 1003 n393 93.59
+get 1510
+put 1646 n152 37.47
+get 1532
+get 744
+count
+put 642 n195 38.98
+get 612
+put 1749 n456 48.45
+get 1416
+get 174
+put 1809 n20 37.72
+count
+get 516
+get 1317
+get 927
+put 1589 n647 76.21
+put 26 n560 60.58
+put 1389 n335 56.3
+get 1566
+del 359
+put 1872 n980 33.41
+put 1482 n94 7.41
+put 1366 n413 33.16
+put 1847 n671 97.45
+put 84 n154 38.61
+get 752
+put 992 n59 18.95
+put 1737 n935 43.68
+put 891 n550 5.65
+get 1035
+del 1054
+put 984 n664 97.5
+put 1780 n380 52.61
+put 493 n417 74.51
+get 306
+count
+get 1855
+put 58 n408 47.94
+put 1048 n333 31.38
+count
+put 1305 n312 3.64
+del 1908
+del 1180
+put 1685 n26 97.99
+del 506
+get 653
+get 459
+get 1752
+get 1764
+put 372 n834 50.6
+del 1174
+put 1213 n447 26.79
+put 1469 n833 20.36
+put 831 n530 24.96
+count
+del 1173
+put 496 n113 76.13
+get 42
+del 73
+del 894
+del 1594
+put 669 n413 67.88
+put 274 n664 14.83
+count
+put 1335 n232 98.4
+put 1195 n459 62.21
+get 269
+get 585
+put 1104 n949 96.75
+get 1839
+count
+get 1694
+put 652 n721 70.04
+put 805 n300 68.58
+put 930 n579 91.57
+put 171 n736 96.15
+del 1119
+count
+put 490 n144 4.35
+put 86 n661 2.21
+put 1535 n915 11.6
+put 413 n565 49.82
+count
+put 1515 n785 1.74
+del 1516
+del 1035
+put 1418 n317 49.42
+del 1292
+get 1272
+get 852
+put 1753 n929 51.06
+del 1349
+get 1893
+put 149 n357 14.67
+get 727
+put 1719 n956 56.39
+put 1199 n523 74.34
+put 929 n662 3.48
+put 1282 n815 88.82
+del 1454
+get 223
+put 876 n314 32.77
+put 1201 n506 66.8
+put 634 n390 29.99
+del 662
+get 1570
+get 105
+put 1268 n719 94.89
+put 148 n627 4.79
+get 870
+get 328
+get 772
+get 1700
+get 1468
+put 41 n870 12.96
+del 1183
+get 570
+get 138
+put 743 n854 58.24
+del 257
+put 1963 n516 69.74
+put 297 n579 78.14
+del 889
+del 1849
+get 286
+put 85 n28 87.85
+get 1912
+get 1602
+get 505
+get 1384
+put 942 n5 95.07
+put 1286 n487 91.54
+del 414
+del 336
+put 677 n987 73.26
+put 1128 n7 16.42
+put 407 n425 94.42
+get 1777
+put 693 n101 22.0
+put 1883 n941 11.88
+put 862 n629 15.42
+put 1326 n627 83.39
+put 1111 n731 11.64
+del 1998
+put 903 n357 40.63
+put 1743 n963 62.58
+get 443
+put 1453 n147 9.42
+get 463
+get 1963
+del 276
+del 1979
+get 1284
+put 955 n868 29.16
+count
+get 787
+put 881 n392 53.6
+put 1245 n299 96.53
+get 1894
+get 1747
+put 305 n700 19.65
+put 992 n519 71.44
+put 304 n148 39.77
+put 279 n783 60.64
+put 1667 n459 67.93
+put 727 n634 49.28
+put 1265 n447 13.59
+del 403
+put 1930 n111 71.04
+put 1603 n487 9.08
+put 753 n286 75.36
+put 1622 n337 17.79
+get 561
+put 932 n318 9.02
+put 1919 n444 42.06
+get 1778
+count
+count
+count
+put 817 n270 19.49
+del 1026
+get 713
+put 1500 n921 4.48
+put 1428 n100 14.57
+put 1954 n634 10.2
+del 65
+del 898
+put 1536 n509 6.12
+put 973 n974 63.41
+put 139 n557 8.69
+count
+get 190
+get 348
+get 1535
+put 1840 n631 51.25
+put 1817 n65 38.36
+get 1179
+put 520 n820 95.91
+get 1691
+count
+get 1938
+put 935 n527 21.61
+put 620 n735 97.11
+put 1036 n115 38.18
+put 567 n925 29.79
+put 899 n715 2.46
+put 161 n354 45.02
+get 1110
+del 671
+put 1607 n517 47.04
+put 1875 n71 78.45
+put 655 n508 79.76
+del 1907
+put 1170 n766 15.28
+put 841 n920 43.63
+get 1783
+put 1027 n334 91.12
+put 819 n335 0.84
+del 1511
+put 1333 n752 86.68
+get 1941
+count
+put 767 n73 84.14
+get 1179
+put 268 n857 93.01
+get 529
+put 1881 n73 98.76
+get 1914
+get 1207
+get 918
+put 1940 n65 48.78
+del 1200
+put 1839 n111 2.09
+put 1615 n739 69.86
+get 1141
+del 1923
+get 204
+put 1829 n695 49.67
+count
+del 1540
+put 1056 n336 79.55
+del 939
+put 956 n515 95.25
+get 1613
+put 355 n419 8.84
+get 815
+put 1871 n295 2.82
+put 1161 n793 5.24
+put 1738 n837 52.52
+put 1308 n914 10.07
+del 1465
+put 573 n620 95.24
+put 1891 n526 74.18
+count
+put 1002 n862 32.51
+del 1237
+get 795
+get 1115
+get 1022
+get 1859
+put 1729 n482 29.73
+get 1499
+put 1249 n148 70.18
+del 87
+put 1328 n871 46.73
+count
+get 1794
+put 490 n47 52.45
+put 1991 n366 84.82
+del 543
+put 873 n830 78.81
+get 564
+count
+del 1357
+put 953 n555 0.77
+count
+get 759
+del 1668
+put 20 n988 72.29
+put 1480 n483 9.23
+put 1722 n53 8.46
+put 1590 n835 61.45
+get 419
+get 1939
+put 561 n898 85.69
+del 1860
+put 1458 n87 98.4
+put 984 n43 2.01
+put 621 n921 76.24
+del 789
+del 1780
+put 1571 n361 10.69
+get 1512
+put 1965 n228 31.86
+put 1643 n843 19.99
+del 1105
+get 288
+put 1807 n642 91.14
+put 1067 n488 18.73
+put 856 n49 54.91
+put 361 n530 49.62
+put 1666 n228 8.6
+get 562
+get 1642
+put 454 n940 52.63
+put 853 n311 43.41
+get 655
+put 1538 n496 39.96
+get 1174
+get 10
+put 231 n909 34.49
+put 1704 n577 78.36
+get 1449
+del 1436
+put 1369 n455 66.25
+put 1872 n379 98.64
+put 1014 n797 96.16
+get 1743
+count
+put 648 n928 95.0
+put 1154 n946 18.78
+put 703 n968 74.63
+put 508 n214 27.95
+put 1395 n885 94.54
+put 1339 n177 65.21
+get 111
+put 1900 n425 11.58
+put 294 n333 81.8
+get 1830
+get 1165
+put 848 n980 38.02
+get 546
+put 665 n999 76.49
+del 1927
+del 636
+put 1212 n191 88.05
+put 1235 n583 12.56
+put 205 n395 74.09
+put 1286 n800 44.9
+put 1141 n366 62.0
+get 1537
+get 727
+put 414 n671 23.26
+get 14
+put 342 n651 42.71
+put 485 n379 87.74
+put 1993 n404 68.49
+put 259 n371 55.97
+get 798
+get 1276
+put 254 n797 74.31
+get 368
+put 1100 n319 33.02
+del 1386
+get 1991
+del 1976
+del 1688
+put 128 n497 14.98
+put 768 n608 55.02
+get 1378
+put 1386 n982 46.23
+put 93 n781 56.73
+put 1713 n269 69.36
+put 1868 n434 64.82
+put 385 n887 98.47
+count
+put 1543 n206 12.96
+get 548
+del 830
+get 455
+put 213 n91 0.09
+put 1234 n259 85.71
+count
+del 1380
+put 1314 n228 43.63
+get 244
+get 66
+put 1093 n460 86.92
+put 1709 n338 13.49
+put 636 n25 67.0
+get 108
+get 1510
+put 61 n196 68.48
+put 781 n369 48.02
+put 1985 n344 70.14
+del 1617
+put 1331 n344 49.95
+put 281 n802 14.6
+del 1077
+put 1258 n186 67.92
+get 890
+put 25 n27 87.61
+del 1938
+get 684
+del 970
+get 759
+put 162 n853 17.7
+del 742
+put 1008 n992 56.7
+get 1042
+put 1961 n608 0.79
+put 1475 n22 22.08
+put 1181 n663 90.53
+put 272 n337 20.88
+del 1257
+put 1740 n355 8.53
+del 131
+put 314 n780 28.91
+put 1066 n975 80.77
+put 787 n322 58.5
+del 901
+put 841 n795 6.64
+count
+del 1117
+put 1372 n354 95.39
+put 1430 n742 64.91
+put 733 n564 51.02
+put 1060 n410 7.88
+put 839 n473 59.68
+put 289 n140 24.83
+put 1196 n259 48.09
+del 781
+put 1392 n740 41.39
+del 1844
+put 683 n694 30.84
+put 1139 n557 55.94
+put 768 n802 4.82
+get 364
+count
+put 1654 n621 6.97
+del 142
+get 631
+put 1661 n322 37.8
+count
+put 1777 n113 47.21
+put 723 n508 1.69
+put 1043 n245 34.12
+del 1225
+put 331 n195 88.35
+del 1632
+put 1175 n142 89.08
+del 1404
+put 308 n267 19.64
+get 689
+put 898 n661 22.43
+put 347 n552 33.65
+get 567
+get 91
+put 852 n552 94.69
+del 1988
+count
+del 585
+get 1808
+put 173 n967 53.66
+put 1234 n496 36.97
+get 992
+put 154 n156 50.38
+get 1274
+put 1349 n320 17.41
+get 1204
+get 1371
+put 1690 n845 0.2
+put 1872 n148 72.66
+put 801 n593 13.23
+get 1523
+put 45 n55 73.18
+get 405
+get 940
+get 1872
+put 1826 n298 42.68
+put 1357 n672 38.38
+put 794 n812 20.58
+put 1600 n460 99.85
+put 1262 n101 25.09
+put 29 n11 57.64
+put 410 n428 39.9
+get 1416
+put 128 n958 90.35
+count
+get 958
+count
+put 1704 n996 41.89
+put 1758 n913 38.19
+put 1222 n289 3.7
+put 774 n212 68.3
+get 1439
+put 369 n809 38.22
+put 237 n928 27.29
+get 582
+get 118
+del 1890
+put 1048 n390 79.55
+put 1988 n423 69.82
+put 751 n645 55.58
+get 323
+put 851 n121 68.66
+put 1598 n956 18.28
+get 654
+get 67
+get 134
+put 9 n376 15.85
+put 1168 n979 11.83
+del 1719
+get 1704
+del 1137
+get 235
+put 1040 n592 32.8
+put 1486 n273 41.29
+put 1419 n416 55.77
+get 1577
+get 1883
+get 1887
+del 239
+del 1152
+put 1072 n581 54.59
+put 334 n111 63.46
+put 1709 n771 78.2
+put 1277 n644 8.97
+put 1242 n0 5.11
+get 93
+put 1096 n913 55.51
+put 1481 n568 91.65
+put 1510 n742 70.66
+del 1530
+del 1193
+put 11 n395 29.95
+put 341 n542 74.39
+get 1161
+put 1564 n149 64.36
+del 682
+put 688 n718 52.81
+del 1558
+get 660
+put 997 n699 65.21
+put 322 n528 24.69
+get 973
+put 1538 n431 32.24
+put 1749 n68 34.03
+get 1107
+del 112
+put 96 n291 47.47
+del 511
+get 1127
+get 206
+put 1489 n99 18.97
+del 317
+put 1543 n706 64.05
+put 928 n295 7.37
+put 1288 n3 53.65
+put 586 n44 98.91
+put 1264 n565 55.6
+put 1823 n247 4.2
+put 692 n278 38.84
+del 26
+put 278 n776 17.43
+get 1441
+get 938
+put 878 n44 43.45
+get 357
+put 583 n614 83.51
+get 105
+count
+get 712
+put 1164 n957 51.86
+put 575 n977 4.82
+put 635 n250 61.99
+put 635 n159 62.81
+del 1282
+get 650
+put 1630 n259 79.46
+put 1062 n584 92.16
+get 873
+get 1019
+get 1498
+get 1934
+put 1523 n274 54.18
+del 987
+put 1008 n385 84.28
+put 1124 n817 69.15
+get 469
+put 924 n631 18.36
+get 1115
+put 509 n868 99.69
+put 1199 n312 83.37
+del 663
+put 871 n94 4.75
+put 291 n685 42.55
+put 1588 n489 41.17
+put 264 n127 16.09
+del 1909
+put 1870 n524 82.01
+put 959 n66 80.93
+get 576
+put 193 n981 13.94
+put 416 n15 55.82
+put 707 n317 73.17
+put 41 n329 13.82
+put 1962 n647 55.95
+put 1471 n177 58.03
+get 448
+put 1896 n701 71.52
+put 1686 n632 41.62
+put 390 n818 52.25
+put 293 n573 98.57
+put 987 n586 15.76
+put 935 n512 56.14
+get 183
+del 1417
+count
+get 1935
+get 127
+put 329 n141 27.55
+put 1811 n94 14.24
+put 270 n331 51.5
+get 759
+get 146
+put 930 n199 97.85
+put 867 n550 75.28
+get 1738
+put 1821 n623 69.9
+put 1497 n193 80.77
+put 816 n481 66.81
+put 1815 n619 88.84
+get 853
+del 69
+put 82 n10 34.09
+del 1147
+get 1417
+put 605 n190 72.01
+put 614 n735 21.68
+put 719 n82 57.33
+put 1400 n273 87.4
+put 1103 n842 5.02
+put 607 n160 87.59
+get 763
+get 288
+put 451 n346 77.34
+put 929 n83 2.83
+del 236
+count
+put 419 n414 33.45
+put 1776 n995 33.2
+del 347
+put 622 n654 75.5
+del 1988
+get 507
+put 1321 n542 91.23
+put 1310 n342 99.16
+put 1372 n808 33.27
+del 1783
+put 1957 n365 65.02
+put 410 n86 29.9
+get 82
+del 1556
+put 442 n936 91.01
+count
+get 720
+put 1799 n237 73.41
+get 443
+get 1435
+put 699 n623 45.69
+put 890 n923 92.04
+put 896 n994 43.48
+get 323
+put 49 n565 21.43
+get 474
+del 584
+get 131
+put 1980 n824 75.54
+get 73
+put 627 n651 40.28
+get 1440
+put 1719 n964 96.24
+del 1080
+del 1030
+put 367 n978 99.09
+put 772 n2 70.96
+get 585
+count
+put 1055 n715 77.25
+get 1858
+put 1132 n10 51.78
+put 323 n698 63.73
+put 1468 n153 53.23
+put 1667 n438 55.16
+put 691 n76 98.66
+put 612 n476 24.23
+put 1533 n980 96.29
+del 39
+put 1255 n612 92.54
+del 664
+put 1376 n276 85.05
+get 964
+get 1309
+get 469
+get 886
+put 1199 n418 84.04
+put 141 n422 40.5
+get 1967
+del 853
+get 1565
+get 1046
+get 1934
+put 567 n53 94.68
+get 1124
+put 1627 n514 58.51
+get 823
+del 1056
+put 456 n982 56.48
+count
+put 851 n861 86.07
+get 1489
+get 742
+put 1956 n399 3.24
+put 647 n294 29.19
+put 1567 n559 99.74
+put 1041 n604 3.42
+put 1579 n723 49.68
+put 1853 n754 70.27
+count
+get 1918
+get 620
+get 509
+del 1778
+put 1686 n441 99.78
+put 214 n296 31.11
+count
+put 964 n157 69.65
+del 1716
+put 1280 n231 30.37
+get 739
+get 6
+get 249
+get 1414
+del 1340
+put 1371 n341 9.58
+put 1109 n135 58.55
+get 24
+del 1921
+get 531
+put 1250 n410 65.02
+put 575 n69 85.5
+get 1575
+put 554 n984 72.53
+del 1894
+count
+get 209
+get 248
+get 730
+put 589 n622 21.05
+put 1558 n734 94.49
+del 1712
+put 40 n880 30.95
+del 1069
+get 1482
+put 1693 n20 23.45
+get 1794
+put 1805 n435 51.27
+get 96
+put 313 n778 23.04
+put 1546 n741 47.82
+put 945 n469 79.69
+put 249 n216 28.27
+get 1112
+put 1361 n31 63.28
+put 230 n138 89.01
+put 938 n450 44.63
+get 231
+put 605 n968 67.71
+del 1663
+del 1182
+del 841
+put 1979 n687 11.23
+put 232 n4 15.68
+put 428 n637 54.87
+put 1818 n300 38.14
+get 1386
+del 1995
+put 901 n485 81.25
+get 1900
+put 1862 n505 11.14
+count
+get 1746
+get 911
+put 1346 n457 71.01
+get 1404
+get 412
+put 315 n566 38.63
+put 1971 n435 13.18
+put 1681 n936 25.8
+get 924
+put 1035 n819 54.11
+put 542 n838 94.09
+put 204 n511 7.12
+del 1758
+get 944
+del 70
+del 438
+put 1460 n934 64.22
+put 291 n765 34.18
+put 898 n185 51.12
+get 1974
+put 187 n991 95.21
+get 461
+put 858 n354 4.57
+del 1212
+put 414 n867 94.36
+put 1383 n811 36.48
+del 145
+put 350 n929 36.63
+put 615 n795 14.63
+put 515 n756 29.55
+get 654
+put 1739 n173 77.36
+del 696
+get 1353
+get 225
+put 1888 n896 26.14
+put 1150 n511 63.45
+put 1280 n377 92.76
+count
+get 373
+put 937 n642 86.94
+del 677
+put 1541 n161 21.46
+put 864 n117 71.78
+del 1394
+del 1423
+put 1848 n602 34.55
+del 843
+get 1840
+del 1
+get 1275
+put 1227 n365 59.18
+put 1953 n803 70.69
+get 358
+put 47 n31 76.44
+del 963
+put 1016 n35 89.45
+put 397 n935 54.4
+put 391 n815 5.95
+put 428 n550 75.72
+put 592 n917 37.35
+put 1746 n623 33.03
+get 499
+get 322
+get 298
+put 1806 n164 25.68
+put 256 n79 34.76
+get 499
+get 1223
+put 1647 n742 80.24
+del 1041
+put 1147 n655 39.63
+get 1298
+get 961
+put 1225 n273 1.03
+get 1148
+put 1140 n512 11.63
+put 364 n943 60.98
+put 1222 n530 5.26
+put 917 n190 50.12
+get 1458
+put 362 n319 40.85
+put 811 n23 17.38
+put 1911 n123 97.49
+get 1788
+del 1413
+get 1560
+put 1427 n305 69.55
+put 1686 n213 97.16
+put 1232 n916 75.23
+del 937
+count
+get 1407
+del 498
+put 825 n240 38.39
+put 1901 n191 90.79
+del 134
+get 892
+put 1383 n74 3.09
+del 1929
+put 971 n983 90.5
+put 1753 n196 77.19
+get 502
+put 777 n892 80.01
+put 1141 n949 97.74
+get 30
+put 1466 n214 94.79
+del 638
+get 1573
+get 297
+put 655 n790 96.28
+get 803
+del 1272
+put 1043 n814 64.61
+put 1204 n18 53.77
+put 1012 n808 33.59
+get 1439
+put 1322 n408 40.23
+put 1221 n365 18.82
+get 1780
+put 562 n1 83.78
+put 737 n702 23.48
+get 479
+put 335 n308 13.01
+put 1620 n196 26.34
+del 1989
+put 818 n389 35.53
+put 1276 n997 69.96
+put 1048 n774 1.46
+put 514 n277 52.03
+put 1296 n522 49.56
+del 949
+get 1128
+put 218 n496 26.48
+put 325 n919 70.02
+count
+get 1978
+put 216 n810 49.23
+get 1926
+del 719
+put 1430 n584 31.47
+get 588
+put 1363 n566 12.33
+put 271 n395 56.53
+get 61
+put 1193 n46 52.01
+put 965 n399 79.15
+get 913
+put 1979 n934 71.36
+del 1263
+put 84 n96 31.07
+get 1609
+get 1902
+put 1876 n483 74.36
+put 1246 n726 66.8
+get 505
+get 155
+put 62 n169 26.39
+put 445 n505 77.94
+get 1684
+put 1014 n531 53.33
+put 1716 n167 27.33
+put 587 n0 77.25
+put 1903 n77 30.05
+get 1223
+put 578 n601 91.05
+put 1656 n729 30.16
+get 1668
+put 1133 n442 23.47
+put 393 n421 40.55
+put 299 n916 81.43
+put 103 n318 30.19
+put 1468 n713 41.55
+put 362 n374 66.41
+count
+put 6 n272 4.4
+put 864 n284 30.33
+put 256 n302 39.03
+del 1196
+put 447 n516 42.31
+put 1456 n33 33.36
+get 1007
+del 6
+put 42 n664 44.57
+get 238
+put 502 n792 96.33
+put 859 n208 37.17
+get 1019
+del 185
+put 872 n927 48.28
+del 1091
+put 458 n237 42.78
+put 911 n849 61.68
+get 1759
+put 892 n569 98.77
+del 1734
+del 1271
+del 947
+put 1732 n289 2.14
+put 1188 n390 64.24
+del 1267
+get 1854
+put 37 n273 90.48
+get 1306
+get 1230
+get 1200
+get 897
+put 472 n961 56.25
+put 923 n969 36.8
+get 1704
+get 284
+get 1327
+put 514 n351 3.12
+get 1025
+put 895 n21 9.6
+get 503
+get 1380
+put 639 n425 95.47
+del 1029
+put 1252 n176 23.7
+get 650
+get 1167
+put 527 n965 41.59
+get 572
+get 936
+del 1861
+put 1075 n788 47.15
+del 446
+get 443
+put 1200 n7 89.35
+put 1938 n84 71.06
+del 640
+put 1580 n398 43.31
+put 821 n636 20.16
+count
+get 1026
+del 893
+get 366
+put 541 n500 35.58
+put 627 n31 5.0
+put 321 n68 80.78
+put 252 n162 96.82
+put 996 n537 83.64
+count
+del 585
+put 1593 n94 13.7
+put 1648 n991 16.05
+get 339
+put 64 n993 39.71
+put 989 n479 97.42
+count
+put 211 n875 31.52
+get 249
+put 398 n577 74.37
+get 1422
+get 599
+del 92
+get 468
+get 996
+del 863
+get 1458
+put 1738 n957 61.89
+get 222
+put 1191 n641 37.55
+put 1009 n638 13.6
+get 883
+put 459 n538 78.16
+put 325 n929 74.7
+put 1394 n243 34.06
+get 1194
+del 1631
+count
+put 143 n388 65.25
+put 555 n194 31.93
+del 814
+count
+put 1818 n192 52.56
+get 1361
+put 181 n717 56.11
+put 251 n849 36.64
+put 1769 n277 10.92
+put 1962 n587 81.84
+get 1684
+put 1564 n779 73.32
+put 1653 n782 85.02
+put 233 n124 68.8
+put 1316 n899 10.66
+count
+get 547
+put 858 n831 86.29
+put 1494 n435 19.2
+put 915 n932 10.63
+put 907 n770 71.78
+put 1455 n861 93.32
+get 100
+put 1287 n455 64.42
+count
+get 1409
+put 1757 n231 26.99
+put 1801 n49 56.88
+put 535 n873 48.61
+get 421
+put 638 n3 47.5
+put 1647 n656 42.49
+del 243
+put 546 n569 39.06
+put 1908 n278 59.5
+get 425
+put 1415 n979 71.91
+get 1164
+get 487
+put 1463 n57 13.49
+del 1235
+get 295
+put 1452 n588 99.94
+get 1801
+get 385
+put 163 n435 73.91
+del 431
+put 1613 n3 43.37
+get 1071
+put 174 n785 35.13
+get 1714
+get 246
+put 1088 n741 96.01
+get 1616
+get 1148
+get 1356
+put 450 n181 57.06
+put 1906 n987 66.48
+del 758
+get 200
+del 1164
+get 44
+del 1128
+get 193
+put 834 n406 85.91
+count
+get 798
+put 1340 n650 59.67
+get 644
+count
+put 1931 n820 20.13
+get 1168
+put 1186 n611 34.62
+get 1750
+del 559
+put 1168 n384 89.18
+del 421
+get 1180
+put 861 n834 7.41
+del 1518
+put 161 n591 65.41
+get 924
+get 1906
+put 66 n812 82.5
+put 1841 n446 25.84
+get 422
+put 491 n527 57.16
+get 1216
+del 1430
+put 1032 n928 34.71
+del 1224
+count
+put 1010 n146 87.47
+get 32
+put 1037 n2 13.71
+get 1757
+put 806 n764 26.21
+put 296 n61 24.13
+get 1350
+put 773 n752 2.59
+size
+
+## Hints
+- Seek to a slot: `fseek(db, (long)(k - 1) * (long)sizeof(Record), SEEK_SET)`.
+- Reading past the end: `fread` returns 0. Treat that as `missing`.
+- After writing, switching to reading on the same stream requires an intervening `fseek` or `fflush`. Since every operation here starts with an `fseek`, you're covered.
+- `count`: `rewind`, then `while (fread(&r, sizeof r, 1, db) == 1) if (r.id) n++;`.
+- Before reading `store.csv` back, `fclose` it (or `fflush` and `rewind`), so the buffered data actually reaches the file.
+
+## Solution
+```c
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+typedef struct {
+    int32_t id;
+    char    name[24];
+    double  score;
+} Record;
+
+static int seek_slot(FILE *db, long k) {
+    return fseek(db, (k - 1) * (long)sizeof(Record), SEEK_SET);
+}
+
+static int read_slot(FILE *db, long k, Record *r) {     /* 1 if a live record was read */
+    if (seek_slot(db, k) != 0) return 0;
+    if (fread(r, sizeof *r, 1, db) != 1) return 0;     /* past the end of the file */
+    return r->id != 0;
+}
+
+static int write_slot(FILE *db, long k, const Record *r) {
+    return seek_slot(db, k) == 0 && fwrite(r, sizeof *r, 1, db) == 1;
+}
+
+int main(void) {
+    FILE *db = fopen("store.bin", "w+b");
+    if (!db) { perror("store.bin"); return 1; }
+    char cmd[16];
+    while (scanf("%15s", cmd) == 1) {
+        long k;
+        Record r;
+        if (strcmp(cmd, "put") == 0) {
+            memset(&r, 0, sizeof r);                    /* deterministic padding and name bytes */
+            if (scanf("%ld %23s %lf", &k, r.name, &r.score) != 3) return 1;
+            r.id = (int32_t)k;
+            puts(write_slot(db, k, &r) ? "ok" : "write error");
+        } else if (strcmp(cmd, "get") == 0) {
+            if (scanf("%ld", &k) != 1) return 1;
+            if (read_slot(db, k, &r)) printf("%d %s %.2f\n", r.id, r.name, r.score);
+            else puts("missing");
+        } else if (strcmp(cmd, "del") == 0) {
+            if (scanf("%ld", &k) != 1) return 1;
+            if (read_slot(db, k, &r)) {
+                r.id = 0;
+                write_slot(db, k, &r);
+                puts("ok");
+            } else {
+                puts("missing");
+            }
+        } else if (strcmp(cmd, "count") == 0) {
+            long n = 0;
+            rewind(db);
+            while (fread(&r, sizeof r, 1, db) == 1) if (r.id) n++;
+            printf("%ld\n", n);
+        } else if (strcmp(cmd, "size") == 0) {
+            fseek(db, 0, SEEK_END);
+            printf("%ld\n", ftell(db));
+        } else if (strcmp(cmd, "export") == 0) {
+            FILE *csv = fopen("store.csv", "w");
+            if (!csv) { perror("store.csv"); return 1; }
+            rewind(db);
+            while (fread(&r, sizeof r, 1, db) == 1)
+                if (r.id) fprintf(csv, "%d,%s,%.2f\n", r.id, r.name, r.score);
+            if (fclose(csv) != 0) { perror("store.csv"); return 1; }   /* the flush happens here */
+            csv = fopen("store.csv", "r");
+            if (!csv) { perror("store.csv"); return 1; }
+            char line[128];
+            while (fgets(line, sizeof line, csv)) fputs(line, stdout);
+            fclose(csv);
+        }
+    }
+    if (fclose(db) != 0) { perror("store.bin"); return 1; }
+    return 0;
+}
+```
+
+- **Fixed-size records and offset arithmetic** turn the file into an on-disk array: `get` and `put` are O(1) seeks, whatever the file size. That's the core of how databases lay out pages, and how fixed-format log files and robot bag indexes work.
+- **Sparse growth:** writing slot 100000 extends the file, and the skipped region reads back as zeros, which this format interprets as empty slots (`id == 0`).
+- **Binary vs text:** `store.bin` holds raw struct bytes (fast but machine-specific), while `export` produces portable, human-readable CSV. `memset` before filling a record makes the padding bytes deterministic.
+- **Buffering:** closing the CSV before reopening it guarantees the data reached the file, and checking `fclose` catches deferred write errors.
