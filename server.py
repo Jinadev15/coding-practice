@@ -400,7 +400,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "CodingPractice/1.0"
 
     def log_message(self, fmt, *args):
-        if "/api/" in (args[0] if args else ""):
+        if args and isinstance(args[0], str) and "/api/" in args[0]:
             super().log_message(fmt, *args)
 
     def _send(self, status, data: bytes, ctype: str):
@@ -450,6 +450,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_PUT(self):
         self._handle("PUT")
+
+    def do_HEAD(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.end_headers()
 
 
 def main():

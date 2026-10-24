@@ -31,6 +31,8 @@ def check_problem(lang, p) -> list[str]:
         return errs
     if not p.solution_md.strip():
         errs.append("no solution explanation")
+    if "\n=== " in "\n" + p.solution_md or "\n=== " in "\n" + "\n".join(p.hints):
+        errs.append("test blocks found outside the ## Tests section")
     if set(p.solution_files) - set(p.starters) and len(p.starters) > 1:
         errs.append(f"solution files {set(p.solution_files) - set(p.starters)} not in starters")
     files = {**p.starters, **p.solution_files}

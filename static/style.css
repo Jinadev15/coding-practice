@@ -288,7 +288,9 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0; }
 .prose pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; margin: 0 0 18px; position: relative; }
 .prose pre code { background: none; padding: 0; }
 .prose pre code.hljs { background: none; padding: 0; }
-.prose pre .lang-tag { position: absolute; top: 6px; right: 10px; font-size: 10.5px; color: var(--faint); text-transform: uppercase; font-family: var(--sans); letter-spacing: .05em; }
+.q-card pre, .explain pre { position: relative; }
+.lang-tag { display: none; }
+.prose pre .lang-tag, .q-card pre .lang-tag { display: block; position: absolute; top: 6px; right: 10px; font-size: 10.5px; color: var(--faint); text-transform: uppercase; font-family: var(--sans); letter-spacing: .05em; }
 .prose table { border-collapse: collapse; margin: 0 0 18px; font-size: 14px; display: block; overflow-x: auto; }
 .prose th, .prose td { border: 1px solid var(--border); padding: 7px 12px; text-align: left; vertical-align: top; }
 .prose th { background: var(--panel); color: var(--text); font-weight: 600; }

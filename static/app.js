@@ -153,7 +153,8 @@ async function refreshSidebar() {
       const p = l.plan;
       const ratio = p.target ? Math.min(1, p.done_today / p.target) : 1;
       const left = Math.max(0, p.target - p.done_today);
-      const sub = p.remaining === 0 && p.target === 0 ? "Language complete"
+      const sub = l.with_content === 0 ? "No content yet"
+        : p.remaining === 0 && p.target === 0 ? "Everything available is done"
         : left === 0 ? "Target met — keep going if you can"
         : `${plural(left, "task")} to go${p.avg != null ? ` · pace ${p.avg}/day` : ""}`;
       return `<a class="today-card" href="#/lang/${l.id}">
@@ -351,7 +352,7 @@ function planCard(l) {
   const maxWeek = Math.max(1, ...p.week.map((w) => w.n));
   return `<div class="card plan-card">
     <h3><span class="lang-badge" style="background:${l.color}">${esc(l.icon)}</span>${esc(l.name)}
-      <span class="spacer"></span><span class="pill ${left ? "blue" : "green"}">${left ? `${left} left today` : "target met"}</span></h3>
+      <span class="spacer"></span>${l.with_content === 0 ? `<span class="pill">no content yet</span>` : `<span class="pill ${left ? "blue" : "green"}">${left ? `${left} left today` : "target met"}</span>`}</h3>
     <div class="plan-nums">
       <div><b>${p.done_today}/${p.target}</b>today</div>
       <div><b>${p.avg ?? "—"}</b>avg / day (14d)</div>
