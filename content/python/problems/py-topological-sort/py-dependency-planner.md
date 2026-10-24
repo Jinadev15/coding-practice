@@ -4,6 +4,7 @@ title: "Dependency Planner: Build Order, Semesters, Alien Alphabet"
 difficulty: Hard
 order: 1
 tags: topological sort, Kahn's algorithm, heap, cycle detection
+time_limit: 3
 ---
 ## Statement
 Plan the start-up order of a robot's software modules and related dependency problems.
@@ -107,9 +108,11 @@ alien_order -> 'bac'
 alien_order -> 'q'
 === hidden
 gen build_order 1 100000
-gen build_order 2 50000
 ---
 build_order 100000 100000 [12, 19, 21, 22, 41, 45] 30 True
+=== hidden
+gen build_order 2 50000
+---
 build_order 50000 50000 [2, 3, 7, 8, 9, 11] 27 True
 
 ## Hints
