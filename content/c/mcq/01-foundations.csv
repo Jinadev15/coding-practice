@@ -1,0 +1,84 @@
+id,topic,difficulty,type,question,code,option_a,option_b,option_c,option_d,answer,explanation
+c-comp-01,c-compilation,Easy,theory,In which order do the stages of building a C program run?,,"compile, preprocess, link, assemble","preprocess, compile, assemble, link","link, compile, assemble, preprocess","assemble, preprocess, compile, link",B,"Directives are expanded first, then C is translated to assembly, assembled into object code and finally linked into an executable."
+c-comp-02,c-compilation,Medium,theory,"A program compiles but fails with ""undefined reference to `helper'"". Which stage failed and why?",,Preprocessor — missing #include,Compiler — syntax error,Linker — helper is declared but no definition was compiled or linked,Assembler — bad instruction,C,A prototype satisfies the compiler; the linker needs exactly one definition of every used symbol.
+c-comp-03,c-compilation,Easy,theory,What does `gcc -c main.c` produce?,,An executable,An object file main.o (no linking),Assembly main.s,Preprocessed source,B,-c stops after assembling; -S stops after compiling to assembly; -E after preprocessing.
+c-comp-04,c-compilation,Medium,theory,What does #include <stdio.h> actually provide?,,The compiled code of printf,"Declarations (prototypes, macros, types) of the standard I/O functions; the code comes from libc at link time",A Python-like module object,Nothing unless -lstdio is passed,B,Headers declare; libraries define. The C standard library is linked automatically.
+c-comp-05,c-compilation,Medium,theory,Which link error do you get if two .c files each define a non-static global `int count = 0;`?,,undefined reference,multiple definition of `count',implicit declaration,No error,B,Each object file exports a definition of count; the linker refuses duplicate definitions (one-definition rule).
+c-comp-06,c-compilation,Easy,theory,Why should you always compile with -Wall -Wextra?,,It makes the program faster,Warnings reveal real bugs such as uninitialized variables and printf type mismatches,It is required by the standard,It enables C++ features,B,Many C bugs compile silently; warnings are the compiler telling you about likely undefined behaviour.
+c-struct-01,c-program-structure,Easy,theory,What does `return 0;` at the end of main mean?,,Return the number zero to the next function,"Exit status 0 to the operating system, meaning success",Restart the program,Free all memory,B,main's int return value becomes the process exit status; non-zero indicates failure.
+c-struct-02,c-program-structure,Medium,output,What is printed?,"int x = 0;
+if (x > 0)
+    printf(""A"");
+    printf(""B"");",Nothing,B,AB,A,B,Without braces the if controls only the first statement; indentation is ignored by the compiler.
+c-struct-03,c-program-structure,Medium,theory,"Why is `printf(""%d"", 3.5);` dangerous?",,It prints 3,It is undefined behaviour — printf trusts the format string and reads the argument as the wrong type,It is a compile error,It rounds to 4,B,Variadic functions cannot check types at run time; -Wformat warns about the mismatch.
+c-struct-04,c-program-structure,Easy,output,What is printed?,"printf(""[%5d][%-5d][%05d]"", 42, 42, 42);",[42][42][42],[   42][42   ][00042],[00042][   42][42   ],[42   ][   42][00042],B,Width 5 right-aligns by default; - left-aligns; 0 pads with zeros.
+c-struct-05,c-program-structure,Medium,theory,Which printf specifier is correct for a size_t value such as sizeof(x)?,,%d,%zu,%lu always,%s,B,size_t has its own length modifier z; %zu is portable.
+c-type-01,c-data-types,Easy,theory,Which size is guaranteed by the C standard?,,int is 4 bytes,char is exactly 1 byte (sizeof(char) == 1),long is 8 bytes,pointers are 8 bytes,B,Only sizeof(char) == 1 is fixed; other sizes have minimum ranges and vary by platform (long is 4 bytes on Windows).
+c-type-02,c-data-types,Medium,output,What is printed (32-bit unsigned int)?,"unsigned int u = 0;
+u = u - 1;
+printf(""%u"", u);",-1,4294967295,0,Undefined behaviour,B,"Unsigned arithmetic wraps modulo 2^32, which is well defined."
+c-type-03,c-data-types,Hard,theory,What does the standard say about `int x = INT_MAX; x = x + 1;`?,,x becomes INT_MIN,x becomes 0,Undefined behaviour,Compile error,C,Signed integer overflow is UB; compilers may assume it never happens and optimise accordingly.
+c-type-04,c-data-types,Medium,theory,Which type should you use for an exactly 16-bit unsigned value in a binary protocol?,,unsigned short,uint16_t from <stdint.h>,int,short int,B,Fixed-width types guarantee the exact size across platforms; short is only guaranteed to be at least 16 bits.
+c-type-05,c-data-types,Medium,output,"On x86 gcc, what is printed?","char c = 200;
+printf(""%d"", c);",200,-56,56,Compile error,B,Plain char is signed on x86; 200 doesn't fit and wraps to -56. Use unsigned char for bytes.
+c-type-06,c-data-types,Easy,theory,What does sizeof yield?,,The number of elements,"The size in bytes, as a size_t",The number of bits,The address,B,sizeof is a compile-time operator (for non-VLA types) giving the byte size.
+c-var-01,c-variables-constants,Easy,theory,What is the value of an uninitialized local `int x;` in a function?,,0,Indeterminate — whatever was in that memory,-1,NULL,B,Automatic variables are not initialized; reading them is a bug. Globals and statics are zero-initialized.
+c-var-02,c-variables-constants,Medium,output,What is printed?,"int code = 010;
+printf(""%d"", code);",10,8,2,010,B,A leading 0 makes an octal literal: 010 octal is 8 decimal.
+c-var-03,c-variables-constants,Medium,output,What is printed (32-bit int)?,"long long big = 1000000 * 1000000;
+printf(""%lld"", big);",1000000000000,An overflowed (wrong) value — the multiplication is done in int,Compile error,0,B,"Both literals are int, so the product overflows (UB) before conversion. Write 1000000LL * 1000000."
+c-var-04,c-variables-constants,Medium,theory,What is a key difference between `#define N 10` and `const int N = 10;` in C?,,None,"The macro is untyped text substitution; the const is a typed, scoped read-only variable",const is faster,#define creates a variable in memory,B,Macros vanish before compilation; const objects are type-checked (but in C not usable as constant expressions everywhere).
+c-var-05,c-variables-constants,Hard,output,What is printed by a C compiler?,"printf(""%zu"", sizeof('a'));",1,4,2,8,B,In C a character constant has type int (4 bytes here). In C++ it is char (1 byte).
+c-op-01,c-operators,Easy,output,What is printed?,"printf(""%d %d"", -7 / 2, -7 % 2);",-4 1,-3 -1,-3 1,-4 -1,B,C truncates integer division toward zero and the remainder takes the sign of the dividend (unlike Python's floor division).
+c-op-02,c-operators,Easy,output,What is printed?,"int a = 5, b = 2;
+double r = a / b;
+printf(""%.1f"", r);",2.5,2.0,3.0,2,B,"a / b is int division (2), converted to 2.0 afterwards. Use (double)a / b."
+c-op-03,c-operators,Medium,output,What is printed?,"int i = 5;
+int j = i++ + 10;
+printf(""%d %d"", i, j);",5 15,6 15,6 16,5 16,B,Postfix i++ yields the old value (5) and then increments i to 6.
+c-op-04,c-operators,Medium,output,What is printed?,"printf(""%d"", 10 > 5 > 1);",1,0,Compile error,10,B,"No chaining in C: (10 > 5) is 1, then 1 > 1 is 0."
+c-op-05,c-operators,Hard,theory,What does `if (flags & MASK == 0)` actually test?,,(flags & MASK) == 0,flags & (MASK == 0),flags == 0,MASK == 0 only,B,== has higher precedence than bitwise &. Always parenthesize: (flags & MASK) == 0.
+c-op-06,c-operators,Hard,theory,What is the value of `i` after `i = i++;`?,,i + 1,i unchanged,Undefined behaviour,0,C,Modifying i twice without sequencing is undefined behaviour; there is no correct answer.
+c-op-07,c-operators,Medium,theory,What is the bug in `if (x = 5) { ... }`?,,None,It assigns 5 to x and the condition is always true,It compares x to 5,Syntax error,B,Assignment is an expression whose value is 5 (true). gcc -Wall warns; use ==.
+c-conv-01,c-type-conversion,Hard,output,What is printed?,"printf(""%d"", -1 < 0u);",1,0,-1,Compile error,B,"-1 is converted to unsigned (4294967295) when compared with an unsigned operand, so the comparison is false."
+c-conv-02,c-type-conversion,Medium,output,What is printed?,"printf(""%d %d"", (int)3.99, (int)-3.7);",4 -4,3 -3,3 -4,4 -3,B,Converting floating to integer truncates toward zero.
+c-conv-03,c-type-conversion,Medium,output,What is stored?,"unsigned char c = 300;
+printf(""%d"", c);",300,44,255,Undefined,B,Conversion to unsigned reduces modulo 2^8: 300 - 256 = 44.
+c-conv-04,c-type-conversion,Hard,theory,Why does `for (size_t i = n - 1; i >= 0; i--)` never terminate?,,size_t is signed,"size_t is unsigned, so i >= 0 is always true; decrementing 0 wraps to a huge value",The compiler removes the loop,It terminates normally,B,Use `for (size_t i = n; i-- > 0; )` to count down with unsigned indices.
+c-conv-05,c-type-conversion,Medium,theory,Which expression computes the true average of int sum and int n?,,(double)(sum / n),(double)sum / n,sum / n * 1.0,(int)((double)sum / n),B,Cast before dividing so the division happens in floating point; options A and C divide integers first.
+c-io-01,c-io,Easy,theory,Which scanf specifier reads into a double?,,%f,%lf,%d,%Lf,B,"In scanf, %f expects float* and %lf expects double*. (In printf, %f is used for double.)"
+c-io-02,c-io,Medium,theory,"What does scanf(""%d %d"", &a, &b) return on input ""5 x""?",,2,1,0,EOF,B,"scanf returns the number of items successfully converted: 5 into a, then it fails at x."
+c-io-03,c-io,Medium,output,"Input is ""3\nZ"". What is c?","int n; char c;
+scanf(""%d"", &n);
+scanf(""%c"", &c);",'Z','\n' (the leftover newline),'3',Uninitialized,B,"%c does not skip whitespace, so it reads the newline left after 3. Use "" %c"" to skip whitespace."
+c-io-04,c-io,Medium,theory,"Why must getchar()'s result be stored in an int, not a char?",,For speed,EOF is a value outside the range of unsigned char; a char cannot distinguish it reliably from a real byte,getchar returns a pointer,char is too small for ASCII,B,getchar returns 0–255 for bytes or EOF (-1); storing it in char breaks the EOF comparison.
+c-io-05,c-io,Easy,theory,Which is the safe way to read a line of text into a buffer?,,gets(buf),"fgets(buf, sizeof buf, stdin)","scanf(""%s"", buf)",read(buf),B,fgets limits the number of characters to the buffer size; gets was removed from C because it cannot.
+c-io-06,c-io,Medium,theory,What does fgets leave at the end of the string when the line fits in the buffer?,,Nothing,The newline character '\n' followed by '\0',A space,EOF,B,"fgets keeps the newline; strip it with line[strcspn(line, ""\n"")] = '\0'."
+c-io-07,c-io,Hard,theory,"What is wrong with `char name[16]; scanf(""%s"", name);`?",,Missing & before name,No field width: input longer than 15 characters overflows the buffer,%s cannot read strings,Nothing,B,"Use scanf(""%15s"", name). (The & is not needed: the array name decays to a pointer.)"
+c-ctl-01,c-control-flow,Easy,output,What is printed?,"int x = 2;
+switch (x) {
+case 1: printf(""one "");
+case 2: printf(""two "");
+case 3: printf(""three "");
+default: printf(""other"");
+}",two,two three other,two other,other,B,"Without break, execution falls through all subsequent case labels after the matching one."
+c-ctl-02,c-control-flow,Medium,theory,Which can be used as a switch expression in C?,,A string,A double,An int or char (any integer type),An array,C,switch requires an integer expression and integer constant case labels.
+c-ctl-03,c-control-flow,Hard,output,"With a = 1 and b = -1, what is printed?","if (a > 0)
+    if (b > 0)
+        printf(""X"");
+else
+    printf(""Y"");",X,Y,Nothing,XY,B,"The else binds to the nearest if (b > 0), regardless of indentation; b > 0 is false, so Y prints."
+c-ctl-04,c-control-flow,Easy,output,What is printed?,"int p = 0;
+if (p) printf(""yes""); else printf(""no"");",yes,no,Compile error,0,B,"Conditions are integers: 0 is false, any non-zero value is true."
+c-ctl-05,c-control-flow,Medium,theory,What is the accepted use of goto in modern C code?,,Implementing loops,Jumping to a single cleanup/error-handling section that releases resources,Calling functions,Never acceptable,B,The goto-cleanup idiom (common in the Linux kernel) avoids deeply nested error handling.
+c-loop-01,c-loops,Easy,theory,Which loop always executes its body at least once?,,while,for,do-while,none,C,do-while tests its condition after the body.
+c-loop-02,c-loops,Medium,output,"How many times is ""x"" printed?","for (int i = 0; i < 3; i++);
+    printf(""x"");",0,1,3,4,B,The semicolon after the for header is an empty body; printf runs once after the loop.
+c-loop-03,c-loops,Medium,theory,Iterating `for (int i = 0; i <= n; i++) a[i] = 0;` over an array of n elements does what?,,Fine,"Writes a[n], one past the end — undefined behaviour",Skips the last element,Compile error,B,Valid indices are 0..n-1; use i < n.
+c-loop-04,c-loops,Medium,output,What is printed?,"for (int i = 0; i < 5; i++) {
+    if (i == 1) continue;
+    if (i == 3) break;
+    printf(""%d"", i);
+}",0,02,024,0234,B,i=1 is skipped by continue (the update still runs); the loop stops at i=3.
+c-loop-05,c-loops,Medium,theory,"How do you get the number of elements of `int a[] = {1,2,3,4};` in the same scope?",,strlen(a),sizeof a / sizeof a[0],len(a),a.length,B,Total bytes divided by bytes per element. This does NOT work on a pointer (e.g. inside a function receiving the array).
+c-loop-06,c-loops,Hard,theory,Why can `for (double t = 0; t != 1.0; t += 0.1)` loop forever?,,Doubles cannot be loop variables,"0.1 is not exact in binary, so t never equals exactly 1.0",t overflows,It doesn't,B,Accumulated rounding error means t jumps from 0.9999999999999999 to 1.0999999999999999. Loop over integers instead.
