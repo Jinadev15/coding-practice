@@ -1,0 +1,205 @@
+id,topic,difficulty,type,question,code,option_a,option_b,option_c,option_d,answer,explanation
+py-fn-01,py-functions-basics,Easy,output,What is printed?,"def greet(name):
+    print(""Hi"", name)
+x = greet(""Ada"")
+print(x)","Hi Ada then Hi Ada","Hi Ada then None",None,Hi Ada,B,"`greet` prints, then implicitly returns `None`, which is assigned to `x` and printed."
+py-fn-02,py-functions-basics,Easy,theory,"In `def f(x):` and the call `f(5)`, what are `x` and `5`?",,"x is the argument, 5 is the parameter","x is the parameter, 5 is the argument",Both are parameters,Both are arguments,B,"Parameters are the names in the definition; arguments are the values supplied in the call."
+py-fn-03,py-functions-basics,Medium,output,What is printed?,"def f():
+    return 1
+    print(""after"")
+print(f())",after then 1,1,None,"1 then after",B,"`return` ends the function immediately; the `print` after it is unreachable."
+py-fn-04,py-functions-basics,Medium,output,What is printed?,"def double(x):
+    return x * 2
+f = double
+print(f(4), f is double)",8 True,8 False,TypeError,4 True,A,"Functions are objects: `f = double` binds a second name to the same function object (no call happens)."
+py-fn-05,py-functions-basics,Medium,output,What happens?,"print(square(3))
+def square(x):
+    return x * x",9,NameError: name 'square' is not defined,SyntaxError,None,B,"`def` is an executable statement; at the time of the call the `def` has not run yet, so the name doesn't exist."
+py-fn-06,py-functions-basics,Easy,output,What is printed?,"def mm(xs):
+    return min(xs), max(xs)
+lo, hi = mm([4, 1, 9])
+print(lo, hi)",1 9,"(1, 9)",4 9,Error,A,"Returning `min, max` returns one tuple, which is unpacked into `lo` and `hi`."
+py-fn-07,py-functions-basics,Medium,theory,Which is a pure function?,,A function that appends to a global list,A function that prints its result,A function that returns a + b without modifying anything,A function that reads a file,C,"A pure function's result depends only on its arguments and it has no side effects (no I/O, no mutation of external state)."
+py-fn-08,py-functions-basics,Medium,theory,What does each function call get?,,A shared namespace with all other calls,Its own new local namespace (stack frame),Access only to global variables,A copy of the caller's variables,B,"Every call creates a new frame holding its own local variables, destroyed when the call returns — which is what makes recursion work."
+py-fn-09,py-functions-basics,Easy,output,What is printed?,"def f(x):
+    if x > 0:
+        return ""pos""
+print(f(-1))",pos,neg,None,Error,C,"For x = −1 no `return` executes, so the function falls off the end and returns `None`."
+py-fn-10,py-functions-basics,Medium,output,What is printed?,"def add(a, b):
+    """"""Add two numbers.""""""
+    return a + b
+print(add.__name__, add.__doc__)",add Add two numbers.,add None,a+b Add two numbers.,Error,A,"`__name__` is the function's name and `__doc__` holds its docstring."
+py-fn-11,py-functions-basics,Medium,theory,"What is wrong with `button.on_click(handler())` if you want handler to run on each click?",,Nothing,"handler() is called immediately and its return value (often None) is registered, not the function",on_click cannot take arguments,It creates infinite recursion,B,"Pass the function object itself (`handler`) as a callback; adding `()` calls it once right now."
+py-par-01,py-parameters,Easy,output,What is printed?,"def power(base, exp=2):
+    return base ** exp
+print(power(3), power(2, 5))",9 32,6 10,9 10,Error,A,"`exp` defaults to 2 when omitted: 3² = 9; with exp = 5: 2⁵ = 32."
+py-par-02,py-parameters,Easy,output,What is printed?,"def total(*nums):
+    return type(nums).__name__, sum(nums)
+print(total(1, 2, 3))","('list', 6)","('tuple', 6)","('int', 6)",Error,B,"`*nums` collects extra positional arguments into a **tuple**."
+py-par-03,py-parameters,Medium,output,What happens?,"def area(w, h):
+    return w * h
+area(3, w=4)",12,TypeError: got multiple values for argument 'w',SyntaxError,7,B,"3 binds to `w` positionally, then `w=4` tries to bind it again. Each parameter can receive only one value."
+py-par-04,py-parameters,Medium,theory,Which call is a SyntaxError?,,"f(1, b=2)","f(a=1, b=2)","f(a=1, 2)",f(*[1 2]),C,"At a call site, positional arguments cannot follow keyword arguments — that's a syntax error, detected before running."
+py-par-05,py-parameters,Medium,output,What happens?,"def f(x, *, verbose=False):
+    return verbose
+print(f(1, True))",True,False,TypeError,SyntaxError,C,"Parameters after a bare `*` are keyword-only; passing `True` positionally gives 'takes 1 positional argument but 2 were given'."
+py-par-06,py-parameters,Medium,output,What happens?,"def divide(a, b, /):
+    return a / b
+print(divide(a=6, b=3))",2.0,TypeError,SyntaxError,0.5,B,"Parameters before `/` are positional-only and cannot be passed by keyword."
+py-par-07,py-parameters,Hard,output,What is printed?,"def f(a, b=2, *args, c, d=4, **kw):
+    return a, b, args, c, d, kw
+print(f(1, 5, 6, 7, c=3, e=9))","(1, 5, (6, 7), 3, 4, {'e': 9})","(1, 2, (5, 6, 7), 3, 4, {'e': 9})","(1, 5, [6, 7], 3, 4, {'e': 9})",TypeError,A,"Positional 1, 5 fill a, b; extra 6, 7 go to args (a tuple); c is given by keyword; d takes its default; unknown keyword e goes into kw."
+py-par-08,py-parameters,Medium,theory,"Why is `def f(a=1, b):` a SyntaxError?",,Defaults are not allowed,A parameter without a default cannot follow one with a default (positionally),b must be named args,Only one parameter is allowed,B,"Otherwise a call like f(5) would be ambiguous. Keyword-only parameters (after *) are exempt from this rule."
+py-par-09,py-parameters,Easy,output,What is printed?,"def show(**kw):
+    return kw
+print(show(x=1, y=2))","(x=1, y=2)","{'x': 1, 'y': 2}","['x', 'y']",TypeError,B,"`**kw` collects extra keyword arguments into a dict."
+py-par-10,py-parameters,Medium,theory,"What does a wrapper `def w(*args, **kwargs): return g(*args, **kwargs)` achieve?",,It converts all arguments to strings,It forwards any combination of positional and keyword arguments to g unchanged,It makes g run in parallel,It only works for functions without parameters,B,"Collecting with `*args, **kwargs` and re-spreading them passes arguments through untouched — the core of decorators."
+py-par-11,py-parameters,Hard,output,What happens?,"def k(a, *, b):
+    return a + b
+print(k(1))",1,TypeError: missing 1 required keyword-only argument: 'b',None,SyntaxError,B,"Keyword-only parameters without a default are **required**; they must be passed by name."
+py-scope-01,py-scope-closures,Easy,theory,What does LEGB stand for?,,"Local, External, Global, Built-in","Local, Enclosing, Global, Built-in","Lambda, Enclosing, Global, Base","List, Element, Generator, Block",B,"Python searches Local → Enclosing → Global → Built-in scopes, and the first match wins."
+py-scope-02,py-scope-closures,Medium,output,What happens?,"count = 0
+def inc():
+    count += 1
+inc()",count becomes 1,UnboundLocalError,NameError,Nothing,B,"Assignment anywhere makes `count` local to the whole function, so `count + 1` reads an unassigned local. Use `global count`."
+py-scope-03,py-scope-closures,Medium,output,What is printed?,"items = []
+def add(x):
+    items.append(x)
+add(1); add(2)
+print(items)",[],"[1, 2]",UnboundLocalError,None,B,"Mutating an object through a global name only *reads* the name, so no `global` declaration is needed."
+py-scope-04,py-scope-closures,Medium,output,What is printed?,"def make(n):
+    def f(x):
+        return x * n
+    return f
+t = make(3)
+print(t(5))",15,8,"f(5)",TypeError,A,"`t` is a closure that remembers `n = 3` from the enclosing call, even after `make` returned."
+py-scope-05,py-scope-closures,Hard,output,What is printed?,"fs = [lambda: i for i in range(3)]
+print([f() for f in fs])","[0, 1, 2]","[2, 2, 2]","[3, 3, 3]",NameError,B,"Late binding: all lambdas share one variable `i`, read at call time when it equals 2."
+py-scope-06,py-scope-closures,Medium,output,What is printed?,"if True:
+    y = 10
+print(y)",10,NameError,None,SyntaxError,A,"`if` blocks don't create a new scope in Python, so `y` is visible after the block."
+py-scope-07,py-scope-closures,Medium,theory,What does `nonlocal x` do?,,Makes x a global variable,Lets an inner function rebind x in the nearest enclosing function scope,Deletes x,Creates a new local x,B,"`nonlocal` binds the name to the enclosing function's variable so assignment rebinds it there; the variable must already exist."
+py-scope-08,py-scope-closures,Hard,output,What is printed?,"def counter():
+    n = 0
+    def inc():
+        nonlocal n
+        n += 1
+        return n
+    return inc
+a, b = counter(), counter()
+a(); a()
+print(a(), b())",3 3,3 1,1 1,4 2,B,"Each call to `counter()` creates a new `n` cell, so `a` and `b` have independent state."
+py-scope-09,py-scope-closures,Medium,theory,Where does a closure store its captured variables?,,In the global namespace,In cell objects referenced by the function's __closure__ attribute,On the call stack forever,In a hidden class,B,"Free variables live in cells; `func.__closure__` holds them and `func.__code__.co_freevars` lists their names."
+py-scope-10,py-scope-closures,Hard,output,What is printed?,"x = ""g""
+def f():
+    print(x)
+    x = ""l""
+try:
+    f()
+except Exception as e:
+    print(type(e).__name__)",g,l,UnboundLocalError,NameError,C,"Because `x` is assigned later in `f`, it is local for the whole function; the earlier `print(x)` reads an unassigned local."
+py-fp-01,py-lambda-functional,Easy,output,What is printed?,"f = lambda a, b=10: a + b
+print(f(5), f(5, 1))",15 6,5 6,15 15,Error,A,"A lambda is a normal function object: default parameters work exactly as with `def`."
+py-fp-02,py-lambda-functional,Medium,theory,Which can a lambda body contain?,,An assignment statement x = 1,A for loop,A conditional expression a if c else b,A return statement,C,"A lambda body must be a single **expression**. A conditional expression is an expression; assignments, loops and `return` are statements."
+py-fp-03,py-lambda-functional,Medium,output,What is printed?,"m = map(int, ""123"")
+print(list(m), list(m))","[1, 2, 3] [1, 2, 3]","[1, 2, 3] []",[] [],TypeError,B,"`map` returns a single-use iterator; the first `list()` consumes it entirely."
+py-fp-04,py-lambda-functional,Easy,output,What is printed?,"print(list(filter(None, [0, 1, """", ""a"", [], [0]])))","[1, 'a', [0]]","[0, '', []]","[1, 'a']",TypeError,A,"`filter(None, ...)` keeps truthy items; `[0]` is a non-empty list, hence truthy."
+py-fp-05,py-lambda-functional,Medium,output,What is printed?,"from functools import reduce
+print(reduce(lambda acc, x: acc * 10 + x, [1, 2, 3]))",6,123,321,10,B,"((1*10+2)*10+3) = 123: reduce folds left to right, the first element serving as the initial accumulator."
+py-fp-06,py-lambda-functional,Medium,output,What happens?,"from functools import reduce
+import operator
+print(reduce(operator.add, []))",0,None,TypeError: reduce() of empty iterable with no initial value,[],C,"With no items and no initial value there is nothing to return. Pass an initial value: `reduce(op, xs, 0)`."
+py-fp-07,py-lambda-functional,Medium,output,What is printed?,"print(list(map(lambda a, b: a - b, [10, 20, 30], [1, 2])))","[9, 18, 30]","[9, 18]",TypeError,"[9, 18, 27]",B,"With several iterables, `map` calls the function with one item from each and stops at the **shortest**."
+py-fp-08,py-lambda-functional,Easy,theory,What is a higher-order function?,,A function defined at module level,A function that takes or returns other functions,A function with more than 3 parameters,A recursive function,B,"Functions that operate on functions — `map`, `filter`, `sorted(key=)`, decorators — are higher-order."
+py-fp-09,py-lambda-functional,Medium,output,What is printed?,"from operator import itemgetter
+pairs = [(""a"", 3), (""b"", 1), (""c"", 2)]
+print(min(pairs, key=itemgetter(1)))","('a', 3)","('b', 1)",1,"('c', 2)",B,"`itemgetter(1)` extracts the second element, so `min` compares by the numbers and returns the whole tuple with the smallest one."
+py-fp-10,py-lambda-functional,Medium,output,What is printed?,"compose = lambda f, g: lambda x: f(g(x))
+inc = lambda x: x + 1
+dbl = lambda x: x * 2
+print(compose(inc, dbl)(5), compose(dbl, inc)(5))",11 12,12 11,10 10,11 11,A,"compose(f, g)(x) = f(g(x)). inc(dbl(5)) = 11; dbl(inc(5)) = 12. Order matters."
+py-fp-11,py-lambda-functional,Easy,theory,What does PEP 8 recommend instead of `square = lambda x: x * x`?,,Nothing — it is ideal style,"def square(x): return x * x",square = map(x * x),A class Square,B,"Assigning a lambda to a name loses the benefit of anonymity and gives a useless `<lambda>` name in tracebacks; use `def`."
+py-rec-01,py-recursion,Easy,theory,What two things must every recursive function have?,,A loop and a return,A base case and progress toward it in the recursive case,Global variables and a counter,At least two parameters,B,"Without a base case, or without each call moving closer to it, recursion never stops and raises RecursionError."
+py-rec-02,py-recursion,Easy,output,What is printed?,"def f(n):
+    if n == 0:
+        return 0
+    return n + f(n - 1)
+print(f(4))",4,10,24,RecursionError,B,"f(4) = 4 + 3 + 2 + 1 + 0 = 10."
+py-rec-03,py-recursion,Medium,output,What happens?,"def f(n):
+    if n == 0:
+        return 0
+    return f(n - 2)
+print(f(5))",0,1,RecursionError,None,C,"Starting from 5 and subtracting 2 gives 3, 1, −1, −3… — it skips 0, so the base case is never reached."
+py-rec-04,py-recursion,Hard,output,What happens?,"def f(n):
+    if n <= 1:
+        return 1
+    f(n - 1) * n
+print(f(3))",Prints 6,Prints None,Prints 3,TypeError,D,"The recursive case computes `f(n - 1) * n` but never **returns** it, so f(2) returns None. Inside f(3), `f(2) * 3` then becomes `None * 3`, which raises **TypeError**. Always `return` the recursive result."
+py-rec-05,py-recursion,Medium,theory,What is CPython's default maximum recursion depth?,,100,1000,10000,Unlimited,B,"`sys.getrecursionlimit()` is 1000 by default; exceeding it raises RecursionError."
+py-rec-06,py-recursion,Hard,theory,Does CPython perform tail-call optimisation?,,"Yes, always","No — even tail-recursive functions use one stack frame per call",Only with the @tail decorator,Only for functions returning integers,B,"Python deliberately keeps full tracebacks; tail calls are not optimised, so deep tail recursion still hits the recursion limit."
+py-rec-07,py-recursion,Medium,theory,What is the time complexity of naive recursive fib(n)?,,O(n),O(n log n),Exponential (about O(1.618^n)),O(log n),C,"Each call branches into two and subproblems are recomputed repeatedly; the call count grows like the Fibonacci numbers themselves."
+py-rec-08,py-recursion,Medium,theory,How much stack memory does a linear recursion of depth n use?,,O(1),O(log n),O(n),O(n^2),C,"Each pending call keeps a frame on the stack until the base case returns."
+py-rec-09,py-recursion,Hard,theory,"For fast_power(b, e) that recurses on e // 2 once per call, what is the recursion depth for e ≈ 10^9?",,About 10^9,About 30,About 1000,Exactly 2,B,"Halving each time gives depth ≈ log2(e) ≈ 30, so it never comes close to the recursion limit."
+py-rec-10,py-recursion,Medium,output,How many moves does Towers of Hanoi need for 4 disks?,,8,15,16,31,B,"T(n) = 2T(n−1) + 1 with T(0) = 0 solves to 2^n − 1 = 15."
+py-rec-11,py-recursion,Medium,theory,What does memoization change for recursive Fibonacci?,,It makes it O(1),It reduces it from exponential to O(n) by caching each fib(k),It removes the need for a base case,It increases the recursion limit,B,"Each distinct subproblem fib(k) is computed once and then served from the cache."
+py-deco-01,py-decorators,Easy,theory,What is `@deco` above `def f(): ...` equivalent to?,,f = deco,f = deco(f),f = f(deco),deco = f(),B,"The decorator syntax calls the decorator with the function and rebinds the name to whatever it returns."
+py-deco-02,py-decorators,Medium,output,What is printed?,"def deco(f):
+    def wrapper(*a, **k):
+        return f(*a, **k)
+    return wrapper
+@deco
+def hello():
+    pass
+print(hello.__name__)",hello,wrapper,deco,None,B,"Without `functools.wraps`, the name `hello` now refers to `wrapper`, so its metadata is the wrapper's."
+py-deco-03,py-decorators,Medium,output,What is printed?,"def shout(f):
+    def w(*a, **k):
+        f(*a, **k).upper()
+    return w
+@shout
+def greet():
+    return ""hi""
+print(greet())",HI,hi,None,Error,C,"The wrapper computes the upper-cased result but never returns it, so the decorated function returns None."
+py-deco-04,py-decorators,Medium,output,What is printed?,"def a(f):
+    return lambda: ""a"" + f()
+def b(f):
+    return lambda: ""b"" + f()
+@a
+@b
+def x():
+    return ""x""
+print(x())",bax,abx,xab,ab,B,"Stacked decorators apply bottom-up: `x = a(b(x))`, so calling it runs a's wrapper first: 'a' + ('b' + 'x')."
+py-deco-05,py-decorators,Medium,theory,How many levels of nested functions does a decorator WITH arguments (like @repeat(3)) typically need?,,1,2,3,4,C,"`repeat(3)` returns a decorator, which receives the function and returns the wrapper: argument-taker → decorator → wrapper."
+py-deco-06,py-decorators,Easy,theory,What does functools.wraps do?,,Makes the function run faster,"Copies the wrapped function's __name__, __doc__ and other metadata to the wrapper (and sets __wrapped__)",Caches the results,Converts a function into a class,B,"It preserves the identity of the decorated function for debugging, documentation and introspection."
+py-deco-07,py-decorators,Medium,output,When is 'decorating' printed?,"def d(f):
+    print(""decorating"")
+    return f
+@d
+def g():
+    print(""running"")",Every time g() is called,"Once, when the def statement executes",Never,Only the first time g() is called,B,"The decorator itself runs at definition time; only the returned wrapper (here g itself) runs on each call."
+py-deco-08,py-decorators,Hard,output,What is printed?,"import functools
+def count(f):
+    @functools.wraps(f)
+    def w(*a):
+        w.n += 1
+        return f(*a)
+    w.n = 0
+    return w
+@count
+def sq(x):
+    return x * x
+sq(2); sq(3)
+print(sq.n, sq(4))",2 16,3 16,0 16,AttributeError,A,"`sq.n` is read before the third call executes (arguments are evaluated left to right), so it is still 2; then sq(4) returns 16."
+py-deco-09,py-decorators,Medium,theory,"With `@cache` placed ABOVE `@timed` on a function, what is timed on repeated calls with the same argument?",,Every call,Only cache misses — hits return from the cache before reaching the timer,Nothing ever,Only the first call of the program,B,"The outer decorator runs first: a cache hit returns immediately without invoking the inner timed wrapper."
+py-deco-10,py-decorators,Easy,theory,Which is NOT typically implemented as a decorator?,,Logging calls,Caching results,Retrying on failure,Declaring a variable's type at runtime with =,D,"Decorators wrap callables (logging, caching, retries, routing, access control). Plain assignment is unrelated."
+py-th-01,py-type-hints,Easy,output,What is printed?,"def double(x: int) -> int:
+    return x * 2
+print(double(""ab""))",TypeError,abab,4,None,B,"Type hints are not enforced at run time; `""ab"" * 2` is `""abab""`. A static checker like mypy would flag the call."
+py-th-02,py-type-hints,Easy,theory,What does `str | None` mean as a type hint?,,A string or the value None,An optional parameter with a default,A string that may be empty,Bitwise OR of two types at run time,A,"It is a union: the value is either a `str` or `None` (equivalent to `Optional[str]`)."
+py-th-03,py-type-hints,Medium,theory,What is the hint for a tuple of any number of ints?,,"tuple[int]","tuple[int, ...]",list[int],"tuple[*int]",B,"`tuple[int]` means exactly ONE int. Use the ellipsis form `tuple[int, ...]` for variable length."
+py-th-04,py-type-hints,Medium,theory,Where are a function's annotations stored?,,In a comment,In the function's __annotations__ attribute,In sys.modules,Nowhere — they are discarded,B,"They are kept as metadata on the function (read lazily in 3.14) for tools and frameworks to inspect."
+py-th-05,py-type-hints,Medium,theory,Which parameter hint is the most reusable for a function that only loops over its input once?,,list[float],Iterable[float],tuple[float],"set[float]",B,"`Iterable` accepts lists, tuples, sets, generators… — accept the most general type that supports what you need."
+py-th-06,py-type-hints,Medium,theory,"What does Callable[[int, str], bool] describe?",,A function taking an int and a str and returning a bool,A list containing an int and a str,A class with two attributes,A bool that can be called,A,"`Callable[[ArgTypes...], ReturnType]` describes function signatures."
+py-th-07,py-type-hints,Hard,theory,"In Python 3.14, what happens with `def make() -> Robot: ...` when Robot is defined later in the file?",,NameError at the def line,It works — annotations are evaluated lazily (PEP 649),SyntaxError,Robot is silently replaced with Any,B,"3.14 defers annotation evaluation until requested, so forward references need no quotes. Older versions needed `-> ""Robot""` or `from __future__ import annotations`."
+py-th-08,py-type-hints,Medium,theory,Which tool reports type errors WITHOUT running the code?,,pdb,mypy,timeit,pickle,B,"mypy (and pyright) are static type checkers: they analyse annotated source code and report inconsistencies before execution."
+py-th-09,py-type-hints,Easy,theory,Why write -> None on a function?,,To make it return None faster,To document that it returns no useful value (it performs an action),It is required by Python,To prevent it from being called,B,"`-> None` tells readers and checkers the function is called for its side effects; using its result is likely a bug."
+py-th-10,py-type-hints,Medium,theory,"What does Literal['r', 'w'] express?",,Any string,Only the exact values 'r' or 'w',A raw string,A list of two strings,B,"`Literal` restricts a value to specific constants; checkers flag `open_file(p, 'x')`."
