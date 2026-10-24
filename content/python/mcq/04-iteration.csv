@@ -1,0 +1,124 @@
+id,topic,difficulty,type,question,code,option_a,option_b,option_c,option_d,answer,explanation
+py-it-01,py-iterators,Easy,theory,What does `next(it)` raise when the iterator is exhausted?,,IndexError,StopIteration,ValueError,It returns None,B,"The iterator protocol signals the end with `StopIteration`; `for` loops catch it to end cleanly. `next(it, default)` returns the default instead."
+py-it-02,py-iterators,Medium,output,What is printed?,"m = map(str, [1, 2])
+print(list(m), list(m))","['1', '2'] ['1', '2']","['1', '2'] []",[] [],TypeError,B,"`map` returns an iterator, which is single-use: the first `list()` exhausts it."
+py-it-03,py-iterators,Medium,output,What is printed?,"data = [1, 2]
+print(iter(data) is iter(data), list(data), list(data))","True [1, 2] []","False [1, 2] [1, 2]","True [1, 2] [1, 2]","False [1, 2] []",B,"A list is an iterable, not an iterator: each `iter()` creates a new, independent iterator, so the list can be looped over repeatedly."
+py-it-04,py-iterators,Medium,theory,Which TWO methods must an iterator implement?,,`__iter__` returning itself,`__next__` returning the next item or raising StopIteration,`__len__`,`__getitem__`,A|B,"An iterator implements `__next__` and an `__iter__` that returns `self`, so iterators can be used wherever an iterable is expected."
+py-it-05,py-iterators,Easy,output,What is printed?,"it = iter(""abc"")
+next(it)
+print(list(it))","['a', 'b', 'c']","['b', 'c']",['c'],[],B,"The first `next` consumed 'a'; the iterator remembers its position, so `list` gets the rest."
+py-it-06,py-iterators,Medium,theory,"Why can `for line in open(""huge.log"")` process a 50 GB file with little memory?",,Python compresses the file,The file object is an iterator that yields one line at a time from a buffer,It only reads the first 1000 lines,The OS loads it into swap,B,Iteration is lazy: only the current line (and a small buffer) is in memory at any time.
+py-it-07,py-iterators,Hard,output,What is printed?,"class C:
+    def __init__(self):
+        self.n = 0
+    def __iter__(self):
+        return self
+    def __next__(self):
+        if self.n >= 2:
+            raise StopIteration
+        self.n += 1
+        return self.n
+c = C()
+print(list(c), list(c))","[1, 2] [1, 2]","[1, 2] []","[0, 1] []",Infinite loop,B,"`__iter__` returns `self`, so the object is its own (single-use) iterator; its counter is not reset for the second loop. Return a fresh iterator from `__iter__` to make it reusable."
+py-it-08,py-iterators,Medium,output,What is printed?,"print(next((x for x in [1, 3, 5] if x % 2 == 0), ""none""))",none,1,StopIteration,None,A,"The generator finds no even number; `next` with a default returns ""none"" instead of raising StopIteration — the idiom for 'first match or default'."
+py-it-09,py-iterators,Medium,theory,"What does `iter(f.readline, """")` produce?",,The first line only,"An iterator calling f.readline() repeatedly until it returns """" (end of file)",A list of all lines,TypeError,B,"The two-argument form `iter(callable, sentinel)` calls the callable until the sentinel value appears."
+py-it-10,py-iterators,Easy,theory,"Which of these is an iterator (single-use), not just an iterable?",,"[1, 2, 3]","""abc""","zip([1], [2])",range(5),C,"`zip`, `map`, `filter`, `enumerate` and generators return iterators. Lists, strings and ranges are reusable iterables."
+py-gen-01,py-generators,Easy,output,What is printed?,"def g():
+    print(""running"")
+    yield 1
+x = g()
+print(""created"")",running then created,created,running,created then running,B,Calling a generator function only creates the generator object; the body (and its print) runs on the first `next()`.
+py-gen-02,py-generators,Easy,output,What is printed?,"def g():
+    yield 1
+    yield 2
+print(list(g()), sum(g()))","[1, 2] 3","[1, 2] 0","(1, 2) 3",Error,A,"Each call `g()` creates a NEW generator, so both consumers see all values."
+py-gen-03,py-generators,Medium,output,What is printed?,"def g():
+    yield 1
+    yield 2
+it = g()
+print(list(it), list(it))","[1, 2] [1, 2]","[1, 2] []",[] [],Error,B,The same generator object is single-use; the first list() exhausts it.
+py-gen-04,py-generators,Medium,output,What is printed?,"def inner():
+    yield 1
+    return ""r""
+def outer():
+    v = yield from inner()
+    yield v
+print(list(outer()))",[1],"[1, 'r']",['r'],"[1, None]",B,"`yield from` passes through inner's yields (1) and evaluates to inner's return value ('r'), which outer then yields."
+py-gen-05,py-generators,Hard,output,What is printed?,"def acc():
+    total = 0
+    while True:
+        x = yield total
+        total += x
+a = acc()
+print(next(a), a.send(5), a.send(10))",0 5 15,5 15 15,None 5 15,TypeError,A,"`next` runs to the first `yield total` (0). Each `send(v)` makes the paused yield evaluate to v, adds it, and runs to the next yield, producing the new total."
+py-gen-06,py-generators,Medium,theory,Why can a generator represent an infinite sequence without running out of memory?,,Python compresses the values,Values are produced lazily one at a time when requested,Generators store values on disk,The interpreter limits generators to 1000 items,B,"Only the current state (locals, position) is stored; each value is computed on demand by next()."
+py-gen-07,py-generators,Medium,theory,Where does a generator's `return value` end up?,,It is yielded as the last item,In the `value` attribute of the StopIteration exception,It is ignored,It becomes a list,B,`return v` ends the generator and raises StopIteration(v); `yield from` captures that value.
+py-gen-08,py-generators,Medium,output,What is printed?,"def g():
+    try:
+        yield 1
+    finally:
+        print(""cleanup"")
+x = g()
+next(x)
+x.close()
+print(""after"")",after,cleanup then after,after then cleanup,Nothing,B,"`close()` raises GeneratorExit at the paused yield, so the `finally` block runs before execution continues."
+py-gen-09,py-generators,Easy,theory,What is the most idiomatic way to make your own class iterable (and reusable)?,,Make __iter__ a generator function that yields the items,Return a list from __next__,Inherit from list,Implement __len__ only,A,"A generator-function `__iter__` returns a fresh generator on every loop, giving a reusable iterable with almost no code."
+py-gen-10,py-generators,Medium,output,What is printed?,"import itertools
+def nat():
+    n = 0
+    while True:
+        yield n
+        n += 1
+print(list(itertools.islice((x * x for x in nat() if x % 2), 3)))","[1, 9, 25]","[0, 4, 16]",Infinite loop,"[1, 3, 5]",A,"Odd naturals 1, 3, 5 squared; islice stops after 3, so the infinite generator is never fully consumed."
+py-itt-01,py-itertools,Easy,output,What is printed?,"import itertools
+print(list(itertools.accumulate([1, 2, 3, 4])))","[1, 2, 3, 4]","[1, 3, 6, 10]",[10],"[0, 1, 3, 6]",B,`accumulate` yields running totals (prefix sums) by default.
+py-itt-02,py-itertools,Medium,output,What is printed?,"import itertools
+print([(k, len(list(g))) for k, g in itertools.groupby(""aabaa"")])","[('a', 4), ('b', 1)]","[('a', 2), ('b', 1), ('a', 2)]","[('a', 2), ('b', 1)]",Error,B,`groupby` groups only **consecutive** equal items; the two runs of 'a' are separate groups. Sort first to group globally.
+py-itt-03,py-itertools,Easy,theory,"How many items does `itertools.combinations(range(5), 2)` produce?",,5,10,20,25,B,"Unordered pairs without repetition: C(5, 2) = 10. (permutations would give 20; product with repeat=2 gives 25.)"
+py-itt-04,py-itertools,Medium,output,What is printed?,"import itertools
+print(list(itertools.pairwise(""abcd"")))","[('a', 'b'), ('c', 'd')]","[('a', 'b'), ('b', 'c'), ('c', 'd')]","['ab', 'bc', 'cd']","[('a', 'b', 'c', 'd')]",B,"`pairwise` yields overlapping consecutive pairs; `batched(..., 2)` would give non-overlapping chunks."
+py-itt-05,py-itertools,Medium,theory,Which function replaces three nested `for` loops over the same list `xs`?,,"itertools.permutations(xs, 3)","itertools.product(xs, repeat=3)","itertools.combinations(xs, 3)","itertools.chain(xs, xs, xs)",B,Nested loops visit every ordered triple including repeats — exactly the Cartesian product with repeat=3.
+py-itt-06,py-itertools,Medium,output,What is printed?,"import itertools
+print(list(itertools.takewhile(lambda x: x > 0, [3, 2, -1, 4])))","[3, 2, 4]","[3, 2]","[-1, 4]","[3, 2, -1, 4]",B,`takewhile` stops permanently at the first failing item (-1); unlike filter it does not resume.
+py-itt-07,py-itertools,Hard,output,What is printed?,"import itertools
+print(len(list(itertools.permutations(""aab""))))",3,6,9,2,B,"Elements are unique by **position**, not value, so all 3! = 6 orderings are produced (with visible duplicates). Use set() to get the 3 distinct ones."
+py-itt-08,py-itertools,Medium,output,What is printed?,"import itertools
+print(list(itertools.islice(itertools.count(5, 3), 4)))","[5, 8, 11, 14]","[5, 6, 7, 8]","[3, 6, 9, 12]",Infinite loop,A,"`count(5, 3)` is 5, 8, 11, … forever; islice takes the first 4 without running forever."
+py-itt-09,py-itertools,Medium,output,What is printed?,"import itertools
+print(list(itertools.zip_longest(""abc"", [1], fillvalue=0)))","[('a', 1)]","[('a', 1), ('b', 0), ('c', 0)]","[('a', 1), ('b', None), ('c', None)]",Error,B,"`zip_longest` continues to the longest input, filling gaps with `fillvalue`."
+py-itt-10,py-itertools,Easy,theory,Which itertools function produces running maxima when given `max` as its function?,,groupby,accumulate,starmap,compress,B,"`accumulate(xs, max)` applies max cumulatively: each output is the maximum so far."
+py-ft-01,py-functools,Medium,output,What is printed?,"import functools
+@functools.lru_cache(maxsize=2)
+def sq(x):
+    return x * x
+sq(1); sq(2); sq(1); sq(3); sq(2)
+print(sq.cache_info().hits)",0,1,2,3,B,"Only the second sq(1) hits. sq(3) evicts 2 (least recently used), so the final sq(2) is a miss."
+py-ft-02,py-functools,Medium,output,What happens?,"import functools
+@functools.cache
+def total(xs):
+    return sum(xs)
+print(total([1, 2, 3]))",6,TypeError: unhashable type: 'list',None,0,B,"Cache keys are built from the arguments, which must be hashable. Pass a tuple instead."
+py-ft-03,py-functools,Easy,output,What is printed?,"from functools import partial
+parse_hex = partial(int, base=16)
+print(parse_hex(""ff""))",ff,255,16,TypeError,B,"`partial` pre-fills `base=16`; calling it with ""ff"" runs int(""ff"", base=16) = 255."
+py-ft-04,py-functools,Medium,theory,Which functions should NOT be decorated with lru_cache?,,A pure function computing Fibonacci numbers,A function returning the current time or reading a file that may change,A function computing edit distance between two strings,A function computing factorials,B,Caching assumes the same arguments always give the same result. Impure functions would return stale values.
+py-ft-05,py-functools,Medium,theory,"With @functools.total_ordering, which methods must you define yourself?",,All six comparison methods,"__eq__ and one of __lt__, __le__, __gt__, __ge__",Only __hash__,__cmp__,B,The decorator derives the remaining ordering methods from `__eq__` plus one ordering method.
+py-ft-06,py-functools,Hard,output,What is printed?,"import functools
+@functools.singledispatch
+def kind(x):
+    return ""other""
+@kind.register
+def _(x: int):
+    return ""int""
+print(kind(True), kind(2.5))",other other,int other,bool float,int int,B,"Dispatch follows the class hierarchy: bool is a subclass of int, so it uses the int implementation; float has none, so the fallback runs."
+py-ft-07,py-functools,Medium,output,How many times is 'computing' printed?,"import functools
+class C:
+    @functools.cached_property
+    def v(self):
+        print(""computing"")
+        return 1
+a, b = C(), C()
+a.v; a.v; b.v",1,2,3,0,B,"The value is computed once **per instance** and stored in its __dict__: once for a, once for b."
+py-ft-08,py-functools,Medium,theory,What data structures give an LRU cache O(1) get and put?,,A sorted list,A hash map plus a doubly linked list ordered by recency,A binary heap,Two stacks,B,The hash map finds entries in O(1); the linked list moves an entry to the front and evicts from the back in O(1).
+py-ft-09,py-functools,Easy,theory,What is `functools.cache` equivalent to?,,lru_cache(maxsize=128),lru_cache(maxsize=None),lru_cache(maxsize=0),cached_property,B,"`cache` is an unbounded memoizer (Python 3.9+), the same as `lru_cache(maxsize=None)` but slightly faster."
