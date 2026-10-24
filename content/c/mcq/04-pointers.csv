@@ -1,0 +1,57 @@
+id,topic,difficulty,type,question,code,option_a,option_b,option_c,option_d,answer,explanation
+c-ptr-01,c-pointers-basics,Easy,output,What is printed?,"int x = 10;
+int *p = &x;
+*p = 25;
+printf(""%d"", x);",10,25,The address of x,Error,B,"*p refers to x itself, so writing *p changes x."
+c-ptr-02,c-pointers-basics,Medium,theory,"What does `int *p, q;` declare?",,Two pointers to int,"p is a pointer to int, q is a plain int",Two ints,Syntax error,B,"The * binds to the declarator (p), not the type. Declare one pointer per line."
+c-ptr-03,c-pointers-basics,Medium,theory,What happens with `int *p; *p = 5;` inside a function?,,p is NULL so nothing happens,Undefined behaviour — p is uninitialised (a wild pointer) and points to an arbitrary address,Compile error,5 is stored safely,B,Automatic pointers start with garbage; always initialise to a valid address or NULL.
+c-ptr-04,c-pointers-basics,Easy,theory,"Why does scanf(""%d"", &x) need the &?",,Style only,scanf must receive the address of x so it can store the value there,& converts to int,It doesn't need it,B,"C passes by value; to write into x, scanf needs its address."
+c-ptr-05,c-pointers-basics,Easy,theory,"On a 64-bit system, what is sizeof(double *)?",,4,8,16,Depends on the double,B,"All object pointers are address-sized (8 bytes on 64-bit systems), regardless of the pointed-to type."
+c-pa-01,c-pointer-arithmetic,Easy,output,What is printed?,"int a[] = {10, 20, 30, 40};
+int *p = a;
+printf(""%d"", *(p + 2));",12,30,20,Address,B,"p + 2 points two elements further (8 bytes for 4-byte ints), i.e. a[2]."
+c-pa-02,c-pointer-arithmetic,Medium,output,What is printed?,"int a[] = {1, 2, 3, 4, 5};
+int *b = &a[1], *e = &a[4];
+printf(""%td"", e - b);",12,3,4,16,B,"Pointer subtraction yields the number of elements between them, not bytes."
+c-pa-03,c-pointer-arithmetic,Medium,output,What is printed?,"int a[] = {5, 9};
+int *p = a;
+int v = *p++;
+printf(""%d %d"", v, *p);",5 9,6 9,9 9,5 5,A,"*p++ is *(p++): read the current element, then advance the pointer."
+c-pa-04,c-pointer-arithmetic,Medium,output,What is printed?,"int a[] = {5, 9};
+int *p = a;
+(*p)++;
+printf(""%d %d"", a[0], *p);",5 9,6 6,6 9,5 6,B,(*p)++ increments the pointed-to value; p still points at a[0].
+c-pa-05,c-pointer-arithmetic,Hard,theory,"For `int a[5];`, which is defined behaviour?",,Forming a + 6,Forming a + 5 and comparing it with other pointers into a (without dereferencing),Dereferencing a + 5,Computing a - 1,B,A one-past-the-end pointer may be formed and compared but never dereferenced; anything further out is UB.
+c-pa-06,c-pointer-arithmetic,Easy,theory,Which operation on pointers is NOT allowed?,,p + 3,q - p (same array),p + q,p < q (same array),C,Adding two pointers is meaningless and a compile error.
+c-pva-01,c-pointers-arrays,Easy,theory,"By definition, a[i] is equivalent to what?",,&a + i,*(a + i),a * i,*a + i,B,Subscripting is defined as pointer arithmetic followed by dereference.
+c-pva-02,c-pointers-arrays,Medium,output,"On 64-bit, what is printed?","char arr[] = ""robot"";
+const char *ptr = ""robot"";
+printf(""%zu %zu"", sizeof arr, sizeof ptr);",6 6,6 8,5 8,8 8,B,arr is an array of 6 chars (including '\0'); ptr is a pointer (8 bytes).
+c-pva-03,c-pointers-arrays,Medium,theory,A parameter declared `void f(int a[10])` actually has what type?,,array of 10 ints,int *,int (*)[10],const int *,B,Array parameters are adjusted to pointers; the 10 is ignored.
+c-pva-04,c-pointers-arrays,Hard,theory,What is `int (*row)[4]`?,,An array of 4 pointers to int,A pointer to an array of 4 ints,A function returning int,A pointer to a pointer,B,"Parentheses bind * to row first: row is a pointer, to [4] array of int. int *row[4] would be an array of pointers."
+c-pva-05,c-pointers-arrays,Medium,theory,Which statement shows that an array name is not a pointer variable?,,a[0] works,`a = p;` does not compile and sizeof a gives the whole array size,a can be passed to functions,*a gives the first element,B,"Arrays decay to pointers in expressions but are not assignable, and sizeof sees the full array."
+c-pp-01,c-pointer-to-pointer,Medium,output,What is printed?,"int x = 1;
+int *p = &x;
+int **pp = &p;
+**pp = 7;
+printf(""%d"", x);",1,7,Address,Error,B,Two dereferences follow pp → p → x.
+c-pp-02,c-pointer-to-pointer,Medium,theory,Why doesn't `void init(int *p) { p = malloc(40); }` give the caller memory?,,malloc fails,p is a copy of the caller's pointer; assigning it changes only the copy (and leaks),malloc needs a cast,It does work,B,"Take int **p and assign *p, or return the pointer."
+c-pp-03,c-pointer-to-pointer,Medium,theory,"What is argv in `int main(int argc, char **argv)`?",,A 2D char array,"A pointer to the first element of an array of char pointers (strings), terminated by NULL",A single string,The number of arguments,B,argv[i] is the i-th argument string; argv[argc] is NULL.
+c-pp-04,c-pointer-to-pointer,Medium,theory,"When freeing a jagged grid allocated as int **g with separately allocated rows, what is the correct order?",,free(g) then each row,"free each g[i] first, then free(g)",free(g) only,The order doesn't matter,B,"Freeing the spine first loses the row pointers, leaking every row."
+c-fp-01,c-function-pointers,Medium,theory,Which declares a pointer to a function taking two ints and returning int?,,"int *f(int, int);","int (*f)(int, int);","int f*(int, int);","(int *)f(int, int);",B,"Without parentheses, int *f(int, int) declares a function returning int *."
+c-fp-02,c-function-pointers,Medium,theory,Why is `return a - b;` a risky qsort comparator for ints?,,It is too slow,"It can overflow for large values of opposite sign, producing wrong signs",qsort needs booleans,It sorts descending,B,"Use (a > b) - (a < b), which never overflows."
+c-fp-03,c-function-pointers,Medium,theory,What do qsort's comparator parameters point to?,,The array,The two elements being compared (as const void *),The indices,Copies of the elements,B,Cast them to pointers of the element type and dereference.
+c-fp-04,c-function-pointers,Medium,theory,"How do C callbacks get access to extra state, since C has no closures?",,They can't,Through an extra void * context parameter passed through by the library,Using recursion,Through function overloading,B,"The ""user data"" pointer pattern (pthread_create, GTK, rcl) substitutes for captured variables."
+c-fp-05,c-function-pointers,Easy,output,What is printed?,"int add(int a, int b) { return a + b; }
+int mul(int a, int b) { return a * b; }
+int (*ops[])(int, int) = {add, mul};
+printf(""%d"", ops[1](3, 4));",7,12,34,Error,B,ops is an array of function pointers; ops[1] is mul.
+c-cp-01,c-const-pointers,Medium,theory,"With `const int *p = &x;`, which is allowed?",,*p = 5;,p = &y;,Both,Neither,B,"p points to const int: the value cannot be changed through p, but p can be re-pointed."
+c-cp-02,c-const-pointers,Medium,theory,"With `int *const p = &x;`, which is allowed?",,*p = 5;,p = &y;,Both,Neither,A,"p is a const pointer: fixed address, but the int it points to may change."
+c-cp-03,c-const-pointers,Hard,theory,What is `int *a[5]` versus `int (*a)[5]`?,,Both are arrays of pointers,The first is an array of 5 pointers to int; the second is a pointer to an array of 5 ints,The first is a pointer to an array; the second an array of pointers,Both are pointers,B,"[] binds tighter than *, unless parentheses group *a first."
+c-cp-04,c-const-pointers,Medium,theory,Why should read-only pointer parameters be declared const T *?,,It makes code faster always,"It documents and enforces that the function won't modify the data, and lets callers pass const data",It is required by the standard,To allow NULL,B,const correctness makes interfaces self-documenting and catches accidental writes.
+c-cp-05,c-const-pointers,Hard,theory,What does `restrict` on a pointer parameter promise?,,The pointer is never NULL,"The pointed-to object is accessed only through that pointer during its lifetime, enabling optimisation",The data is read-only,The pointer can't change,B,This is why memcpy's arguments must not overlap; memmove has no such promise.
+c-vp-01,c-void-pointers,Easy,theory,Why can't you dereference a void * directly?,,It is always NULL,"void has no type or size, so the compiler doesn't know what to read",It is a syntax rule only in C++,You can,B,Convert to the correct pointer type first: *(int *)vp.
+c-vp-02,c-void-pointers,Medium,theory,How do generic functions like memcpy and qsort handle elements of unknown type?,,They inspect the type at run time,They treat elements as blocks of a given size in bytes (and use callbacks for comparisons),They only work on ints,Through templates,B,Element size plus raw byte operations make the code type-agnostic.
+c-vp-03,c-void-pointers,Medium,theory,What is the main drawback of void *-based generic code?,,It is slow,No type safety: using the wrong type compiles but causes undefined behaviour,It cannot store structs,It requires C23,B,"Wrap generic code in typed functions, or use C++ templates for compile-time checking."
+c-vp-04,c-void-pointers,Medium,theory,"To move a void *p forward by k bytes portably, you write…",,p + k,(char *)p + k,p++,(int *)p + k,B,Arithmetic on void * is not standard C; char * arithmetic moves in bytes.
