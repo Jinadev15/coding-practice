@@ -1,0 +1,135 @@
+id,topic,difficulty,type,question,code,option_a,option_b,option_c,option_d,answer,explanation
+py-cls-01,py-classes-objects,Easy,theory,What is the difference between a class and an object?,,There is none,A class is a blueprint defining attributes and methods; an object is a concrete instance created from it,An object is a blueprint; a class is an instance,"Classes store data, objects store functions",B,Calling a class creates an instance (object) with its own state; all instances share the class's methods.
+py-cls-02,py-classes-objects,Easy,output,What is printed?,"class C:
+    def __init__(self, v):
+        self.v = v
+a, b = C(1), C(2)
+a.v = 10
+print(a.v, b.v)",10 10,10 2,1 2,Error,B,Each instance has its own attributes; changing a.v does not affect b.
+py-cls-03,py-classes-objects,Medium,output,What happens?,"class C:
+    def hello():
+        return ""hi""
+C().hello()","Returns ""hi""",TypeError: hello() takes 0 positional arguments but 1 was given,NameError,AttributeError,B,Calling a method on an instance passes the instance as the first argument; without a self parameter there is nowhere for it to go.
+py-cls-04,py-classes-objects,Medium,output,What is printed?,"class P:
+    def __init__(self, name):
+        name = name
+p = P(""ada"")
+print(hasattr(p, ""name""))",True,False,ada,Error,B,`name = name` just rebinds the local parameter; without `self.name = name` the object never gets the attribute.
+py-cls-05,py-classes-objects,Easy,theory,`m.set_speed(5)` is equivalent to which call?,,set_speed(5),"Motor.set_speed(m, 5)","m.set_speed(m, 5)",Motor.set_speed(5),B,Python looks the method up on the class and passes the instance as self automatically.
+py-cls-06,py-classes-objects,Medium,theory,What does __init__ do?,,Allocates memory for the object and returns it,Initialises a newly created instance (sets up its attributes); it must return None,Deletes the object,Defines class attributes only,B,__new__ creates the object; __init__ fills in its initial state.
+py-cls-07,py-classes-objects,Medium,theory,"Where are methods stored, and where are instance attributes stored?",,Both in each instance,Methods on the class (shared); instance attributes in each object's own __dict__,Both on the class,"Methods in the module, attributes in globals",B,One copy of each method exists on the class; every instance keeps only its own data.
+py-cls-08,py-classes-objects,Easy,theory,Which is NOT one of the four classic pillars of OOP?,,Encapsulation,Polymorphism,Compilation,Inheritance,C,"The four pillars are encapsulation, abstraction, inheritance and polymorphism."
+py-cls-09,py-classes-objects,Medium,theory,When is a class better than a plain function?,,Always,When there is state that persists between calls together with rules that protect it,Never in Python,Only for numbers,B,A class with only __init__ and one method is usually better as a function; classes earn their place when state and behaviour belong together.
+py-cva-01,py-class-vs-instance,Medium,output,What is printed?,"class R:
+    wheels = 4
+a, b = R(), R()
+a.wheels = 3
+print(a.wheels, b.wheels, R.wheels)",3 3 3,3 4 4,4 4 4,3 4 3,B,Assigning through an instance creates an instance attribute that shadows the class attribute only for that instance.
+py-cva-02,py-class-vs-instance,Medium,output,What is printed?,"class T:
+    members = []
+    def add(self, m):
+        self.members.append(m)
+x, y = T(), T()
+x.add(""ada"")
+print(y.members)",[],['ada'],AttributeError,None,B,"append mutates the single list stored on the class, which every instance shares. Create per-instance lists in __init__."
+py-cva-03,py-class-vs-instance,Hard,output,What is printed?,"class C:
+    count = 0
+    def __init__(self):
+        self.count += 1
+C(); C()
+print(C.count)",2,0,1,Error,B,self.count += 1 reads the class value then writes a NEW instance attribute; the class attribute stays 0.
+py-cva-04,py-class-vs-instance,Easy,theory,In what order does Python look up obj.x for a plain attribute?,,"class, then instance","instance __dict__, then the class, then base classes","globals, then instance",only the instance,B,Instance attributes take precedence; missing ones fall back to the class and its bases (MRO).
+py-cva-05,py-class-vs-instance,Medium,theory,Which is a GOOD use of a class attribute?,,A list of each object's own items,A constant like MAX_RPM shared by all instances,The object's name,A per-object counter,B,"Class attributes suit shared, usually immutable data: constants, defaults, deliberate registries."
+py-mt-01,py-method-types,Easy,theory,What does a @classmethod receive as its first argument?,,The instance,The class (conventionally cls),Nothing,The module,B,classmethods are bound to the class they are called on.
+py-mt-02,py-method-types,Medium,output,What is printed?,"class A:
+    @classmethod
+    def make(cls):
+        return cls()
+class B(A):
+    pass
+print(type(B.make()).__name__)",A,B,cls,Error,B,"cls is the class the method was called on (B), so cls() builds a B — the reason alternative constructors should be classmethods."
+py-mt-03,py-method-types,Medium,theory,What is a typical use of @classmethod?,,Alternative constructors like from_csv or fromisoformat,Accessing self attributes,Making a method private,Speeding up loops,A,Named constructors that parse other inputs and return cls(...) are the classic use.
+py-mt-04,py-method-types,Easy,theory,Which statement about @staticmethod is true?,,It receives the instance automatically,It receives no implicit first argument; it's a plain function in the class namespace,It can only be called on instances,It cannot take parameters,B,Static methods are called like normal functions and need neither self nor cls.
+py-mt-05,py-method-types,Medium,output,What is printed?,"class C:
+    def m(self):
+        return 1
+obj = C()
+f = obj.m
+print(f(), f.__self__ is obj)",1 True,TypeError,1 False,None True,A,obj.m is a bound method that remembers obj and passes it as self when called.
+py-enc-01,py-encapsulation-properties,Easy,theory,What does a single leading underscore (self._speed) mean in Python?,,The attribute is truly private and inaccessible,By convention it is internal — not part of the public interface — but still accessible,It is a class attribute,It is a constant,B,"Python doesn't enforce access control; a single underscore signals ""internal, use at your own risk""."
+py-enc-02,py-encapsulation-properties,Medium,output,What is printed?,"class A:
+    def __init__(self):
+        self.__pin = 1
+a = A()
+print(hasattr(a, ""__pin""), a._A__pin)",True 1,False 1,False AttributeError,True AttributeError,B,"Double-underscore names are mangled to _ClassName__name; they are not secret, just renamed."
+py-enc-03,py-encapsulation-properties,Medium,output,What happens?,"class T:
+    @property
+    def f(self):
+        return 1
+T().f = 5",f becomes 5,AttributeError: property 'f' ... has no setter,Nothing,TypeError,B,A property without a setter is read-only.
+py-enc-04,py-encapsulation-properties,Hard,output,What happens when T(5) is created?,"class T:
+    def __init__(self, v):
+        self.v = v
+    @property
+    def v(self):
+        return self.v
+    @v.setter
+    def v(self, value):
+        self.v = value",Works fine,"RecursionError — the setter assigns self.v, which calls the setter again",AttributeError,v is None,B,Store the value under a different name (self._v); using the property name inside its own setter recurses forever.
+py-enc-05,py-encapsulation-properties,Medium,theory,Why don't Python developers write get_x()/set_x() methods up front?,,Python forbids them,A plain attribute can later be turned into a property without changing any calling code,They are slower,They break inheritance,B,"Properties keep attribute syntax, so you can start simple and add validation only when needed."
+py-enc-06,py-encapsulation-properties,Medium,theory,A class keeps self._items (a list). Which getter best protects the class's invariants?,,return self._items,return tuple(self._items),return self,del self._items,B,Returning the internal list lets callers mutate it behind the class's back; a tuple copy is a read-only view.
+py-inh-01,py-inheritance,Easy,output,What happens?,"class Base:
+    def __init__(self):
+        self.x = 1
+class Sub(Base):
+    def __init__(self):
+        self.y = 2
+print(Sub().x)",1,AttributeError: 'Sub' object has no attribute 'x',2,None,B,Defining __init__ in the subclass replaces the base one; without super().__init__() the base attributes are never set.
+py-inh-02,py-inheritance,Hard,output,What is printed?,"class A:
+    def who(self): return ""A""
+class B(A):
+    def who(self): return ""B"" + super().who()
+class C(A):
+    def who(self): return ""C"" + super().who()
+class D(B, C):
+    pass
+print(D().who())",BA,BCA,CBA,BACA,B,"D's MRO is D, B, C, A, object; super() in B delegates to the next class in that MRO, which is C, not A."
+py-inh-03,py-inheritance,Easy,output,What is printed?,"class S: pass
+class L(S): pass
+x = L()
+print(isinstance(x, S), type(x) is S)",True True,True False,False False,False True,B,isinstance respects inheritance; type() is exact.
+py-inh-04,py-inheritance,Medium,theory,Which relationship should inheritance model?,,has-a (a Robot has Motors),is-a (a Lidar is a Sensor),uses-a,any relationship,B,Inheritance expresses specialisation (is-a). has-a relationships are modelled with composition.
+py-inh-05,py-inheritance,Medium,theory,What algorithm does Python use to compute the MRO with multiple inheritance?,,Depth-first search,C3 linearization,Breadth-first search,Alphabetical order,B,"C3 ensures subclasses precede bases, base order is kept, and each class appears once."
+py-inh-06,py-inheritance,Medium,theory,Why is Square(Rectangle) a classic design mistake?,,Squares have no area,It violates Liskov substitution: code setting width and height independently on a Rectangle breaks for a Square,Python forbids it,It is too slow,B,A subclass must honour the base class's contract; a square cannot have independent width and height.
+py-poly-01,py-polymorphism,Easy,theory,What is polymorphism?,,Having many attributes,One interface used with many implementations; the method that runs depends on the object's actual type,Copying a class,Using many modules,B,"Code calls `s.area()`; Circle, Rect and future shapes each supply their own implementation."
+py-poly-02,py-polymorphism,Medium,theory,What is duck typing?,,Typing with type hints everywhere,"An object's suitability is determined by the methods it provides, not by its class or base classes",A naming convention,Converting types automatically,B,"If it has read(), it can be used where a sensor is expected — no common base class required."
+py-poly-03,py-polymorphism,Medium,output,What is printed?,"def f(x):
+    return x * 2
+print(f(3), f(""ab""), f([1]))","6 abab [1, 1]",6 TypeError,6 ab2 [2],Error,A,The same code works on any type that supports * with an int — polymorphism through operators (__mul__).
+py-poly-04,py-polymorphism,Medium,theory,"A function has a long chain of `if isinstance(x, A): ... elif isinstance(x, B): ...`. What is the usual OOP refactoring?",,Add more elif branches,Move each branch into a method of the corresponding class and call it polymorphically,Convert classes to dicts,Use global variables,B,"""Replace conditional with polymorphism"" — new types then need no changes to the calling code."
+py-poly-05,py-polymorphism,Medium,output,What happens?,"class A:
+    def f(self, x):
+        return 1
+    def f(self, x, y):
+        return 2
+print(A().f(5))",1,TypeError: missing 1 required positional argument: 'y',2,Overloading picks the right one,B,"Python has no overloading: the second def replaces the first, so f requires two arguments."
+py-poly-06,py-polymorphism,Medium,theory,How can you force subclasses to implement read()?,,Write `pass` in the base method,Make the base an abc.ABC and mark read with @abstractmethod,Use a global flag,You cannot,B,Classes with unimplemented abstract methods cannot be instantiated (TypeError).
+py-dun-01,py-dunder-basics,Easy,output,What is printed?,"class P:
+    def __repr__(self): return ""R""
+    def __str__(self): return ""S""
+p = P()
+print(p, [p])",S [S],S [R],R [R],R [S],B,print uses __str__; containers display their elements with __repr__.
+py-dun-02,py-dunder-basics,Medium,output,What is printed?,"class P:
+    def __init__(self, x):
+        self.x = x
+print(P(1) == P(1))",True,False,Error,None,B,"Without __eq__, == compares identity; these are two different objects."
+py-dun-03,py-dunder-basics,Hard,output,What happens?,"class P:
+    def __init__(self, x):
+        self.x = x
+    def __eq__(self, o):
+        return self.x == o.x
+print({P(1)})",{<P object>},TypeError: unhashable type: 'P',set(),{1},B,Defining __eq__ sets __hash__ to None; define __hash__ consistently to make instances hashable.
+py-dun-04,py-dunder-basics,Medium,theory,What should __eq__ return when compared with an unsupported type?,,False,The singleton NotImplemented,raise NotImplementedError,None,B,NotImplemented lets Python try the other operand's method and finally fall back to identity comparison.
+py-dun-05,py-dunder-basics,Medium,theory,Which rule must __hash__ satisfy?,,Different objects must have different hashes,Objects that compare equal must have equal hashes,Hashes must be positive,Hash must change when the object changes,B,Equal objects with different hashes would break dict and set lookups.
+py-dun-06,py-dunder-basics,Medium,theory,Which special method is needed for sorted() to order your objects?,,__sort__,__lt__,__order__,__cmp__,B,Sorting uses < comparisons; implement __lt__ (often by comparing tuples of fields).
+py-dun-07,py-dunder-basics,Easy,theory,What does @dataclass(frozen=True) give you?,,A class that cannot be instantiated,"Generated __init__, __repr__, __eq__ plus immutability and a matching __hash__",Faster methods,Only __repr__,B,Frozen dataclasses are immutable value objects that are safe to hash.
