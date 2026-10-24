@@ -16,3 +16,201 @@ py-run-09,py-how-python-runs,Hard,theory,Which best describes the Python Virtual
 py-run-10,py-how-python-runs,Medium,theory,"An online judge feeds your program the input `3\n4\n`. Which program prints exactly `7`?",,"a = input(); b = input(); print(a + b)","a = int(input()); b = int(input()); print(a + b)","a, b = 3, 4; print(""Answer:"", a + b)",print(input() + input()),B,"`input()` returns a **string**, so `""3"" + ""4""` is `""34""`. Convert with `int()`. Option C ignores the input and prints extra text, which fails a strict judge."
 py-run-11,py-how-python-runs,Hard,theory,Why is CPython generally slower than C for the same CPU-heavy loop?,,Because Python code is executed by the operating system kernel,Because each bytecode instruction is dispatched by an interpreter loop with dynamic type checks,Because Python always runs on a single CPU core at 50% speed,Because Python re-parses the source file on every loop iteration,B,"C compiles to native instructions. CPython executes bytecode through an interpreter loop, and every operation (like `+`) checks object types at run time. There is no re-parsing per iteration — the bytecode is compiled once."
 py-run-12,py-how-python-runs,Easy,theory,Which implementation of Python is designed to run on microcontrollers (useful in robotics)?,,PyPy,Jython,MicroPython,IronPython,C,"**MicroPython** is a lean Python 3 implementation for microcontrollers (ESP32, RP2040, STM32). PyPy is a JIT implementation, Jython runs on the JVM, IronPython on .NET."
+py-syn-01,py-syntax-basics,Easy,theory,What defines a block of code in Python?,,Curly braces { },The keywords begin and end,Consistent indentation after a header ending in a colon,Semicolons at the end of each line,C,"Python uses **indentation** to delimit blocks. A compound statement header ends with `:` and its body is indented consistently (4 spaces by convention)."
+py-syn-02,py-syntax-basics,Easy,output,What is the output?,"x = 5
+if x > 10:
+    print(""big"")
+print(""done"")",big then done,done,Nothing,IndentationError,B,"`print(""done"")` is at the outer level, so it runs regardless of the condition. Only `print(""big"")` belongs to the `if` block, and `5 > 10` is false."
+py-syn-03,py-syntax-basics,Medium,theory,Which error does this code raise?,"def f():
+return 1",SyntaxError: invalid syntax,IndentationError: expected an indented block,NameError: f is not defined,No error,B,"After a header ending in `:` Python expects an indented block. `return 1` is not indented, so the tokenizer raises `IndentationError: expected an indented block`."
+py-syn-04,py-syntax-basics,Easy,theory,Which is the correct way to write an empty function body?,,def f(): {},def f(): pass,def f(): ;,def f(): None;,B,"A block cannot be empty. `pass` is the null statement that keeps the block syntactically valid. (`...` also works, but `{}` would be a dict expression after a colon on the same line — legal but misleading; `;` alone is a SyntaxError.)"
+py-syn-05,py-syntax-basics,Medium,theory,Which TWO names are valid Python identifiers?,,_total2,2total,total-sum,Total_Sum,A|D,"Identifiers start with a letter or underscore and contain letters, digits and underscores. `2total` starts with a digit; `total-sum` contains `-`, which is the minus operator."
+py-syn-06,py-syntax-basics,Medium,output,What does this print?,"def greet():
+    """"""Say hello.""""""
+    return ""hi""
+print(greet.__doc__)",hi,Say hello.,None,greet,B,"A string literal as the first statement of a function is its **docstring**, stored in `__doc__`. The return value is irrelevant here because `greet` is never called."
+py-syn-07,py-syntax-basics,Hard,output,What happens?,"list = [3, 1, 2]
+print(list(""ab""))","['a', 'b']",TypeError: 'list' object is not callable,"[3, 1, 2]",SyntaxError,B,"Assigning to `list` **shadows** the built-in type. `list(""ab"")` now tries to call the list object `[3, 1, 2]`, which is not callable. Never use built-in names as variables."
+py-syn-08,py-syntax-basics,Medium,theory,"Which line continuation style does PEP 8 prefer?",,A backslash at the end of each line,Wrapping the expression in parentheses (implicit continuation),Writing the whole expression on one very long line,Putting a semicolon at the end of each line,B,"Inside `()`, `[]` or `{}` newlines are ignored, so wrapping in parentheses is the clean, robust option. Backslashes break if any character (even a space) follows them."
+py-syn-09,py-syntax-basics,Easy,theory,Is `match = 3` a legal assignment in Python 3.10+?,,"No, match is a hard keyword","Yes, match is a soft keyword that is only reserved in match statements","No, it raises SyntaxError only inside functions","Yes, but only if you import keyword",B,"`match`, `case`, `type` and `_` are **soft keywords**: they act as keywords only in specific syntactic positions, so existing code using them as names keeps working."
+py-syn-10,py-syntax-basics,Hard,theory,What does Python raise for a block that mixes tabs and spaces inconsistently?,,SyntaxWarning only,TabError,ValueError,"Nothing, tabs are converted to 4 spaces",B,"Python 3 refuses ambiguous indentation: inconsistent use of tabs and spaces raises `TabError` (a subclass of `IndentationError`). Python 2 silently converted tabs to 8-column stops, which caused subtle bugs."
+py-syn-11,py-syntax-basics,Medium,theory,Which naming follows PEP 8 for a class and a constant respectively?,,"bank_account, MaxSpeed","BankAccount, MAX_SPEED","bankAccount, max_speed","Bank_Account, maxSpeed",B,"Classes use **CapWords** (`BankAccount`); constants use **UPPER_SNAKE_CASE** (`MAX_SPEED`); functions and variables use `lower_snake_case`."
+py-var-01,py-variables-objects,Easy,output,What is printed?,"a = [1, 2, 3]
+b = a
+b.append(4)
+print(a)","[1, 2, 3]","[1, 2, 3, 4]",[4],Error,B,"`b = a` does not copy; both names refer to **one** list. Appending through `b` mutates that shared object, so `a` shows it too."
+py-var-02,py-variables-objects,Easy,output,What is printed?,"x = 5
+y = x
+x = x + 1
+print(y)",5,6,None,Error,A,"Integers are immutable. `x + 1` creates a new object `6` and **rebinds** `x`; `y` still refers to the original `5`."
+py-var-03,py-variables-objects,Medium,output,What is printed?,"a = [1, 2]
+b = a
+a = a + [3]
+print(b)","[1, 2]","[1, 2, 3]",[3],Error,A,"`a + [3]` builds a **new** list and rebinds `a`. `b` still points to the original `[1, 2]`."
+py-var-04,py-variables-objects,Medium,output,What is printed?,"a = [1, 2]
+b = a
+a += [3]
+print(b)","[1, 2]","[1, 2, 3]",[3],Error,B,"For lists `+=` is **in-place** (`list.__iadd__` extends the list). The shared object grows, so `b` sees `[1, 2, 3]`. Compare with `a = a + [3]`."
+py-var-05,py-variables-objects,Easy,theory,What does the `is` operator test?,,Whether two values are equal,Whether two names refer to the same object,Whether an object is an instance of a class,Whether a variable is defined,B,"`is` compares **identity** (same object, i.e. same `id()`). `==` compares values. `isinstance()` checks types."
+py-var-06,py-variables-objects,Medium,theory,When is it correct to use `is` instead of `==`?,,When comparing two integers,When comparing two strings,When comparing with the singleton None,Whenever performance matters,C,"`x is None` is the idiomatic check because `None` is a singleton. Using `is` for numbers or strings depends on CPython caching/interning and can silently give wrong answers."
+py-var-07,py-variables-objects,Hard,output,"In CPython, what is printed?","a = int(""1000"")
+b = int(""1000"")
+print(a == b, a is b)",True True,True False,False False,False True,B,"Equal values, but two separate `int` objects (only -5..256 are cached). So `==` is `True` and `is` is `False`. Never rely on `is` for numbers."
+py-var-08,py-variables-objects,Medium,theory,Which TWO types are immutable?,,tuple,list,str,dict,A|C,"`tuple` and `str` cannot be changed after creation. `list` and `dict` are mutable and can be modified in place."
+py-var-09,py-variables-objects,Medium,theory,"""Python is dynamically and strongly typed."" What does strongly typed mean here?",,Every variable must be declared with a type,Types are checked at compile time,Objects are not implicitly reinterpreted as other types — '3' + 4 raises TypeError,Variables can never change type,C,"Strong typing means no silent reinterpretation between unrelated types. *Dynamic* typing is the separate fact that names have no fixed type and can be rebound to any object."
+py-var-10,py-variables-objects,Medium,output,What is printed?,"x = y = []
+x.append(1)
+print(y)",[],[1],None,Error,B,"Chained assignment binds **both** names to the same single list object. Use `x, y = [], []` for two independent lists."
+py-var-11,py-variables-objects,Easy,output,What is printed?,"a, b = 1, 2
+a, b = b, a
+print(a, b)",1 2,2 1,2 2,1 1,B,"The right side `(b, a)` is evaluated **completely** into a tuple `(2, 1)` before unpacking, so the swap is safe without a temporary."
+py-var-12,py-variables-objects,Hard,theory,What happens to an object when the last name referring to it is deleted with `del`?,,It stays in memory until the program ends,"In CPython its reference count drops to zero and it is deallocated immediately (unless it is in a reference cycle)",It is moved to a recycle bin and can be restored,del raises an error if the object is still in memory,B,"`del` removes a **name**, decrementing the object's reference count. When the count hits zero CPython frees it at once; objects in reference cycles are reclaimed later by the cyclic garbage collector."
+py-num-01,py-numbers,Easy,output,What is printed?,print(7 / 2),3,3.5,4,3.0,B,"`/` is **true division** and always returns a `float`, even for two ints. Use `//` for floor division."
+py-num-02,py-numbers,Medium,output,What is printed?,"print(-7 // 2, -7 % 2)",-3 -1,-4 1,-3 1,-4 -1,B,"`//` floors toward −∞: −3.5 → −4. Then `%` satisfies `a == (a//b)*b + a%b`: −7 == −4·2 + 1, so the remainder is 1 (sign of the divisor)."
+py-num-03,py-numbers,Medium,output,What is printed?,print(0.1 + 0.2 == 0.3),True,False,Error,0.3,B,"0.1, 0.2 and 0.3 are not exactly representable in binary; the computed sum is `0.30000000000000004`. Compare floats with `math.isclose()`."
+py-num-04,py-numbers,Medium,output,What is printed?,"print(round(2.5), round(3.5))",3 4,2 4,2 3,3 3,B,"Python 3 uses **round half to even** (banker's rounding): 2.5 → 2, 3.5 → 4."
+py-num-05,py-numbers,Easy,output,What is printed?,print(2 ** 3 ** 2),64,512,36,Error,B,"`**` is **right-associative**: `2 ** (3 ** 2) = 2 ** 9 = 512`."
+py-num-06,py-numbers,Medium,output,What is printed?,print(-2 ** 2),4,-4,Error,0.25,B,"`**` binds tighter than unary minus, so this is `-(2 ** 2) = -4`. Write `(-2) ** 2` for 4."
+py-num-07,py-numbers,Easy,theory,What is the largest value a Python int can hold?,,2**31 - 1,2**63 - 1,1.8e308,No fixed limit — only available memory,D,"Python `int` has **arbitrary precision**; it grows as needed. (Only `float` has a maximum, about 1.8e308.)"
+py-num-08,py-numbers,Medium,output,What is printed?,"print(int(-3.9), int(3.9))",-4 3,-3 3,-4 4,-3 4,B,"`int()` on a float **truncates toward zero**. For floor use `math.floor` (−4); for nearest use `round`."
+py-num-09,py-numbers,Hard,theory,"You need ceil(a / b) for positive integers up to 10^18. Which is exact?",,math.ceil(a / b),int(a / b) + 1,-(-a // b),round(a / b + 0.5),C,"`-(-a // b)` stays in exact integer arithmetic. Anything with `/` goes through a float, which has only 53 bits of precision and silently loses digits above ~9·10^15. `int(a/b)+1` is also wrong when b divides a."
+py-num-10,py-numbers,Medium,output,What is printed?,"print(1 + 2.0, 7.0 // 2, True + 1)",3 3 2,3.0 3.0 2,3.0 3 2,3 3.5 2,B,"Mixed int/float promotes to float, so `3.0`; floor division of floats gives a float `3.0`; `bool` is a subclass of `int`, so `True + 1 == 2`."
+py-num-11,py-numbers,Hard,output,What is printed?,"print(7 % -3, divmod(7, -3))","1 (-2, 1)","-2 (-3, -2)","-2 (-2, -2)","1 (-3, 1)",B,"7 / −3 = −2.33…; floor gives **−3**. Remainder: 7 − (−3)(−3) = 7 − 9 = **−2** (sign of the divisor). So `divmod(7, -3) == (-3, -2)`."
+py-num-12,py-numbers,Medium,theory,Which TWO are appropriate for representing money exactly?,,float,Integer number of cents (int),decimal.Decimal built from strings,complex,B|C,"Binary floats can't represent 0.10 exactly. Store integer cents, or use `Decimal(""0.10"")` (build from a **string** — `Decimal(0.1)` captures the float error)."
+py-num-13,py-numbers,Easy,output,What is printed?,"print(0xFF, 0b101, int(""11"", 2))",255 5 3,FF 101 11,255 101 3,Error,A,"`0xFF` is hex 255, `0b101` is binary 5, and `int(s, base)` parses a string in the given base: `int(""11"", 2) == 3`."
+py-str-01,py-strings-basics,Easy,output,What is printed?,"s = ""Python""
+print(s[-1], s[0])",n P,P n,o P,IndexError,A,"`s[-1]` is the last character (`n`) and `s[0]` the first (`P`). Negative indices count from the end."
+py-str-02,py-strings-basics,Easy,output,What is printed?,"s = ""hello""
+s.upper()
+print(s)",HELLO,hello,Hello,None,B,"Strings are immutable; `upper()` **returns a new string** that is thrown away here. `s` is unchanged. Write `s = s.upper()`."
+py-str-03,py-strings-basics,Easy,theory,What happens on `s[0] = 'H'` when `s = 'hello'`?,,s becomes 'Hello',TypeError: 'str' object does not support item assignment,IndexError,s becomes 'H',B,"`str` is **immutable**; individual characters cannot be reassigned. Build a new string: `s = 'H' + s[1:]`."
+py-str-04,py-strings-basics,Medium,output,What is printed?,"print(""10"" < ""9"", 10 < 9)",False False,True False,True True,False True,B,"Strings compare **character by character** by code point: `'1'` (49) < `'9'` (57), so `""10"" < ""9""` is `True`. As integers, 10 < 9 is `False`."
+py-str-05,py-strings-basics,Medium,output,What is printed?,"print(len(""a\nb""), len(r""a\nb""))",3 3,3 4,4 3,4 4,B,"In a normal string `\n` is one newline character, so the length is 3. In a raw string the backslash is kept literally: `a`, `\`, `n`, `b` → 4."
+py-str-06,py-strings-basics,Easy,output,What is printed?,"print(""ab"" * 3 + ""!"")",ababab!,ab3!,ab!ab!ab!,TypeError,A,"`*` repeats the string; it binds tighter than `+`, so we get `""ababab""` then concatenate `""!""`."
+py-str-07,py-strings-basics,Medium,output,What is printed?,"s = ""Python""
+print(s[1:4], s[4:100])",yth on,ytho on,yth IndexError,Pyt hon,A,"Slices include `start` and exclude `stop`: indices 1,2,3 → `yth`. Out-of-range slice bounds are **clipped**, so `s[4:100]` is `on` with no error."
+py-str-08,py-strings-basics,Easy,output,What is printed?,"print(chr(ord(""a"") + 3))",d,c,97,a3,A,"`ord(""a"")` is 97; 97 + 3 = 100; `chr(100)` is `'d'`."
+py-str-09,py-strings-basics,Medium,theory,Which statement about Python strings is FALSE?,,There is no separate char type; a character is a string of length 1,Single and double quotes create the same kind of object,len() returns the number of bytes in UTF-8,Strings can be used as dictionary keys,C,"`len()` counts **Unicode characters (code points)**, not bytes: `len('é') == 1` even though UTF-8 encodes it in 2 bytes."
+py-str-10,py-strings-basics,Medium,output,What is printed?,"print(""Age: "" + 21)",Age: 21,Age21,TypeError,Age: '21',C,"`+` between `str` and `int` raises `TypeError` — Python never converts implicitly (strong typing). Use `""Age: "" + str(21)` or `f""Age: {21}""`."
+py-str-11,py-strings-basics,Hard,output,What is printed?,"print(sorted([""banana"", ""Apple"", ""cherry"", ""apple""]))","['apple', 'Apple', 'banana', 'cherry']","['Apple', 'apple', 'banana', 'cherry']","['Apple', 'banana', 'cherry', 'apple']","['apple', 'banana', 'cherry', 'Apple']",B,"Sorting is by code point: `'A'` (65) is smaller than every lowercase letter (97+), so `'Apple'` comes first, then the lowercase words alphabetically. For case-insensitive order use `key=str.lower`."
+py-str-12,py-strings-basics,Easy,theory,What does `repr('hi')` return?,,hi,'hi' (including the quote characters),"""hi"" with double quotes always",None,B,"`repr` gives the unambiguous developer representation, which for a string includes quotes (and shows escapes such as `\n`). `str('hi')` is just `hi`."
+py-io-01,py-io-formatting,Easy,theory,What type does `input()` return?,,int if the user types digits,str — always,Whatever type the text looks like,bytes,B,"`input()` always returns a **string** (without the trailing newline). Convert explicitly: `int(input())`."
+py-io-02,py-io-formatting,Easy,output,What is printed?,"print(""a"", ""b"", ""c"", sep=""-"", end=""!"")",a b c!,a-b-c!,a-b-c-!,abc-!,B,"`sep` is placed **between** arguments and `end` after the last one (instead of the default newline)."
+py-io-03,py-io-formatting,Easy,output,What is printed?,"nums = [1, 2, 3]
+print(*nums)","[1, 2, 3]",1 2 3,123,"1, 2, 3",B,"`*nums` **unpacks** the list into separate arguments, which `print` separates with spaces. `print(nums)` would show `[1, 2, 3]`."
+py-io-04,py-io-formatting,Medium,output,What is printed?,"x = 3.14159
+print(f""{x:.2f}|{x:8.3f}|"")",3.14|3.142|,3.14|   3.142|,3.1|3.142   |,3.14|00003.142|,B,"`.2f` = 2 decimals. `8.3f` = minimum width 8 with 3 decimals; numbers are right-aligned by default, so it's padded with 3 leading spaces."
+py-io-05,py-io-formatting,Medium,output,What is printed?,"print(f""{1234567:,}"", f""{7:03d}"", f""{255:x}"")",1234567 7 ff,"1,234,567 007 ff","1,234,567 7 FF","1.234.567 007 0xff",B,"`,` adds a thousands separator, `03d` zero-pads to width 3, and `x` prints lowercase hexadecimal without prefix (`#x` adds `0x`)."
+py-io-06,py-io-formatting,Medium,output,What is printed?,"name = ""Ada""
+print(f""[{name:*^9}]"")",[***Ada***],[Ada******],[******Ada],[*Ada*],A,"`*` is the fill character, `^` centres, and `9` is the width: 6 fill characters split 3 and 3."
+py-io-07,py-io-formatting,Medium,theory,"The input line is `3   4` (three spaces between). What does `input().split("" "")` return?",,"['3', '4']","['3', '', '', '4']","['3   4']",Error,B,"Splitting on a **single space** produces empty strings between consecutive spaces. `split()` with no argument splits on runs of whitespace and returns `['3', '4']`."
+py-io-08,py-io-formatting,Easy,output,What is printed?,"x = 10
+print(f""{x=}"")",10,x=10,{x=},x = 10,B,"The `=` specifier (Python 3.8+) prints the expression text, `=`, then its value — a quick debugging aid."
+py-io-09,py-io-formatting,Hard,theory,"A judge sends 10^6 lines of input and your correct Python solution times out. Which TWO changes help most?",,Replace input() with sys.stdin.readline or sys.stdin.read().split(),"Use print(..., flush=True) after every line",Collect output in a list and print '\n'.join(...) once,Convert all numbers to float,A|C,"Per-call overhead of `input()` and `print()` dominates with huge I/O. Bulk reading via `sys.stdin` and a single joined print are the standard fixes. Flushing every line makes it slower."
+py-io-10,py-io-formatting,Medium,output,What is printed?,"print(f""{0.256:.1%}"", f""{12345.678:.2e}"")",25.6% 1.23e+04,0.3% 12345.68,25.60% 1.2e4,26% 1.23E4,A,"`%` multiplies by 100 and appends a percent sign (1 decimal here). `.2e` is scientific notation with 2 digits after the decimal point."
+py-io-11,py-io-formatting,Medium,output,What is printed?,"print(""%d items cost %.2f"" % (3, 2.5))",3 items cost 2.5,3 items cost 2.50,%d items cost %.2f,TypeError,B,"Printf-style formatting: `%d` formats an integer and `%.2f` a float with 2 decimals, filled from the tuple on the right — the same specifiers as C's `printf`."
+py-io-12,py-io-formatting,Hard,output,What is printed?,"w = 5
+print(f""[{'ab':>{w}}][{42:<{w}}]"")",[   ab][42   ],[ab   ][   42],[{w}ab][42{w}],Error,A,"A nested `{w}` inside the format spec is substituted first, so the specs become `>5` and `<5`. Right-aligned `ab` gets 3 leading spaces; left-aligned 42 gets 3 trailing spaces."
+py-op-01,py-operators,Easy,output,What is printed?,"x = 5
+print(1 < x < 10, 10 < x < 20)",True False,True True,False False,Error,A,"Chained comparison: `1 < x < 10` means `(1 < x) and (x < 10)` → `True`; `10 < x` is already `False` for the second."
+py-op-02,py-operators,Hard,output,What is printed?,print(3 == 3.0 == True),True,False,Error,3,B,"Chaining: `(3 == 3.0) and (3.0 == True)`. The first is `True`, but `True` equals 1, and `3.0 == 1` is `False`."
+py-op-03,py-operators,Medium,output,What is printed?,"print(5 & 3, 5 | 3, 5 ^ 3)",1 7 6,7 1 6,1 6 7,15 8 2,A,"101 & 011 = 001 (1); 101 | 011 = 111 (7); 101 ^ 011 = 110 (6)."
+py-op-04,py-operators,Medium,output,What is printed?,print(~5),-5,-6,4,250,B,"Python ints act as infinite two's complement, so `~x == -x - 1`: `~5 == -6`."
+py-op-05,py-operators,Easy,theory,What does `x++` do in Python?,,Increments x by 1,Returns x then increments it,It is a SyntaxError — Python has no ++ operator,Doubles x,C,"Python has no increment/decrement operators. Use `x += 1`. (`++x` parses as unary plus twice and leaves x unchanged.)"
+py-op-06,py-operators,Medium,output,What is printed?,"print(1 + 2 << 1, 2 * 3 % 4)",5 2,6 2,6 6,5 6,B,"`+` binds tighter than `<<`, so `(1 + 2) << 1 = 6`. `*` and `%` have equal precedence and are left-associative: `(2 * 3) % 4 = 2`."
+py-op-07,py-operators,Hard,output,What is printed in Python (unlike C)?,print(5 & 3 == 1),True,False,0,1,A,"In Python, `&` binds **tighter** than comparisons: `(5 & 3) == 1` → `1 == 1` → `True`. In C the same expression is `5 & (3 == 1)` → `0`."
+py-op-08,py-operators,Medium,output,What is printed?,"print(10 / 2 * 5, 10 - 4 - 3)",1.0 3,25.0 3,25.0 9,1.0 9,B,"Same-precedence operators are left-associative: `(10 / 2) * 5 = 25.0` and `(10 - 4) - 3 = 3`."
+py-op-09,py-operators,Medium,theory,For which TWO containers is `x in container` O(1) on average?,,list,set,dict,str,B|C,"`set` and `dict` use hash tables, giving average O(1) membership. `list` and `str` do a linear scan (O(n))."
+py-op-10,py-operators,Easy,output,What is printed?,"n = 0
+print(n != 0 and 10 / n > 1)",ZeroDivisionError,False,True,0,B,"`and` short-circuits: `n != 0` is `False`, so the right side (with the division) is never evaluated and the result is `False`."
+py-op-11,py-operators,Medium,theory,Which expression checks whether bit 3 of x is set?,,x & 3,(x >> 3) & 1,x | (1 << 3),x ^ 3 == 1,B,"Shift bit 3 down to position 0, then mask with 1. `x | (1 << 3)` *sets* the bit; `x & 3` tests bits 0 and 1."
+py-op-12,py-operators,Hard,output,What is printed?,"print([1, 2, 3] < [1, 3], (1, 2) == [1, 2])",True False,False False,True True,TypeError,A,"Lists compare lexicographically: at index 1, 2 < 3, so `True`. A tuple and a list are never equal (different types), so `==` gives `False` without error."
+py-op-13,py-operators,Medium,output,What is printed?,"data = [3, 1, 4, 1, 5]
+if (n := len(data)) > 4:
+    print(n * 2)",5,10,True,SyntaxError,B,"The walrus operator `:=` assigns `len(data)` (5) to `n` inside the condition and yields it; 5 > 4, so `n * 2 = 10` is printed."
+py-bool-01,py-booleans-truthiness,Easy,theory,Which TWO values are falsy?,,"""0""",[],0.0,[0],B|C,"Empty containers and numeric zeros are falsy. `""0""` is a non-empty string and `[0]` is a non-empty list, so both are truthy."
+py-bool-02,py-booleans-truthiness,Medium,output,What is printed?,"print(0 or 5, 3 or 5, 0 and 5, 3 and 5)",5 3 0 5,True True False True,5 5 0 3,0 3 5 5,A,"`or` returns the first truthy operand (or the last); `and` returns the first falsy operand (or the last). They return operands, not bools."
+py-bool-03,py-booleans-truthiness,Easy,output,What is printed?,print(True + True + True),3,True,TrueTrueTrue,Error,A,"`bool` is a subclass of `int` with `True == 1`, so the sum is 3."
+py-bool-04,py-booleans-truthiness,Medium,output,What is printed?,"print([] and 1 / 0)",ZeroDivisionError,[],False,0,B,"`[]` is falsy, so `and` returns it immediately without evaluating `1 / 0` (short-circuit)."
+py-bool-05,py-booleans-truthiness,Medium,output,What is printed?,"print(None or 0 or """")",None,0,"'' (an empty string, printed as an empty line)",False,C,"All three are falsy, so `or` returns the **last** operand, the empty string; `print('')` outputs an empty line."
+py-bool-06,py-booleans-truthiness,Medium,theory,"A function has `timeout=None` as a default. Which check correctly detects that the caller did NOT pass a timeout, even if they pass 0?",,if not timeout:,if timeout == False:,if timeout is None:,if timeout:,C,"`not timeout` is also true for a legitimate `0`. Only `is None` distinguishes 'not given' from falsy values."
+py-bool-07,py-booleans-truthiness,Easy,output,What is printed?,"age = 15
+print(""adult"" if age >= 18 else ""minor"")",adult,minor,True,SyntaxError,B,"Conditional expression: `A if cond else B`. The condition is false, so the `else` value is produced."
+py-bool-08,py-booleans-truthiness,Medium,output,What is printed?,print(True or False and False),True,False,None,Error,A,"`and` binds tighter than `or`: `True or (False and False)` = `True or False` = `True`."
+py-bool-09,py-booleans-truthiness,Hard,output,What is printed?,"print(all([]), any([]))",True False,False False,False True,True True,A,"`all` of an empty iterable is `True` (no element fails — vacuous truth); `any` of an empty iterable is `False` (no element succeeds)."
+py-bool-10,py-booleans-truthiness,Medium,output,What is printed?,"nums = [4, -1, 0, 7, -3]
+print(sum(x > 0 for x in nums))",11,2,3,True,B,"Each comparison yields `True`/`False`, which sum as 1/0. Two numbers (4 and 7) are positive."
+py-bool-11,py-booleans-truthiness,Hard,theory,"For a user-defined class with neither __bool__ nor __len__, what is bool(obj)?",,False,True,TypeError,Depends on its attributes,B,"Objects are truthy by default. Python checks `__bool__`, then `__len__`; if neither is defined, the object is considered true."
+py-bool-12,py-booleans-truthiness,Easy,output,What is printed?,"print(bool(""False""), bool(0j))",False False,True False,True True,False True,B,"`""False""` is a non-empty string — truthy regardless of its content. `0j` is a numeric zero — falsy."
+py-cond-01,py-conditionals,Easy,output,What is printed?,"score = 95
+if score >= 90:
+    print(""A"")
+elif score >= 80:
+    print(""B"")",A,B,A then B,Nothing,A,"In an `if/elif` chain only the **first** true branch runs; the rest are skipped."
+py-cond-02,py-conditionals,Easy,output,What is printed?,"score = 95
+if score >= 90:
+    print(""A"")
+if score >= 80:
+    print(""B"")",A,B,A then B,Nothing,C,"These are two **independent** `if` statements, so both conditions are checked and both print. Use `elif` for mutually exclusive cases."
+py-cond-03,py-conditionals,Medium,output,What is printed?,"day = ""Mon""
+if day == ""Sat"" or ""Sun"":
+    print(""weekend"")
+else:
+    print(""weekday"")",weekday,weekend,SyntaxError,Nothing,B,"This parses as `(day == ""Sat"") or ""Sun""`. The non-empty string `""Sun""` is truthy, so the condition is always true. Use `day in (""Sat"", ""Sun"")`."
+py-cond-04,py-conditionals,Medium,theory,"Which condition is ALWAYS true, whatever x is?",,x != 1 and x != 2,x != 1 or x != 2,x not in (1 2),not (x == 1 or x == 2),B,"Any x differs from at least one of 1 and 2, so `x != 1 or x != 2` is always true. The intended 'neither 1 nor 2' is `x != 1 and x != 2` (De Morgan's law)."
+py-cond-05,py-conditionals,Medium,theory,What is the negation of `a and b` by De Morgan's law?,,not a and not b,not a or not b,a or b,not (a or b),B,"`not (a and b)` ≡ `(not a) or (not b)`: flip each part and swap `and`/`or`."
+py-cond-06,py-conditionals,Medium,output,What is printed for n = 15?,"n = 15
+if n % 3 == 0:
+    print(""Fizz"")
+elif n % 15 == 0:
+    print(""FizzBuzz"")
+else:
+    print(n)",Fizz,FizzBuzz,15,Fizz then FizzBuzz,A,"15 is divisible by 3, so the first branch wins; the `% 15` branch is **unreachable** because it is more specific but placed later. Order specific conditions first."
+py-cond-07,py-conditionals,Easy,theory,What does `if x = 5:` produce in Python?,,Assigns 5 to x then tests it,Compares x with 5,SyntaxError,Always True,C,"Python forbids assignment in a plain `if` condition (unlike C), preventing the classic `=` vs `==` bug. Comparison is `==`; inline assignment needs the walrus `:=`."
+py-cond-08,py-conditionals,Medium,output,What is printed?,"n = 0
+sign = ""negative"" if n < 0 else ""zero"" if n == 0 else ""positive""
+print(sign)",negative,zero,positive,SyntaxError,B,"Conditional expressions chain right-to-left: `""negative"" if n<0 else (""zero"" if n==0 else ""positive"")`. n is 0, so `zero`."
+py-cond-09,py-conditionals,Hard,theory,"Rule: 'under 12 pays 5, 12–59 pays 10, 60+ pays 7'. Which set of test ages BEST checks the boundaries?",,"0, 30, 100","11, 12, 59, 60","12, 60","5, 10, 7",B,"Boundary bugs happen exactly at thresholds. Test each boundary value **and its neighbour**: 11/12 and 59/60."
+py-cond-10,py-conditionals,Easy,output,What is printed?,"x = []
+if x:
+    print(""has items"")
+else:
+    print(""empty"")",has items,empty,None,Error,B,"An empty list is falsy, so the `else` branch runs. `if x:` is the idiomatic non-empty check."
+py-cond-11,py-conditionals,Medium,theory,"Which is the best replacement for a long `if/elif` chain that maps fixed keys like 'I','V','X' to values?",,A while loop,A dictionary lookup such as table.get(key),Nested ternary expressions,Separate if statements,B,"A dict expresses a fixed mapping as data, runs in O(1), and `get(key, default)` handles unknown keys — cleaner than many `elif` branches."
+py-loop-01,py-loops,Easy,output,What is printed?,"print(list(range(2, 10, 3)))","[2, 5, 8]","[2, 5, 8, 11]","[3, 6, 9]","[2, 3, 4, 5, 6, 7, 8, 9]",A,"Start 2, step 3, stop **before** 10: 2, 5, 8."
+py-loop-02,py-loops,Easy,output,What is printed?,"print(list(range(5, 0, -2)))","[5, 3, 1]","[5, 3, 1, -1]","[4, 2, 0]",[],A,"Counting down from 5 by 2 and stopping before 0: 5, 3, 1."
+py-loop-03,py-loops,Medium,output,What is printed?,"for n in [1, 3, 5]:
+    if n % 2 == 0:
+        print(""even"")
+        break
+else:
+    print(""no even"")",even,no even,Nothing,even then no even,B,"The loop finishes without `break`, so the loop's `else` clause runs. (`else` on a loop means 'no break happened'.)"
+py-loop-04,py-loops,Medium,output,What is printed?,"for i in range(3):
+    pass
+print(i)",0,2,3,NameError,B,"The loop variable remains bound after the loop to its **last** value, 2."
+py-loop-05,py-loops,Hard,output,What is printed?,"nums = [2, 4, 6, 7]
+for x in nums:
+    if x % 2 == 0:
+        nums.remove(x)
+print(nums)",[7],"[4, 7]","[4, 6, 7]","[2, 4, 6, 7]",B,"Removing shifts later elements left while the loop's internal index keeps advancing, so 4 is skipped. Never mutate a list while iterating it — build a new list instead."
+py-loop-06,py-loops,Medium,output,What is printed?,"nums = [1, 2, 3]
+for x in nums:
+    x *= 10
+print(nums)","[10, 20, 30]","[1, 2, 3]",[30],Error,B,"`x *= 10` rebinds the name `x` to a new int; the list's elements are untouched. Modify via index (`nums[i] *= 10`) or build a new list."
+py-loop-07,py-loops,Easy,output,What is printed?,"for i, ch in enumerate(""ab"", start=1):
+    print(i, ch)","0 a then 1 b","1 a then 2 b","a 1 then b 2",Error,B,"`enumerate` yields `(index, item)` pairs; `start=1` makes counting begin at 1."
+py-loop-08,py-loops,Medium,output,What is printed?,"print(list(zip([1, 2, 3], ""xy"")))","[(1, 'x'), (2, 'y')]","[(1, 'x'), (2, 'y'), (3, None)]",ValueError,"[1, 'x', 2, 'y']",A,"`zip` stops at the **shortest** iterable. Use `strict=True` (3.10+) to get an error on unequal lengths."
+py-loop-09,py-loops,Medium,output,How many times is `*` printed?,"for i in range(3):
+    for j in range(i):
+        print(""*"", end="""")",3,6,9,0,A,"Inner loop runs 0, 1, 2 times for i = 0, 1, 2: total 0 + 1 + 2 = 3."
+py-loop-10,py-loops,Medium,output,What is printed?,"n = 0
+while n < 3:
+    n += 1
+    if n == 2:
+        continue
+    print(n, end="" "")",1 2 3,1 3,1,2,B,"`continue` skips the `print` when `n == 2`; the loop still proceeds to `n = 3`."
+py-loop-11,py-loops,Easy,theory,What is the Python equivalent of C's `for (i = n-1; i >= 0; i--)`?,,for i in range(n-1 0 -1),"for i in range(n - 1, -1, -1)","for i in range(n, 0)",for i in reversed(n),B,"The stop value is exclusive, so to include 0 you must stop at −1. (`reversed(range(n))` is an equivalent, more readable option.)"
+py-loop-12,py-loops,Hard,output,What is printed?,"for i in range(3):
+    print(i, end="" "")
+    i = 10",0 1 2,0 10 10,0,Infinite loop,A,"Each iteration rebinds `i` to the next value from the range iterator; assigning `i = 10` in the body has no effect on the iteration (unlike C)."
+py-loop-13,py-loops,Medium,theory,Why is `range(10**12)` cheap to create?,,It is computed in a background thread,"range is lazy — it stores only start, stop and step, computing values on demand",Python caps it at 2**31 elements,It is cached by the interpreter,B,"A `range` object is a lazy sequence: constant memory, with O(1) `len`, indexing and membership tests. `list(range(...))` would materialize every value."

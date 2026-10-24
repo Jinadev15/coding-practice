@@ -121,10 +121,13 @@ def parse_tests(text: str) -> list[Test]:
     blocks = re.split(r"^===[ \t]*(\w*)[ \t]*$", text, flags=re.M)
     # blocks = [preamble, kind1, body1, kind2, body2, ...]
     for kind, body in zip(blocks[1::2], blocks[2::2]):
-        body = body.strip("\n")
+        body = body[1:] if body.startswith("\n") else body   # rest of the === line
         parts = re.split(r"^---[ \t]*$", body, maxsplit=1, flags=re.M)
-        inp = parts[0].strip("\n") + "\n"
-        out = parts[1].strip("\n") if len(parts) > 1 else None
+        inp = parts[0].rstrip("\n") + "\n"
+        out = None
+        if len(parts) > 1:
+            out = parts[1][1:] if parts[1].startswith("\n") else parts[1]
+            out = out.rstrip("\n")   # leading blank lines are significant
         tests.append(Test(inp, out, (kind or "hidden").lower() == "sample"))
     return tests
 
@@ -164,10 +167,15 @@ def load_problem(path: Path, lang: str, topic: str, main_file: str) -> Problem:
     return p
 
 
-def load_mcq_csv(path: Path) -> list[dict]:
+def load_mcq_csv(path: Path, errors: list[str] | None = None) -> list[dict]:
     rows = []
     with path.open(encoding="utf-8", newline="") as f:
         for i, r in enumerate(csv.DictReader(f)):
+            if None in r or any(v is None for v in r.values()):
+                if errors is not None:
+                    errors.append(f"{path.name}: row {i + 2} ({r.get('id')}) has the wrong number of "
+                                  "columns — quote any field containing a comma")
+                continue
             r = {k.strip(): (v or "").strip() for k, v in r.items() if k}
             opts = [r.get(f"option_{c}", "") for c in "abcdef"]
             opts = [o for o in opts if o]
@@ -214,7 +222,7 @@ def load_language(folder: Path) -> Language:
 
     for path in sorted((folder / "mcq").glob("*.csv")) if (folder / "mcq").exists() else []:
         try:
-            for q in load_mcq_csv(path):
+            for q in load_mcq_csv(path, errors):
                 if q["topic"] in tmap:
                     tmap[q["topic"]].mcqs.append(q)
                 else:
