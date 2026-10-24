@@ -1,0 +1,93 @@
+id,topic,difficulty,type,question,code,option_a,option_b,option_c,option_d,answer,explanation
+py-col-01,py-collections,Easy,code,What is printed?,"from collections import Counter
+  c = Counter(""banana"")
+  print(c[""a""], c[""z""])",3 0,3 KeyError,2 0,3 None,A,Missing keys count as 0 in a Counter.
+py-col-02,py-collections,Medium,code,What is printed?,"from collections import Counter
+  print(Counter(a=3, b=1) - Counter(a=1, b=2))","Counter({'a': 2, 'b': -1})",Counter({'a': 2}),"Counter({'a': 4, 'b': 3})",Counter({'b': 1}),B,The - operator drops zero and negative counts (subtract() keeps them).
+py-col-03,py-collections,Medium,code,"After this code, what is `len(d)`?","from collections import defaultdict
+  d = defaultdict(list)
+  d[""a""].append(1)
+  if d[""b""]:
+      pass",1,2,0,KeyError,B,"Merely reading d[""b""] inserts an empty list for ""b""."
+py-col-04,py-collections,Medium,theory,Why use `deque.popleft()` instead of `list.pop(0)` for a BFS queue?,,deque is sorted,popleft is O(1); list.pop(0) is O(n) because elements shift,list.pop(0) raises an error,deque uses less memory per element in all cases,B,deque supports O(1) operations at both ends.
+py-col-05,py-collections,Easy,code,What is printed?,"from collections import deque
+  q = deque(maxlen=3)
+  for x in range(6): q.append(x)
+  print(list(q))","[0, 1, 2]","[3, 4, 5]","[0, 1, 2, 3, 4, 5]",Error: deque full,B,A bounded deque discards items from the opposite end.
+py-col-06,py-collections,Medium,theory,Which OrderedDict operations make it suitable for an LRU cache? (select all),,move_to_end(key),popitem(last=False),sort(),most_common(),A|B,Move on access; evict from the front when full — both O(1).
+py-col-07,py-collections,Medium,code,What is printed?,"from collections import namedtuple
+  P = namedtuple(""P"", ""x y"")
+  p = P(1, 2)
+  q = p._replace(x=9)
+  print(p.x, q.x, isinstance(p, tuple))",9 9 True,1 9 True,1 9 False,AttributeError,B,namedtuples are immutable tuples; _replace returns a new instance.
+py-hb-01,py-heapq-bisect,Medium,code,What is printed?,"import heapq
+  h = []
+  for x in [5, 1, 4, 2]: heapq.heappush(h, x)
+  print(heapq.heappop(h), h[0])",5 4,1 2,1 4,2 1,B,heapq is a min-heap; h[0] is always the current minimum.
+py-hb-02,py-heapq-bisect,Medium,theory,Which statement about a heapq list `h` is true?,,h is fully sorted,"Only h[0] is guaranteed to be the minimum; the rest is in heap order, not sorted",h[-1] is the maximum,Iterating h yields elements in ascending order,B,Pop repeatedly (heapsort) to obtain sorted order.
+py-hb-03,py-heapq-bisect,Medium,theory,What is the time complexity of heapq.heapify on n elements?,,O(n log n),O(n),O(log n),O(n²),B,Bottom-up heap construction is linear.
+py-hb-04,py-heapq-bisect,Hard,theory,"Pushing `(priority, task_dict)` tuples onto a heap sometimes raises TypeError. Why, and what is the standard fix?",,Heaps cannot store tuples; use lists,"Equal priorities make Python compare the dicts, which are unorderable; insert a tie-breaking counter: (priority, count, task)",Priorities must be floats,heapq requires a key= argument,B,The counter also makes equal priorities pop in FIFO order.
+py-hb-05,py-heapq-bisect,Medium,code,What is printed?,"import bisect
+  a = [1, 2, 2, 2, 5]
+  print(bisect.bisect_left(a, 2), bisect.bisect_right(a, 2), bisect.bisect_left(a, 3))",1 4 4,1 3 4,0 4 3,1 4 3,A,left = first position of 2; right = after the last 2; 3 would be inserted at 4.
+py-hb-06,py-heapq-bisect,Medium,theory,How do you count elements x with lo <= x <= hi in a sorted list a?,,"bisect_left(a, hi) - bisect_left(a, lo)","bisect_right(a, hi) - bisect_left(a, lo)","bisect_right(a, lo) - bisect_left(a, hi)","len(a) - bisect_left(a, lo)",B,bisect_right includes values equal to hi; bisect_left includes values equal to lo.
+py-hb-07,py-heapq-bisect,Hard,theory,Finding the k largest of n streaming numbers with a size-k min-heap costs:,,"O(n log n) time, O(n) space","O(n log k) time, O(k) space","O(k log n) time, O(1) space","O(n) time, O(n) space",B,Each element costs at most one O(log k) heap operation.
+py-dt-01,py-datetime,Medium,code,What is printed?,"from datetime import timedelta
+  d = timedelta(days=1, hours=2)
+  print(d.seconds, d.total_seconds())",93600 93600.0,7200 93600.0,7200 7200.0,2 93600.0,B,.seconds is only the seconds component within the day; use total_seconds().
+py-dt-02,py-datetime,Medium,theory,What happens when you subtract a naive datetime from an aware datetime?,,The naive one is assumed to be UTC,TypeError: can't subtract offset-naive and offset-aware datetimes,The result is a naive timedelta,The naive one is assumed to be local time,B,Python refuses to guess; make both aware.
+py-dt-03,py-datetime,Medium,theory,Which clock should be used to measure a timeout or a control-loop period?,,time.time(),datetime.now(),time.monotonic(),time.localtime(),C,"Wall clocks can jump (NTP, manual changes); monotonic clocks never go backwards."
+py-dt-04,py-datetime,Easy,code,What is printed?,"from datetime import datetime
+  d = datetime.strptime(""05/11/2026"", ""%d/%m/%Y"")
+  print(d.month)",5,11,2026,ValueError,B,%d is the day and %m the month in this format.
+py-dt-05,py-datetime,Medium,theory,Which practices are recommended for timestamps in a distributed system? (select all),,Store aware datetimes in UTC,Exchange times as ISO 8601 strings with an offset,Use datetime.utcnow() for the current time,Convert to local time only for display,A|B|D,utcnow() returns a naive datetime and is deprecated; use datetime.now(timezone.utc).
+py-dt-06,py-datetime,Medium,code,What is printed?,"from datetime import date
+  print(date(2026, 1, 31).replace(month=2))",2026-02-28,2026-03-03,ValueError,2026-02-31,C,day 31 must be in range 1..28 for February 2026; dates are validated.
+py-mr-01,py-math-random,Medium,code,What is printed?,"print(round(2.5), round(3.5), round(-0.5))",3 4 -1,2 4 0,2 3 0,3 4 0,B,Round half to even; -0.5 rounds to -0 which prints as 0.
+py-mr-02,py-math-random,Medium,code,What is printed?,"print(-7 // 2, -7 % 2, int(-3.5))",-3 -1 -3,-4 1 -3,-4 1 -4,-3 1 -4,B,// floors; % takes the sign of the divisor; int() truncates toward zero.
+py-mr-03,py-math-random,Medium,theory,Why is `math.isqrt(n) ** 2 == n` preferred over `int(math.sqrt(n)) ** 2 == n` for testing perfect squares?,,It is shorter,isqrt is exact for arbitrarily large integers; math.sqrt converts to a float and loses precision,math.sqrt does not accept integers,There is no difference,B,Floats have 53 bits of mantissa.
+py-mr-04,py-math-random,Easy,theory,Which module should generate a password-reset token?,,random,secrets,math,statistics,B,random's Mersenne Twister is predictable from its outputs.
+py-mr-05,py-math-random,Medium,theory,What is the difference between statistics.stdev and statistics.pstdev?,,stdev is faster,stdev is the sample standard deviation (divides by n-1); pstdev is the population one (divides by n),pstdev ignores outliers,They are identical,B,Bessel's correction gives an unbiased variance estimate from a sample.
+py-mr-06,py-math-random,Medium,code,"Which expression correctly tests whether floats a and b are equal up to rounding error, including when both are near zero?",,a == b,"math.isclose(a, b)","math.isclose(a, b, abs_tol=1e-12)",abs(a - b) == 0,C,"The default is relative tolerance only, which never succeeds against exactly 0.0."
+py-mr-07,py-math-random,Medium,theory,Which statements about random.randint and random.randrange are true? (select all),,"randint(1, 6) can return 6","randrange(1, 6) can return 6",random.seed(42) makes the following sequence reproducible,random.shuffle returns a new shuffled list,A|C,randrange excludes the end like range(); shuffle works in place and returns None.
+py-re-01,py-regex,Easy,code,What is printed?,"import re
+  print(re.match(r""\d+"", ""abc123""), re.search(r""\d+"", ""abc123"").group())",None 123,123 123,None None,abc 123,A,match anchors at the start of the string; search scans.
+py-re-02,py-regex,Medium,code,What is printed?,"import re
+  print(re.findall(r""<.+>"", ""<a><b>""), re.findall(r""<.+?>"", ""<a><b>""))","['<a>', '<b>'] ['<a>', '<b>']","['<a><b>'] ['<a>', '<b>']",['<a><b>'] ['<a><b>'],['<a>'] ['<b>'],B,Greedy .+ extends to the last '>'; lazy .+? stops at the first.
+py-re-03,py-regex,Medium,code,What is printed?,"import re
+  print(re.findall(r""(\w)(\d)"", ""a1 b2""))","['a1', 'b2']","[('a', '1'), ('b', '2')]","['a', '1', 'b', '2']","[('a1', 'b2')]",B,"With multiple groups, findall returns tuples of the groups."
+py-re-04,py-regex,Medium,theory,"Why should regex patterns be written as raw strings like r""\bword\b""?",,Raw strings are faster,"Otherwise Python interprets backslash escapes first (e.g. ""\b"" becomes a backspace character)",re requires bytes,Raw strings enable IGNORECASE,B,Raw strings pass backslashes unchanged to the regex engine.
+py-re-05,py-regex,Hard,theory,"Why can `re.fullmatch(r""(a+)+b"", ""a"" * 35)` take extremely long?",,The string is too long for re,Nested quantifiers cause catastrophic (exponential) backtracking when the match fails,fullmatch is O(n²) always,It compiles the pattern 35 times,B,ReDoS — avoid ambiguous nested quantifiers; use atomic groups or specific classes.
+py-re-06,py-regex,Medium,code,What is printed?,"import re
+  print(re.findall(r""(?<=\$)\d+"", ""pay $30 or $45 now""))","['$30', '$45']","['30', '45']",['30'],[],B,The lookbehind requires '$' before the digits without including it in the match.
+py-re-07,py-regex,Medium,theory,Which function should validate that an entire string is a 6-digit PIN?,,"re.search(r""\d{6}"", s)","re.match(r""\d{6}"", s)","re.fullmatch(r""\d{6}"", s)","re.findall(r""\d{6}"", s)",C,"search and match accept strings with extra characters (e.g. ""1234567"")."
+py-dc-01,py-dataclasses,Easy,theory,Which methods does a plain @dataclass generate by default? (select all),,__init__,__repr__,__eq__,__lt__,A|B|C,Ordering methods require order=True.
+py-dc-02,py-dataclasses,Medium,theory,What happens when defining `@dataclass class C: items: list = []`?,,All instances share one list,ValueError: mutable default ... use default_factory,Each instance gets a copy,TypeError at instantiation,B,Use field(default_factory=list).
+py-dc-03,py-dataclasses,Medium,theory,Why are instances of a plain @dataclass unhashable?,,Dataclasses cannot define __hash__,"eq=True with mutable fields sets __hash__ to None, so value-equal mutable objects can't be dict keys",They have no __eq__,They use __slots__,B,frozen=True generates a field-based __hash__.
+py-dc-04,py-dataclasses,Medium,code,What is printed?,"from dataclasses import dataclass
+  @dataclass(order=True)
+  class V:
+      major: int
+      minor: int = 0
+  print(V(1, 9) < V(2, 0), V(1, 2) == V(1, 2))",True True,False True,True False,TypeError,A,Comparison is as tuples of fields in declaration order.
+py-dc-05,py-dataclasses,Medium,theory,Where should validation of field values in a dataclass go?,,"In __init__, which you must write manually","In __post_init__, which the generated __init__ calls",In __repr__,Validation is automatic from the type hints,B,Type hints are not enforced at run time.
+py-dc-06,py-dataclasses,Medium,theory,How do you obtain a modified copy of a frozen dataclass instance p?,,p.x = 5,"dataclasses.replace(p, x=5)",copy.copy(p).x = 5,p.update(x=5),B,replace() builds a new instance via __init__.
+py-en-01,py-enum,Easy,code,What is printed?,"from enum import Enum
+  class C(Enum):
+      RED = 1
+  print(C.RED == 1, C(1) is C.RED)",True True,False True,True False,False False,B,Plain Enum members are not equal to raw values; members are singletons.
+py-en-02,py-enum,Medium,code,What is printed?,"from enum import Enum
+  class A(Enum):
+      X = 1
+      Y = 1
+  print(len(list(A)), A.Y is A.X)",2 False,1 True,2 True,ValueError,B,Duplicate values create aliases; @unique would raise ValueError.
+py-en-03,py-enum,Medium,theory,When is IntEnum preferable to Enum?,,Always,"When members must interoperate with plain integers (C APIs, protocols, comparisons)",When values are strings,When members need methods,B,Enum is more type-safe; IntEnum members equal ints and mix with them.
+py-en-04,py-enum,Medium,code,What is printed?,"from enum import Flag, auto
+  class P(Flag):
+      R = auto()
+      W = auto()
+      X = auto()
+  p = P.R | P.X
+  print(p.value, P.W in p)",5 False,3 False,5 True,2 True,A,"auto() gives 1, 2, 4 for Flags; R|X = 5."
+py-en-05,py-enum,Easy,theory,"How do you look up an enum member by its NAME string ""RED""?",,"Color(""RED"")","Color[""RED""]","Color.get(""RED"")",Color.RED.name,B,Color(value) looks up by value; Color[name] by name.
+py-en-06,py-enum,Medium,theory,What does auto() produce in a StrEnum (3.11+)?,,"1, 2, 3...",The lowercase member name,The uppercase member name,A random string,B,"class M(StrEnum): IDLE = auto() gives M.IDLE == ""idle""."
