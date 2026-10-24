@@ -1,0 +1,221 @@
+id,topic,difficulty,type,question,code,option_a,option_b,option_c,option_d,answer,explanation
+py-list-01,py-lists,Easy,output,What is printed?,"a = [1, 2, 3]
+a.append([4, 5])
+print(len(a))",3,4,5,Error,B,"`append` adds its argument as **one** element (a nested list), so the length becomes 4. `extend` would add 4 and 5 separately."
+py-list-02,py-lists,Medium,output,What is printed?,"a = [3, 1, 2]
+a = a.sort()
+print(a)","[1, 2, 3]","[3, 1, 2]",None,Error,C,"`list.sort()` sorts **in place** and returns `None`; assigning that result to `a` loses the list. Use `a.sort()` alone or `a = sorted(a)`."
+py-list-03,py-lists,Medium,output,What is printed?,"grid = [[0] * 2] * 2
+grid[0][0] = 7
+print(grid)","[[7, 0], [0, 0]]","[[7, 0], [7, 0]]","[[7, 7], [0, 0]]",Error,B,"`[row] * 2` repeats a **reference** to the same inner list, so both rows are one object. Use `[[0] * 2 for _ in range(2)]`."
+py-list-04,py-lists,Easy,theory,"What is the time complexity of `a.insert(0, x)` on a list of length n?",,O(1),O(log n),O(n),O(n log n),C,"A list is a dynamic array; inserting at the front shifts all n element pointers one slot right. Use `collections.deque.appendleft` for O(1)."
+py-list-05,py-lists,Medium,theory,Why is `list.append` described as amortised O(1)?,,It never needs to copy anything,Occasional resizes copy all elements but capacity grows geometrically so the average cost per append is constant,Python preallocates 1 million slots for every list,It uses a linked list internally,B,"When full, the array is reallocated with extra spare capacity proportional to its size. Resizes are rare enough that n appends cost O(n) in total."
+py-list-06,py-lists,Easy,output,What is printed?,"a = [1, 2]
+a.extend(""ab"")
+print(a)","[1, 2, 'ab']","[1, 2, 'a', 'b']","[1, 2, ['a', 'b']]",TypeError,B,"`extend` iterates its argument; a string iterates character by character."
+py-list-07,py-lists,Medium,output,What is printed?,"a = [5, 6, 7]
+x = a.pop()
+y = a.pop(0)
+print(x, y, a)",7 5 [6],5 7 [6],7 6 [5],"7 5 [5, 6]",A,"`pop()` removes and returns the last item (7); `pop(0)` removes and returns the first (5); `[6]` remains."
+py-list-08,py-lists,Medium,output,What is printed?,"a = [1, 2, 3, 2]
+a.remove(2)
+print(a)","[1, 3, 2]","[1, 3]","[1, 2, 3]","[1, 2, 3, 2]",A,"`remove(x)` deletes only the **first** occurrence of the value x (not an index)."
+py-list-09,py-lists,Medium,theory,Which TWO list operations are O(1) (amortised where relevant)?,,a.append(x),a.pop(),a.pop(0),x in a,A|B,"Appending and popping at the **end** are O(1). `pop(0)` shifts everything (O(n)) and `in` is a linear search (O(n))."
+py-list-10,py-lists,Easy,output,What is printed?,"a = [10, 20, 30, 40]
+print(a[-2], a[1:3])","30 [20, 30]","20 [20, 30, 40]","30 [10, 20]","40 [20, 30]",A,"`a[-2]` is the second-to-last element (30); `a[1:3]` takes indices 1 and 2."
+py-list-11,py-lists,Hard,output,What is printed?,"a = [1, 2, 3]
+b = a
+a = a + [4]
+b.append(5)
+print(a, b)","[1, 2, 3, 4] [1, 2, 3, 5]","[1, 2, 3, 4, 5] [1, 2, 3, 4, 5]","[1, 2, 3, 4] [1, 2, 3, 4, 5]","[1, 2, 3, 5] [1, 2, 3, 5]",A,"`a + [4]` creates a **new** list and rebinds `a`; `b` still refers to the original list, which then gets 5 appended."
+py-list-12,py-lists,Medium,theory,What does `sorted(a)` do differently from `a.sort()`?,,Nothing; they are aliases,"sorted returns a new sorted list and leaves a unchanged, and works on any iterable",sorted only works on numbers,sorted is in place and sort returns a copy,B,"`sorted()` is a built-in that accepts any iterable and returns a **new** list; `list.sort()` is a method that sorts the list **in place** and returns `None`."
+py-tup-01,py-tuples,Easy,output,What is printed?,"print(type((5)), type((5,)))","<class 'tuple'> <class 'tuple'>","<class 'int'> <class 'tuple'>","<class 'int'> <class 'int'>",SyntaxError,B,"Parentheses alone just group; `(5)` is the int 5. The **comma** makes a tuple: `(5,)`."
+py-tup-02,py-tuples,Medium,output,What is printed?,"t = ([1], 2)
+t[0].append(9)
+print(t)","([1], 2)","([1, 9], 2)",TypeError,"([9], 2)",B,"The tuple's slot still refers to the same list; mutating that list is allowed. Only rebinding a slot (`t[0] = ...`) is forbidden."
+py-tup-03,py-tuples,Medium,theory,Which TWO can be used as dictionary keys?,,"(1, 2)","[1, 2]","(1, [2])","('a', (1, 2))",A|D,"Keys must be hashable. A tuple is hashable only if **all** its elements are hashable; `(1, [2])` contains a list, so it isn't. Lists are never hashable."
+py-tup-04,py-tuples,Easy,output,What is printed?,"def f():
+    return 1, 2
+x = f()
+print(type(x).__name__, x)","int 1",tuple (1 2),"tuple (1, 2)",list [1 2],C,"`return 1, 2` packs the values into **one tuple**. Returning 'multiple values' is really returning a tuple, which you usually unpack: `a, b = f()`."
+py-tup-05,py-tuples,Medium,output,What is printed?,"first, *rest = (1, 2, 3, 4)
+print(first, rest)","1 (2, 3, 4)","1 [2, 3, 4]",1 2,Error,B,"Starred targets always collect into a **list**, even when unpacking a tuple."
+py-tup-06,py-tuples,Medium,output,What is printed?,"print(sorted([(2, ""b""), (1, ""z""), (2, ""a"")]))","[(1, 'z'), (2, 'a'), (2, 'b')]","[(2, 'a'), (2, 'b'), (1, 'z')]","[(1, 'z'), (2, 'b'), (2, 'a')]",TypeError,A,"Tuples compare lexicographically: first by element 0, ties broken by element 1."
+py-tup-07,py-tuples,Easy,theory,Which methods do tuples have?,,"append, remove","count, index","sort, reverse","add, discard",B,"Being immutable, tuples have only the two non-mutating sequence methods: `count` and `index`."
+py-tup-08,py-tuples,Hard,output,What happens?,"t = ([],)
+try:
+    t[0] += [1]
+except TypeError:
+    print(""error"", t)",Nothing is printed,"error ([],)","error ([1],)","([1],)",C,"`+=` first extends the list in place (list `__iadd__`), then tries to assign the result back into the tuple slot, which raises `TypeError`. The list was already mutated."
+py-tup-09,py-tuples,Medium,output,What is printed?,"from collections import namedtuple
+P = namedtuple(""P"", ""x y"")
+p = P(3, 4)
+print(p.x + p[1])",7,34,TypeError,"P(x=3, y=4)",A,"A namedtuple supports both attribute access (`p.x`) and index access (`p[1]`): 3 + 4 = 7."
+py-tup-10,py-tuples,Medium,theory,When should you prefer a tuple over a list?,,When you need to sort the items in place,When the collection is a fixed-structure record or must be hashable (a dict key or set element),When you need to add items frequently,Never — tuples are deprecated,B,"Tuples express fixed records (point, RGB, row), are hashable when their contents are, and can't be modified accidentally."
+py-tup-11,py-tuples,Hard,output,What is printed?,"students = [(""Ada"", 90), (""Bob"", 85), (""Cy"", 90)]
+print([n for n, s in sorted(students, key=lambda s: (-s[1], s[0]))])","['Ada', 'Cy', 'Bob']","['Bob', 'Ada', 'Cy']","['Cy', 'Ada', 'Bob']","['Ada', 'Bob', 'Cy']",A,"The key `(-score, name)` sorts by score descending (negation), breaking ties by name ascending: Ada(90), Cy(90), Bob(85)."
+py-dict-01,py-dicts,Easy,output,What is printed?,"d = {""a"": 1}
+print(d.get(""b""), d.get(""b"", 0))",None 0,KeyError,0 0,None None,A,"`get` returns `None` (or the supplied default) for a missing key instead of raising `KeyError`."
+py-dict-02,py-dicts,Easy,theory,What does `{}` create?,,An empty set,An empty dict,An empty tuple,SyntaxError,B,"`{}` is an empty **dictionary**. An empty set must be written `set()`."
+py-dict-03,py-dicts,Medium,output,What is printed?,"d = {1: ""int"", 1.0: ""float"", True: ""bool""}
+print(d)","{1: 'int', 1.0: 'float', True: 'bool'}",{1: 'bool'},{True: 'bool'},{1.0: 'float'},B,"`1 == 1.0 == True` and they hash equally, so they are the **same key**. The first key object (1) is kept; each assignment overwrites the value, leaving 'bool'."
+py-dict-04,py-dicts,Medium,theory,Which TWO can be dictionary keys?,,"(""a"", 1)","[1, 2]",frozenset({1}),"{""k"": 1}",A|C,"Keys must be hashable. Tuples of hashables and frozensets are hashable; lists and dicts are mutable and unhashable."
+py-dict-05,py-dicts,Medium,output,What is printed?,"d = {""x"": 1, ""y"": 2}
+print(1 in d, ""x"" in d)",True True,False True,True False,False False,B,"`in` on a dict tests **keys** only (O(1)). Use `1 in d.values()` to search values (O(n))."
+py-dict-06,py-dicts,Hard,output,What happens?,"d = {""a"": 1}
+for k in d:
+    d[""b""] = 2",d becomes {'a': 1 'b': 2},RuntimeError: dictionary changed size during iteration,Infinite loop,Nothing,B,"Adding keys while iterating a dict raises `RuntimeError`. Iterate over `list(d)` if you must modify the key set."
+py-dict-07,py-dicts,Medium,output,What is printed?,"counts = {""a"": 3, ""b"": 7, ""c"": 5}
+print(max(counts, key=counts.get))",7,b,c,"('b', 7)",B,"Iterating a dict yields keys; `key=counts.get` compares them by their values, so the key with the largest value, `'b'`, is returned."
+py-dict-08,py-dicts,Medium,output,What is printed?,"g = {}
+g.setdefault(""x"", []).append(1)
+g.setdefault(""x"", []).append(2)
+print(g)","{'x': [2]}","{'x': [1, 2]}","{'x': [[1], [2]]}",KeyError,B,"`setdefault` inserts the default only if the key is missing and returns the **existing** value otherwise, so both appends go to the same list."
+py-dict-09,py-dicts,Easy,theory,What is the average time complexity of `d[key]` for a dict?,,O(1),O(log n),O(n),O(n log n),A,"Dicts are hash tables: hashing the key jumps directly to its slot, giving average O(1) lookup."
+py-dict-10,py-dicts,Medium,output,What is printed?,"a = {""x"": 1, ""y"": 2}
+b = {""y"": 9, ""z"": 3}
+print(a | b)","{'x': 1, 'y': 2, 'z': 3}","{'x': 1, 'y': 9, 'z': 3}",TypeError,"{'y': 9, 'z': 3}",B,"`|` (Python 3.9+) merges into a new dict; for duplicate keys the **right** operand wins."
+py-dict-11,py-dicts,Medium,theory,Since which version are dicts guaranteed to preserve insertion order?,,Python 2.7,Python 3.0,Python 3.7,They never preserve order,C,"Insertion order became a language guarantee in Python 3.7 (it was a CPython implementation detail in 3.6)."
+py-dict-12,py-dicts,Hard,output,What is printed?,"d = {""a"": 1, ""b"": 2, ""c"": 3}
+print(d.popitem(), list(d))","('a', 1) ['b', 'c']","('c', 3) ['a', 'b']",KeyError,"('b', 2) ['a', 'c']",B,"`popitem()` removes and returns the **last inserted** pair (LIFO order)."
+py-set-01,py-sets,Easy,output,What is printed?,"s = {3, 1, 3, 2, 1}
+print(len(s))",5,3,2,Error,B,"A set stores each element once; the distinct elements are 1, 2, 3."
+py-set-02,py-sets,Easy,theory,How do you create an empty set?,,{},set(),[],"set{}",B,"`{}` creates an empty **dict**. Use `set()`."
+py-set-03,py-sets,Medium,output,What is printed?,"a = {1, 2, 3, 4}
+b = {3, 4, 5}
+print(sorted(a - b), sorted(a ^ b))","[1, 2] [1, 2, 5]","[5] [3, 4]","[1, 2] [3, 4]","[1, 2, 5] [1, 2]",A,"`a - b` keeps elements of a not in b: {1, 2}. `a ^ b` keeps elements in exactly one set: {1, 2, 5}."
+py-set-04,py-sets,Medium,theory,What is the difference between `s.remove(x)` and `s.discard(x)` when x is not in s?,,No difference,remove raises KeyError; discard does nothing,discard raises KeyError; remove does nothing,Both raise ValueError,B,"`remove` insists the element exists (KeyError otherwise); `discard` is the forgiving version."
+py-set-05,py-sets,Medium,output,What happens?,"s = {1, 2, 3}
+print(s[0])",1,An arbitrary element,TypeError: 'set' object is not subscriptable,IndexError,C,"Sets are unordered and have no positions, so indexing is not supported."
+py-set-06,py-sets,Medium,theory,Which TWO can be elements of a set?,,"(1, 2)","[1, 2]",frozenset({1}),{1: 2},A|C,"Set elements must be hashable: tuples of hashables and frozensets qualify; lists and dicts do not."
+py-set-07,py-sets,Hard,theory,You check `w in banned` for each of n words where banned has m items. Which change makes the whole loop O(n + m)?,,Sort banned first,Convert banned to a set once before the loop,Use banned.index(w),Reverse banned,B,"Building a set costs O(m) once; each lookup is then O(1), so the loop is O(n). A list lookup is O(m) per word → O(n·m)."
+py-set-08,py-sets,Medium,output,What is printed?,"print({1, 2} <= {1, 2, 3}, {1, 2} < {1, 2})",True True,True False,False False,False True,B,"`<=` is subset (true). `<` is **proper** subset — a set is not a proper subset of itself."
+py-set-09,py-sets,Medium,output,What is printed?,"print(list(dict.fromkeys([3, 1, 3, 2, 1])))","[1, 2, 3]","[3, 1, 2]","[3, 1, 3, 2, 1]","{3, 1, 2}",B,"`dict.fromkeys` keeps the first occurrence of each key **in insertion order**, giving order-preserving deduplication (a plain set would lose order)."
+py-set-10,py-sets,Medium,output,What happens?,"a = {1, 2}
+print(a | [3])","{1, 2, 3}",TypeError,"[1, 2, 3]","{1, 2, [3]}",B,"Set **operators** require both operands to be sets. The **method** form accepts any iterable: `a.union([3])`."
+py-set-11,py-sets,Hard,theory,Why can a frozenset be a dict key while a set cannot?,,frozensets are smaller,frozensets are immutable and therefore hashable,sets are always empty,dict keys must be strings,B,"A key's hash must never change. `frozenset` is immutable, so its hash is fixed; a mutable `set` is unhashable."
+py-slc-01,py-slicing,Easy,output,What is printed?,"a = [0, 1, 2, 3, 4, 5]
+print(a[1:4])","[1, 2, 3]","[1, 2, 3, 4]","[0, 1, 2, 3]","[2, 3, 4]",A,"`start` is included and `stop` excluded: indices 1, 2, 3."
+py-slc-02,py-slicing,Medium,output,What is printed?,"a = [0, 1, 2, 3, 4, 5]
+print(a[4:1:-1])","[4, 3, 2]","[4, 3, 2, 1]","[1, 2, 3, 4]",[],A,"With step −1, start at index 4 and walk down, stopping **before** index 1: 4, 3, 2."
+py-slc-03,py-slicing,Medium,output,What is printed?,"a = [0, 1, 2, 3, 4, 5]
+print(a[1:4:-1])","[3, 2, 1]",[],"[1, 2, 3]","[4, 3, 2]",B,"A negative step walks downward, but 1 → 4 is upward, so no element satisfies the range: empty list."
+py-slc-04,py-slicing,Easy,output,What happens?,"a = [1, 2, 3]
+print(a[5:], a[1:100])",IndexError,"[] [2, 3]","[3] [2, 3]","None [2, 3]",B,"Slice bounds are clipped to the sequence, so out-of-range slices never raise; `a[5:]` is empty."
+py-slc-05,py-slicing,Medium,output,What is printed?,"b = [1, 2, 3, 4, 5]
+b[1:3] = [""x""]
+print(b)","[1, 'x', 3, 4, 5]","[1, 'x', 4, 5]","[1, ['x'], 4, 5]",ValueError,B,"Slice assignment replaces the region `b[1:3]` (elements 2, 3) with the new items — lengths may differ for simple slices."
+py-slc-06,py-slicing,Hard,output,What happens?,"c = [1, 2, 3, 4]
+c[::2] = [9]","c becomes [9, 2, 4]","c becomes [9, 2, 9, 4]",ValueError,"c becomes [9, 2, 3, 4]",C,"For an **extended** slice (with a step), the replacement must have exactly the same length (here 2). Otherwise ValueError."
+py-slc-07,py-slicing,Medium,output,What is printed?,"a = [1, 2, 3]
+b = a[:]
+b[0] = 99
+print(a[0], a[:] is a)",99 True,1 False,1 True,99 False,B,"`a[:]` is a new (shallow) copy, so modifying `b` doesn't affect `a`, and the copy is a different object."
+py-slc-08,py-slicing,Easy,output,What is printed?,"s = ""abcdef""
+print(s[-2:], s[:-2])",ef abcd,fe abcd,ef cdef,de abc,A,"`s[-2:]` is the last two characters; `s[:-2]` is everything except the last two."
+py-slc-09,py-slicing,Hard,output,What is printed?,"a = [0, 1, 2, 3, 4]
+print(a[-0:])",[],"[0, 1, 2, 3, 4]",[4],Error,B,"`-0 == 0`, so `a[-0:]` equals `a[0:]` — the whole list, not 'the last zero elements'. A classic bug in rotation code when k = 0."
+py-slc-10,py-slicing,Medium,theory,What is the time cost of `s[1:]` on a string of length n?,,O(1) — it is a view,O(n) — it copies the characters,O(log n),Depends on the step,B,"Slicing builds a new object, copying the selected elements: O(k) for a result of length k. Repeated `s = s[1:]` in a loop is therefore O(n²)."
+py-slc-11,py-slicing,Medium,output,What is printed?,"m = [[1, 2, 3], [4, 5, 6]]
+print([row[-1] for row in m], m[-1])","[3, 6] [4, 5, 6]","[4, 5, 6] [3, 6]","[6] [3, 6]","[3, 6] [6]",A,"`row[-1]` takes each row's last element (a column); `m[-1]` slices nothing — it indexes the outer list, giving the last row."
+py-comp-01,py-comprehensions,Easy,output,What is printed?,print([x * 2 for x in range(4) if x % 2 == 1]),"[2, 6]","[0, 2, 4, 6]","[1, 3]","[0, 4]",A,"Filter keeps odd x (1, 3), then the expression doubles them: [2, 6]."
+py-comp-02,py-comprehensions,Medium,output,What is printed?,"print([x if x > 0 else 0 for x in [-1, 2, -3]])","[2]","[0, 2, 0]","[-1, 2, -3]",SyntaxError,B,"`a if cond else b` **before** the `for` is a conditional expression applied to every element — no element is dropped."
+py-comp-03,py-comprehensions,Medium,theory,Which is a SyntaxError?,,[x for x in xs if x > 0],[x if x > 0 else 0 for x in xs],[x for x in xs if x > 0 else 0],[x for x in xs if x if x > 1],C,"A filter `if` (after the `for`) cannot have an `else`. To transform every element, put the conditional expression first. (Option D is legal: two stacked filters.)"
+py-comp-04,py-comprehensions,Medium,output,What is printed?,"m = [[1, 2], [3, 4]]
+print([x for row in m for x in row])","[[1, 2], [3, 4]]","[1, 2, 3, 4]","[1, 3, 2, 4]",Error,B,"Two `for` clauses read left-to-right as outer-to-inner loops, flattening the matrix row by row."
+py-comp-05,py-comprehensions,Medium,output,What is printed?,"print([(i, j) for i in range(3) for j in range(i)])","[(0, 0), (1, 0), (2, 1)]","[(1, 0), (2, 0), (2, 1)]","[(0, 1), (0, 2), (1, 2)]",[],B,"Outer i = 0 has no j; i = 1 gives j = 0; i = 2 gives j = 0, 1."
+py-comp-06,py-comprehensions,Hard,output,What is printed?,"fs = [lambda: i for i in range(3)]
+print([f() for f in fs])","[0, 1, 2]","[2, 2, 2]","[3, 3, 3]",NameError,B,"Late binding: each lambda looks up `i` when called, and the comprehension's `i` ended at 2. Fix with `lambda i=i: i`."
+py-comp-07,py-comprehensions,Medium,output,What is printed?,"g = (x * x for x in range(3))
+print(list(g), list(g))","[0, 1, 4] [0, 1, 4]","[0, 1, 4] []",[] [],TypeError,B,"A generator expression is **single-use**: the first `list()` exhausts it, so the second gets nothing."
+py-comp-08,py-comprehensions,Easy,output,What is printed?,"x = ""outer""
+y = [x for x in range(3)]
+print(x)",outer,2,"[0, 1, 2]",NameError,A,"In Python 3 a comprehension's loop variable lives in its own scope and does not overwrite the outer `x`."
+py-comp-09,py-comprehensions,Medium,output,What is printed?,"print({w: len(w) for w in [""ab"", ""cde"", ""ab""]})","{'ab': 2, 'cde': 3, 'ab': 2}","{'ab': 2, 'cde': 3}","[('ab', 2), ('cde', 3)]","{2, 3}",B,"A dict comprehension; the duplicate key 'ab' just overwrites itself, so it appears once."
+py-comp-10,py-comprehensions,Medium,theory,Why prefer `sum(x*x for x in data)` over `sum([x*x for x in data])` for huge data?,,It is always exactly twice as fast,The generator expression avoids building a whole intermediate list in memory,The list version gives a different result,sum does not accept lists,B,"Both are O(n) time, but the generator yields one value at a time (O(1) memory) instead of materializing n values first."
+py-comp-11,py-comprehensions,Easy,theory,Is `[print(x) for x in items]` good style?,,"Yes, it is the fastest way to print","No — it builds a useless list of None; use a for loop for side effects","Yes, comprehensions should replace all loops","No, it raises SyntaxError",B,"Comprehensions are for building collections. For actions (printing, writing, appending elsewhere) a plain `for` loop is clearer and doesn't waste memory."
+py-unp-01,py-unpacking,Easy,output,What is printed?,"first, *rest = [1, 2, 3, 4]
+print(first, rest)","1 (2, 3, 4)","1 [2, 3, 4]",1 4,Error,B,"The starred target collects the remaining items into a **list**."
+py-unp-02,py-unpacking,Medium,output,What is printed?,"*init, last = ""abc""
+print(init, last)","['a', 'b'] c",ab c,"('a', 'b') c",Error,A,"Starred targets always produce a list, even when unpacking a string."
+py-unp-03,py-unpacking,Easy,output,What happens?,"a, b = [1, 2, 3]",a=1 b=2,"a=1, b=[2, 3]",ValueError: too many values to unpack,a=1 b=3,C,"Without a starred target the number of targets must match the number of items exactly."
+py-unp-04,py-unpacking,Medium,output,What is printed?,"def f(a, b, c):
+    return a * 100 + b * 10 + c
+print(f(*[1, 2], **{""c"": 3}))",123,321,TypeError,6,A,"`*[1, 2]` supplies a=1, b=2 positionally and `**{""c"": 3}` supplies c=3 by keyword."
+py-unp-05,py-unpacking,Medium,output,What is printed?,"x = {""a"": 1, ""b"": 2}
+y = {""b"": 9}
+print({**x, **y})","{'a': 1, 'b': 2}","{'a': 1, 'b': 9}","{'b': 9, 'a': 1}",TypeError,B,"Later unpacked mappings override earlier keys, so 'b' takes 9 from y. Order of keys follows first insertion."
+py-unp-06,py-unpacking,Hard,output,What is printed?,"i = 0
+l = [5, 6]
+i, l[i] = 1, 9
+print(i, l)","1 [9, 6]","1 [5, 9]","0 [9, 6]",IndexError,B,"The right side `(1, 9)` is built first, then targets are assigned left to right: `i = 1`, then `l[i]` uses the **new** i, so `l[1] = 9`."
+py-unp-07,py-unpacking,Easy,output,What is printed?,"print([*range(3), *""ab""])","[0, 1, 2, 'ab']","[0, 1, 2, 'a', 'b']","[range(0, 3), 'ab']",SyntaxError,B,"`*` inside a list display inserts each item of the iterable: three numbers, then two characters."
+py-unp-08,py-unpacking,Medium,theory,"Why is `*a, *b = [1, 2, 3]` a SyntaxError?",,Star expressions are not allowed on the left,Two starred targets at one level would be ambiguous,Lists cannot be unpacked,It needs parentheses,B,"Python cannot decide how to split the leftovers between two starred names, so only one starred target is allowed per level."
+py-unp-09,py-unpacking,Medium,output,What is printed?,"m = [[1, 2], [3, 4]]
+print(list(zip(*m)))","[(1, 2), (3, 4)]","[(1, 3), (2, 4)]","[1, 2, 3, 4]","[[1, 3], [2, 4]]",B,"`zip(*m)` is `zip([1, 2], [3, 4])`, which pairs elements by position — the transpose (as tuples)."
+py-unp-10,py-unpacking,Medium,output,What is printed?,"for i, (x, y) in enumerate([(1, 2), (3, 4)]):
+    print(i + x + y, end="" "")",3 7,1 2 3 4,3 8,Error,C,"Nested unpacking: i=0, x=1, y=2 → 3; i=1, x=3, y=4 → 8."
+py-unp-11,py-unpacking,Easy,output,What is printed?,"a, *b, c = [1, 2]
+print(a, b, c)",1 [] 2,"1 [2] None",ValueError,1 2 [],A,"`a` and `c` take the first and last items; the starred `b` takes whatever is left — nothing, so an empty list."
+py-stra-01,py-strings-advanced,Easy,output,What is printed?,"print(""a,b,,c"".split("",""))","['a', 'b', 'c']","['a', 'b', '', 'c']","['a,b,,c']","['a', 'b', ',', 'c']",B,"Splitting on an explicit separator keeps empty fields between consecutive separators."
+py-stra-02,py-strings-advanced,Easy,output,What is printed?,"print(""-"".join([""2026"", ""10"", ""24""]))",2026-10-24,-2026-10-24-,"['2026', '10', '24']",TypeError,A,"`sep.join(items)` places the separator **between** the items."
+py-stra-03,py-strings-advanced,Medium,output,What happens?,"print("","".join([1, 2, 3]))","1,2,3",TypeError,"[1, 2, 3]",123,B,"`join` requires an iterable of **strings**. Convert first: `"","".join(map(str, nums))`."
+py-stra-04,py-strings-advanced,Medium,output,What is printed?,"print(""banana"".find(""z""), ""banana"".count(""ana""))",-1 2,-1 1,ValueError,0 1,B,"`find` returns −1 when absent (unlike `index`, which raises). `count` counts **non-overlapping** occurrences: only one 'ana' fits without overlap."
+py-stra-05,py-strings-advanced,Hard,output,What is printed?,"print(repr(""commit.com"".strip("".com"")))",'commit','it','commit.',''commit.com'',B,"`strip` removes any characters from the **set** {'.', 'c', 'o', 'm'} from both ends: 'comm' on the left and '.com' on the right, leaving 'it'. Use `removesuffix` for exact suffixes."
+py-stra-06,py-strings-advanced,Medium,output,What is printed?,"print(""-42"".isdigit(), ""42"".isdigit(), """".isalpha())",True True False,False True False,False True True,True True True,B,"The minus sign is not a digit, and every `is…()` test returns False for the empty string."
+py-stra-07,py-strings-advanced,Medium,output,What is printed?,"print(len(""héllo""), len(""héllo"".encode(""utf-8"")))",5 5,5 6,6 6,6 5,B,"`len(str)` counts code points (5); UTF-8 encodes `é` in two bytes, so the bytes object has 6."
+py-stra-08,py-strings-advanced,Medium,output,What is printed?,"b = b""AB""
+print(b[0])",A,b'A',65,'A',C,"Indexing a `bytes` object returns an **int** (the byte value); slicing (`b[0:1]`) would give `b'A'`."
+py-stra-09,py-strings-advanced,Medium,output,What is printed?,"print(""k=v=w"".split(""="", 1))","['k', 'v', 'w']","['k', 'v=w']","['k=v', 'w']","('k', '=', 'v=w')",B,"`maxsplit=1` splits only at the first separator, so the value keeps its `=`."
+py-stra-10,py-strings-advanced,Medium,theory,What does `'é'.encode('ascii')` do?,,Returns b'e',Returns b'\xe9',Raises UnicodeEncodeError,Returns b'?',C,"ASCII only covers code points 0–127. Without an `errors=` argument (e.g. 'replace' → b'?'), encoding raises `UnicodeEncodeError`."
+py-stra-11,py-strings-advanced,Easy,output,What is printed?,"print(""7"".zfill(3), ""ab"".center(6, ""*""))",007 **ab**,700 ab****,  7 **ab**,007 ***ab***,A,"`zfill` left-pads with zeros to the width; `center` pads both sides with the fill character."
+py-stra-12,py-strings-advanced,Hard,theory,Two strings that both display as 'é' compare unequal. What is the most likely cause?,,Different fonts,One is composed (U+00E9) and the other decomposed (e + U+0301); normalize with unicodedata.normalize,Python string comparison is broken,One is bytes,B,"Unicode allows several code-point sequences for the same visible character. Normalizing (NFC/NFD) before comparing fixes it."
+py-mut-01,py-mutability-copying,Medium,output,What is printed?,"a = [[1], [2]]
+b = a.copy()
+b[0].append(9)
+print(a)","[[1], [2]]","[[1, 9], [2]]","[[1], [2], 9]",Error,B,"`copy()` is **shallow**: the inner lists are shared, so mutating `b[0]` changes `a[0]` too."
+py-mut-02,py-mutability-copying,Medium,output,What is printed?,"import copy
+a = [[1], [2]]
+b = copy.deepcopy(a)
+b[0].append(9)
+print(a)","[[1], [2]]","[[1, 9], [2]]","[[9], [2]]",Error,A,"`deepcopy` recursively copies the inner lists, so `a` is completely independent of `b`."
+py-mut-03,py-mutability-copying,Hard,output,What is printed?,"def add(x, lst=[]):
+    lst.append(x)
+    return lst
+add(1)
+print(add(2))",[2],"[1, 2]",[],Error,B,"The default list is created **once** when `def` runs and is shared across calls, so the second call sees the 1 from the first call."
+py-mut-04,py-mutability-copying,Medium,output,What is printed?,"def f(lst):
+    lst.append(3)
+    lst = [0]
+nums = [1, 2]
+f(nums)
+print(nums)","[0]","[1, 2, 3]","[1, 2]","[0, 3]",B,"The parameter is bound to the caller's list: `append` mutates it (visible), then `lst = [0]` only rebinds the local name."
+py-mut-05,py-mutability-copying,Easy,theory,What is the idiomatic fix for a mutable default argument?,,Use a global list instead,"Default to None and create a new list inside: if lst is None: lst = []",Make the list a tuple and convert it,Call del on the parameter at the end,B,"`None` is immutable and serves as a sentinel meaning 'not provided'; a fresh list is created on each call that needs one."
+py-mut-06,py-mutability-copying,Medium,theory,"Which statement about Python argument passing is correct?",,"Ints are passed by value, lists by reference","Every argument is passed by object reference: the parameter names the same object as the argument",Everything is copied on each call,"Arguments are passed by name, like macros",B,"There is one rule for all types (pass by assignment). Immutable objects merely *look* pass-by-value because they cannot be mutated."
+py-mut-07,py-mutability-copying,Medium,output,What is printed?,"d = {""k"": [1]}
+e = dict(d)
+e[""k""].append(2)
+e[""new""] = 0
+print(d)","{'k': [1]}","{'k': [1, 2]}","{'k': [1, 2], 'new': 0}","{'k': [1], 'new': 0}",B,"`dict(d)` is a shallow copy: a new outer dict (so 'new' only goes into e), but the list value is shared, so the append is visible in d."
+py-mut-08,py-mutability-copying,Hard,theory,How does deepcopy handle a list that contains itself?,,It recurses forever and crashes,It raises RecursionError immediately,It uses a memo of already-copied objects so the copy contains itself too,It refuses to copy cyclic structures,C,"`deepcopy` records each object it copies in a memo dict; on revisiting an object it reuses the existing copy, preserving cycles and shared references."
+py-mut-09,py-mutability-copying,Medium,theory,When is a shallow copy of a list completely sufficient?,,Never,When all elements are immutable (e.g. ints or strings),Only for lists shorter than 10,When the list is sorted,B,"Shared immutable elements can't be mutated through either list, so a shallow copy behaves as fully independent."
+py-mut-10,py-mutability-copying,Hard,output,What is printed?,"import datetime, time
+def stamp(t=time.time()):
+    return t
+a = stamp(); time.sleep(0.01); b = stamp()
+print(a == b)",True,False,TypeError,Depends on the OS,A,"The default expression `time.time()` was evaluated once at definition time, so both calls return the same stored value."
+py-sort-01,py-sorting,Easy,output,What is printed?,"nums = [3, 1, 2]
+print(sorted(nums), nums)","[1, 2, 3] [1, 2, 3]","[1, 2, 3] [3, 1, 2]",None [1 2 3],"[3, 2, 1] [3, 1, 2]",B,"`sorted` returns a new list and leaves the original unchanged."
+py-sort-02,py-sorting,Easy,output,What is printed?,"print(sorted([""b"", ""A"", ""a"", ""B""]))","['a', 'A', 'b', 'B']","['A', 'B', 'a', 'b']","['A', 'a', 'B', 'b']","['a', 'b', 'A', 'B']",B,"Default string order is by code point: all uppercase ASCII letters (65–90) come before lowercase (97–122)."
+py-sort-03,py-sorting,Medium,output,What is printed?,"print(sorted([-3, 1, -2], key=abs))","[-3, -2, 1]","[1, -2, -3]","[1, 2, 3]","[-2, -3, 1]",B,"The key function is used only for comparison; the original elements are returned, ordered by absolute value."
+py-sort-04,py-sorting,Medium,theory,What does it mean that Python's sort is stable?,,It never crashes,Elements with equal keys keep their original relative order,It always runs in O(n),It sorts in place,B,"Stability preserves the input order among ties, which enables multi-pass sorting by several keys."
+py-sort-05,py-sorting,Medium,output,What is printed?,"data = [(""a"", 2), (""b"", 1), (""c"", 2)]
+print([x[0] for x in sorted(data, key=lambda x: x[1])])","['b', 'a', 'c']","['b', 'c', 'a']","['a', 'c', 'b']","['c', 'a', 'b']",A,"Sorted by the number: b (1) first; a and c tie on 2 and keep their original order (stability)."
+py-sort-06,py-sorting,Hard,theory,"How do you sort records by name DESCENDING then age ascending, when name is a string?",,key=lambda r: (-r.name r.age),"Two stable passes: sort by age, then sort by name with reverse=True",key=lambda r: (r.name r.age) with reverse=True,It is impossible in Python,B,"You can't negate a string. Sort by the secondary key first, then by the primary key (with `reverse=True`); stability keeps the age order within equal names."
+py-sort-07,py-sorting,Medium,theory,What is the best-case time complexity of Timsort?,,O(1),O(n) — for already sorted (or reverse-sorted) input,O(n log n),O(n^2),B,"Timsort detects existing runs; a fully sorted input is one run, so it only needs a linear scan."
+py-sort-08,py-sorting,Hard,theory,Why can't any comparison-based sort beat O(n log n) in the worst case?,,Because of CPU cache limits,"There are n! possible orderings and each comparison at best halves them, needing log2(n!) ≈ n log n comparisons",Because Python is interpreted,It can — Timsort is O(n),B,"The decision-tree lower bound: distinguishing n! permutations requires at least log2(n!) = Θ(n log n) yes/no comparisons."
+py-sort-09,py-sorting,Medium,output,What happens?,"print(sorted([3, ""a"", 1]))","[1, 3, 'a']","['a', 1, 3]",TypeError,"[3, 'a', 1]",C,"Python 3 has no ordering between `str` and `int`; comparing them raises `TypeError`."
+py-sort-10,py-sorting,Medium,output,What is printed?,"from operator import itemgetter
+recs = [(""bob"", 25), (""ada"", 30), (""cy"", 25)]
+print(sorted(recs, key=itemgetter(1, 0))[0])","('ada', 30)","('bob', 25)","('cy', 25)",TypeError,B,"`itemgetter(1, 0)` returns `(age, name)` tuples; the smallest is (25, 'bob')."
+py-sort-11,py-sorting,Medium,theory,When do you need `functools.cmp_to_key` instead of a normal key?,,Whenever sorting numbers,"When the order depends on comparing two elements together, e.g. arranging numbers so their concatenation is largest",When reverse=True is used,Never — it is deprecated,B,"A key maps each element independently. Rules like 'a before b if a+b > b+a' need both elements at once, so a comparison function is converted into a key class."

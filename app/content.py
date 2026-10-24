@@ -79,7 +79,8 @@ class Language:
 # ---------------------------------------------------------------- parsing
 
 FRONT = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.S)
-FENCE = re.compile(r"```[^\n]*\n(.*?)\n```", re.S)
+FENCE = re.compile(r"```([^\n]*)\n(.*?)\n```", re.S)
+NON_CODE = {"text", "output", "plain", "console", "mermaid", "markdown"}
 
 
 def parse_front_matter(text: str) -> tuple[dict, str]:
@@ -112,8 +113,12 @@ def split_sections(body: str) -> list[tuple[str, str]]:
 
 
 def first_fence(text: str) -> str | None:
-    m = FENCE.search(text)
-    return m.group(1) if m else None
+    """First fenced code block, skipping text/output/diagram blocks."""
+    blocks = FENCE.findall(text)
+    for lang, code in blocks:
+        if lang.strip().split()[:1] and lang.strip().split()[0] not in NON_CODE:
+            return code
+    return blocks[0][1] if blocks else None
 
 
 def parse_tests(text: str) -> list[Test]:
@@ -123,11 +128,14 @@ def parse_tests(text: str) -> list[Test]:
     for kind, body in zip(blocks[1::2], blocks[2::2]):
         body = body[1:] if body.startswith("\n") else body   # rest of the === line
         parts = re.split(r"^---[ \t]*$", body, maxsplit=1, flags=re.M)
-        inp = parts[0].rstrip("\n") + "\n"
         out = None
         if len(parts) > 1:
+            # input keeps blank lines (an empty input line is meaningful)
+            inp = parts[0] if parts[0].endswith("\n") else parts[0] + "\n"
             out = parts[1][1:] if parts[1].startswith("\n") else parts[1]
             out = out.rstrip("\n")   # leading blank lines are significant
+        else:
+            inp = parts[0].rstrip("\n") + "\n"
         tests.append(Test(inp, out, (kind or "hidden").lower() == "sample"))
     return tests
 
