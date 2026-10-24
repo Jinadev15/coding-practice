@@ -1,0 +1,42 @@
+id,topic,difficulty,type,question,code,option_a,option_b,option_c,option_d,answer,explanation
+c-st-01,c-structs,Easy,code,What is printed?,"struct P { int x, y; };
+  struct P a = {1, 2};
+  struct P b = a;
+  b.x = 9;
+  printf(""%d"", a.x);",9,1,garbage,Compile error,B,Struct assignment copies all members.
+c-st-02,c-structs,Easy,theory,What is `p->x` equivalent to?,,*p.x,(*p).x,&p.x,p.*x,B,"The . operator binds tighter than unary *, hence the arrow shorthand."
+c-st-03,c-structs,Medium,code,What are the values of y and theta?,"struct Pose { double x, y, theta; };
+  struct Pose p = {.x = 1.0, .theta = 0.5};",garbage and 0.5,0.0 and 0.5,0.5 and garbage,Compile error,B,Members not named in an initialiser are zero-initialised.
+c-st-04,c-structs,Medium,theory,Why shouldn't structs be compared with memcmp?,,memcmp is slow,"Padding bytes have indeterminate values, so equal structs may compare unequal",memcmp only works on strings,Structs have no address,B,Compare field by field.
+c-st-05,c-structs,Medium,theory,Why does a self-referential struct need a tag (struct Node) rather than only a typedef name?,,Typedefs can't contain pointers,"The typedef name is not declared until the end of the declaration, so inside it the struct must be referred to by its tag",Tags are faster,It doesn't,B,typedef struct Node { struct Node *next; } Node;
+c-st-06,c-structs,Hard,theory,What is a flexible array member?,,An array whose size changes automatically,"An incomplete array as the last struct member, allocated together with the struct (sizeof excludes it)",A pointer member,A VLA inside a function,B,malloc(sizeof *s + n * sizeof s->data[0]).
+c-un-01,c-unions-enums,Easy,theory,What is sizeof a union?,,The sum of its members' sizes,At least the size of its largest member (plus alignment padding),Always 8,The size of its first member,B,All members share the same storage.
+c-un-02,c-unions-enums,Easy,code,What values do the enumerators have?,"enum E { A, B = 10, C, D = 3, F };",0 10 11 3 4,0 1 2 3 4,1 10 11 3 4,0 10 2 3 4,A,Each enumerator without a value is the previous one plus 1.
+c-un-03,c-unions-enums,Medium,theory,"In a tagged union, what is the role of the tag?",,It stores the union's size,It records which union member currently holds a valid value,It makes the union faster,It is required by the compiler,B,Read only the member indicated by the tag.
+c-un-04,c-unions-enums,Medium,theory,Which statements about C enums are true? (select all),,Enumeration constants have type int,Assigning an arbitrary int to an enum variable compiles,Two enums in the same scope can both define RED,gcc's -Wswitch can warn about unhandled enumerators in a switch without default,A|B|D,Enumerator names share the ordinary identifier namespace.
+c-un-05,c-unions-enums,Medium,code,What does this declare? `typedef double (*Unary)(double);`,,A function returning a pointer to double,"An alias Unary for ""pointer to function taking double and returning double""",A double pointer variable,A macro,B,"Unary ops[] = {sin, cos}; is then readable."
+c-un-06,c-unions-enums,Hard,code,What is sizeof this struct on x86-64?,struct V { char tag; union { char c; double d; int i; } u; };,10,13,16,24,C,tag(1) + pad(7) + union(8) = 16.
+c-al-01,c-bitfields-alignment,Medium,code,What is sizeof(struct A) on x86-64?,struct A { char c; int i; char d; };,6,8,12,16,C,"c, 3 pad, i, d, 3 tail pad."
+c-al-02,c-bitfields-alignment,Medium,theory,How can you minimise padding in a struct?,,Use more chars,Order members from largest to smallest alignment,Use bit fields everywhere,Padding can't be changed,B,The compiler must keep declaration order.
+c-al-03,c-bitfields-alignment,Medium,code,"On a little-endian machine, what does this print?","uint32_t x = 0x11223344;
+  unsigned char *b = (unsigned char *)&x;
+  printf(""%02x"", b[0]);",11,44,22,33,B,Little-endian stores the least significant byte first.
+c-al-04,c-bitfields-alignment,Hard,theory,Why are bit fields a poor choice for describing hardware registers in portable code?,,They are slower,"Bit order, straddling and padding are implementation-defined",They can't hold more than 1 bit,They can't be read,B,Use masks and shifts for portable layouts.
+c-al-05,c-bitfields-alignment,Medium,theory,What is the portable way to read a big-endian 16-bit value from a byte buffer p?,,*(uint16_t *)p,(uint16_t)(p[0] << 8 | p[1]),memcpy then use directly,ntohl(p),B,Casting may be misaligned and is byte-order dependent.
+c-al-06,c-bitfields-alignment,Hard,theory,What risks does __attribute__((packed)) introduce? (select all),,Misaligned member accesses that are slower or fault on some CPUs,Pointers to members may be misaligned (UB when dereferenced as their type),The struct becomes larger,The layout matches external formats byte for byte,A|B,"D is the benefit, not a risk."
+c-mac-01,c-macros,Easy,code,What is the value of SQ(1 + 2)?,#define SQ(x) x * x,9,5,6,3,B,Expands to 1 + 2 * 1 + 2.
+c-mac-02,c-macros,Medium,code,What are m and i afterwards?,"#define MAX(a, b) ((a) > (b) ? (a) : (b))
+  int i = 1;
+  int m = MAX(i++, 0);","m=1, i=2","m=2, i=3","m=1, i=3","m=2, i=2",B,i++ appears twice in the expansion.
+c-mac-03,c-macros,Medium,theory,Why are multi-statement macros wrapped in do { ... } while (0)?,,For performance,So the macro behaves like a single statement (e.g. inside if/else) and requires a trailing semicolon,To create a loop,The standard requires it,B,A bare block followed by ; breaks if/else.
+c-mac-04,c-macros,Hard,code,What do STR(VERSION) and XSTR(VERSION) produce?,"#define VERSION 3
+  #define STR(x) #x
+  #define XSTR(x) STR(x)","""3"" and ""3""","""VERSION"" and ""3""","""VERSION"" and ""VERSION""","3 and ""3""",B,# stringifies without expanding; the extra level expands the argument first.
+c-mac-05,c-macros,Medium,theory,Why must assert be a macro rather than a function?,,Functions can't abort,"It needs __FILE__/__LINE__ and the expression text at the call site, and must vanish with NDEBUG",Macros are faster,It doesn't,B,#cond and the location are only available via macro expansion.
+c-mac-06,c-macros,Medium,theory,What is the purpose of X-macros?,,Cross-platform code,"Maintaining one list that expands into several synchronised tables (enums, name strings, handlers)",Executing macros at run time,Faster compilation,B,Adding an item in one place updates everything.
+c-cc-01,c-conditional-compilation,Easy,theory,What problem do include guards solve?,,Slow compilation only,Multiple inclusion of the same header in one translation unit causing redefinitions,Linking errors between files,Missing headers,B,#ifndef X_H / #define X_H / ... / #endif.
+c-cc-02,c-conditional-compilation,Medium,theory,"In `#if FEATURE_LEVEL > 2`, what happens if FEATURE_LEVEL is not defined?",,Compile error,"It is treated as 0, so the condition is false (-Wundef can warn)",It is treated as 1,Undefined behaviour at run time,B,Undefined identifiers evaluate to 0 in #if.
+c-cc-03,c-conditional-compilation,Medium,code,What is wrong with this in a release build compiled with -DNDEBUG?,assert(init_motors() == 0);,Nothing,init_motors() is never called because assert expands to nothing,assert always aborts,Compile error,B,Never put required side effects inside assert.
+c-cc-04,c-conditional-compilation,Medium,theory,Which can be used inside a #if expression? (select all),,Macros,Integer literals and defined(NAME),sizeof(int),enum constants,A|B,The preprocessor knows nothing about types or enums.
+c-cc-05,c-conditional-compilation,Medium,theory,How do you check at COMPILE time that a struct is exactly 8 bytes?,,assert(sizeof(H) == 8),"_Static_assert(sizeof(H) == 8, ""message"")",#if sizeof(H) == 8,if (sizeof(H) != 8) exit(1),B,#if cannot evaluate sizeof; assert is a run-time check.
+c-cc-06,c-conditional-compilation,Hard,theory,What is a maintenance risk of heavy #ifdef usage?,,Larger binaries,"Code in inactive branches isn't compiled, so it rots unnoticed and the number of configurations explodes",Slower run time,It disables optimisation,B,Isolate platform code and build every configuration in CI.
