@@ -21,6 +21,11 @@ MAX_OUT = 64_000           # stderr / compiler messages
 MAX_STDOUT = 32_000_000   # program output kept for comparison (big tests print MBs)
 _expected_cache: dict[tuple[str, float], list[str]] = {}
 
+# Python submissions run in the isolated environment created by tools/setup_judge_env.sh
+# (NumPy, pandas, SciPy, scikit-learn, PyTorch, OpenCV, ...); fall back to the server's interpreter.
+_JUDGE_VENV_PY = Path(__file__).resolve().parent.parent / ".venv-judge" / "bin" / "python"
+PYTHON = os.environ.get("JUDGE_PYTHON") or (str(_JUDGE_VENV_PY) if _JUDGE_VENV_PY.exists() else sys.executable)
+
 
 def _limits(mem_mb: int, cpu_s: int):
     def apply():
@@ -39,7 +44,7 @@ def _expand(cmd: list[str], sources: list[str], main: str) -> list[str]:
         if part == "{sources}":
             out.extend(sources)
         else:
-            out.append(part.replace("{main}", main).replace("{python}", sys.executable))
+            out.append(part.replace("{main}", main).replace("{python}", PYTHON))
     return out
 
 
@@ -126,7 +131,8 @@ class Workspace:
                 timeout=time_limit + 0.5,
                 preexec_fn=_limits(cfg.get("memory_mb", 512), math.ceil(time_limit) + 1),
                 env={"PATH": os.environ.get("PATH", ""), "PYTHONHASHSEED": "0",
-                     "PYTHONIOENCODING": "utf-8", "LANG": "C.UTF-8"},
+                     "PYTHONIOENCODING": "utf-8", "LANG": "C.UTF-8", "HOME": str(self.dir),
+                     **cfg.get("env", {})},
             )
         except subprocess.TimeoutExpired as e:
             out = e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or "")

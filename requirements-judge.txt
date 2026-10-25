@@ -1,0 +1,11 @@
+# Libraries available to Python submissions (installed into .venv-judge by tools/setup_judge_env.sh).
+numpy
+pandas
+matplotlib
+scipy
+scikit-learn
+torch
+torchvision
+opencv-python-headless
+pytest
+hypothesis

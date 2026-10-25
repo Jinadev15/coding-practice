@@ -10,8 +10,19 @@ GitHub-style activity heatmap, per-language daily targets and four special quizz
 python3 server.py
 ```
 
-It opens http://127.0.0.1:8765. It needs only Python 3.10+ (no packages), plus `gcc`/`g++` for C/C++ problems.
+It opens http://127.0.0.1:8765. The server itself needs only Python 3.10+ (no packages), plus `gcc`/`g++` for C/C++ problems.
 Options: `--port 9000`, `--no-browser`.
+
+Python problems from the scientific and AI modules use NumPy, pandas, SciPy, Matplotlib, scikit-learn, PyTorch (CPU) and OpenCV.
+Install them once into an isolated environment (needs [uv](https://docs.astral.sh/uv/)):
+
+```bash
+tools/setup_judge_env.sh
+```
+
+This creates `.venv-judge/` from `requirements-judge.txt`, and the judge uses it automatically for Python submissions
+(override with `JUDGE_PYTHON=/path/to/python`). Native thread pools are pinned to one thread inside the judge,
+so timings are stable and memory limits hold.
 
 ## How it works
 
