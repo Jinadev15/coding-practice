@@ -22,7 +22,8 @@ tools/setup_judge_env.sh
 
 This creates `.venv-judge/` from `requirements-judge.txt`, and the judge uses it automatically for Python submissions
 (override with `JUDGE_PYTHON=/path/to/python`). Native thread pools are pinned to one thread inside the judge,
-so timings are stable and memory limits hold.
+so timings are stable and memory limits hold. If ROS 2 is installed under `/opt/ros/<distro>`, the setup
+script also exposes `rclpy` and the message packages to the judge, and every run gets its own DDS domain.
 
 ## How it works
 

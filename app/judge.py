@@ -25,6 +25,12 @@ _expected_cache: dict[tuple[str, float], list[str]] = {}
 # (NumPy, pandas, SciPy, scikit-learn, PyTorch, OpenCV, ...); fall back to the server's interpreter.
 _JUDGE_VENV_PY = Path(__file__).resolve().parent.parent / ".venv-judge" / "bin" / "python"
 PYTHON = os.environ.get("JUDGE_PYTHON") or (str(_JUDGE_VENV_PY) if _JUDGE_VENV_PY.exists() else sys.executable)
+# Extra runtime variables recorded by the setup script (e.g. ROS 2 library paths).
+_JUDGE_ENV_FILE = _JUDGE_VENV_PY.parent.parent / "judge_env.json"
+PY_EXTRA_ENV: dict[str, str] = {}
+if PYTHON == str(_JUDGE_VENV_PY) and _JUDGE_ENV_FILE.exists():
+    import json as _json
+    PY_EXTRA_ENV = _json.loads(_JUDGE_ENV_FILE.read_text())
 
 
 def _limits(mem_mb: int, cpu_s: int):
@@ -132,6 +138,9 @@ class Workspace:
                 preexec_fn=_limits(cfg.get("memory_mb", 512), math.ceil(time_limit) + 1),
                 env={"PATH": os.environ.get("PATH", ""), "PYTHONHASHSEED": "0",
                      "PYTHONIOENCODING": "utf-8", "LANG": "C.UTF-8", "HOME": str(self.dir),
+                     **(PY_EXTRA_ENV if "{python}" in cfg["run"] else {}),
+                     # each run gets its own DDS domain so parallel ROS 2 tests can't see each other
+                     "ROS_DOMAIN_ID": str(1 + (os.getpid() + int(time.time() * 1000)) % 100),
                      **cfg.get("env", {})},
             )
         except subprocess.TimeoutExpired as e:

@@ -129,9 +129,10 @@ v.reshape(-1, 2)          # -1: infer that dimension → (3, 2)
 v[:, np.newaxis]          # (6, 1): add an axis (column vector)
 m.T                       # transpose (a view)
 m.ravel()                 # flatten (a view if contiguous), m.flatten() always copies
-np.concatenate([a, b], axis=0)
-np.stack([a, b])          # a new axis
-np.vstack, np.hstack, np.split
+p, q = np.zeros((2, 3)), np.ones((2, 3))
+np.concatenate([p, q], axis=0)   # (4, 3): join along an existing axis
+np.stack([p, q])                 # (2, 2, 3): a NEW leading axis
+np.vstack([p, q]), np.hstack([p, q]), np.split(np.arange(6), 3)
 ```
 
 ## 8. Why vectorised code is fast

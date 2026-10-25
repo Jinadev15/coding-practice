@@ -1,6 +1,9 @@
 # Libraries available to Python submissions (installed into .venv-judge by tools/setup_judge_env.sh).
 numpy
 pandas
+bottleneck
+numexpr
+pyarrow
 matplotlib
 scipy
 scikit-learn
