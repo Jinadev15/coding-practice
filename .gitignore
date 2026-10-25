@@ -8,3 +8,4 @@ data/*.db-shm
 .venv-judge/
 .cache/
 data/
+.authoring/
