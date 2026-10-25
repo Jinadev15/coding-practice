@@ -101,16 +101,21 @@ int main(int argc, char** argv) {
                         node->get_parameter("slow_distance").as_double(), node->get_parameter("max_speed").as_double());
         } else if (cmd == "free") {
             send_scan({5.0f, 3.0f, inf});
-            std::printf("free: %s %s %s\n", send_cmd(0.5, 0.2).c_str(), send_cmd(2.0, -0.1).c_str(), send_cmd(-1.5, 0).c_str());
+            std::string a = send_cmd(0.5, 0.2), b = send_cmd(2.0, -0.1), c = send_cmd(-1.5, 0);
+            std::printf("free: %s %s %s\n", a.c_str(), b.c_str(), c.c_str());
         } else if (cmd == "slow") {
             send_scan({0.7f, 0.05f, nan, 12.0f});
-            std::printf("slow: %s %s\n", send_cmd(0.6, 0.3).c_str(), send_cmd(-0.4, 0).c_str());
+            std::string a = send_cmd(0.6, 0.3), b = send_cmd(-0.4, 0);
+            std::printf("slow: %s %s\n", a.c_str(), b.c_str());
         } else if (cmd == "stop") {
             send_scan({0.3f, 2.0f});
-            std::printf("stop: %s %s\n", send_cmd(0.5, 1.0).c_str(), send_cmd(-0.2, 0).c_str());
+            std::string a = send_cmd(0.5, 1.0), b = send_cmd(-0.2, 0);
+            std::printf("stop: %s %s\n", a.c_str(), b.c_str());
         } else if (cmd == "service") {
-            std::printf("disable: %s -> %s\n", call(false).c_str(), send_cmd(0.5, 0.5).c_str());
-            std::printf("enable: %s -> %s\n", call(true).c_str(), send_cmd(0.5, 0.5).c_str());
+            std::string r1 = call(false); std::string o1 = send_cmd(0.5, 0.5);
+            std::printf("disable: %s -> %s\n", r1.c_str(), o1.c_str());
+            std::string r2 = call(true); std::string o2 = send_cmd(0.5, 0.5);
+            std::printf("enable: %s -> %s\n", r2.c_str(), o2.c_str());
         } else if (cmd == "setparams") {
             auto ok = node->set_parameters({rclcpp::Parameter("max_speed", 0.3), rclcpp::Parameter("slow_distance", 2.0)});
             auto bad1 = node->set_parameters({rclcpp::Parameter("stop_distance", -1.0)});
@@ -144,8 +149,8 @@ free
 ---
 node: safety_filter
 slow: (0.300, 0.300) (-0.400, 0.000)
-disable: true disabled -> (0.250, 0.500)
-enable: true enabled -> (0.000, 0.000)
+disable: true disabled -> (0.000, 0.000)
+enable: true enabled -> (0.250, 0.500)
 valid set: 1 1, negative rejected: 1, >= slow rejected: 1, stop still 0.40
 after params: (0.150, 0.000)
 free: (0.300, 0.200) (0.300, -0.100) (-0.300, 0.000)
