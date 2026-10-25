@@ -2,7 +2,7 @@
 id: cpp-hash-prefix-suite
 title: Custom Hashing and Prefix-Sum Counting
 difficulty: Hard
-order: 1
+order: 8
 tags: unordered_map, custom hash, prefix sums, modular arithmetic, pairs
 time_limit: 3
 ---

@@ -2,7 +2,7 @@
 id: cpp-window-toolkit
 title: Sliding Windows and STL Two-Pointer Algorithms
 difficulty: Medium
-order: 1
+order: 9
 tags: sliding window, two pointers, deque, STL algorithms, erase-remove
 time_limit: 2
 ---

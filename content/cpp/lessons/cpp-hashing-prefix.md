@@ -1,136 +1,177 @@
-# Hashing and Prefix Sums
+# Prefix Sums and Difference Arrays
 
-Hash maps and prefix sums turn quadratic scans into linear passes. In C++, the details that matter are:
-- choosing between `std::unordered_map`, `std::map` and plain arrays
-- writing hash functions for custom keys (pairs, tuples, structs)
-- avoiding rehash and adversarial-collision slowdowns
-- building prefix-sum arrays with the right integer types, using `std::partial_sum` / `std::inclusive_scan`
+**Prefix sums** answer "what is the sum of `a[l..r]`?" in O(1) after an O(n) precomputation. **Difference arrays** do the reverse: "add `v` to every element of `a[l..r]`" in O(1), with the final array rebuilt in O(n). Combined with a hash map, prefix sums also count subarrays with a given sum in O(n), **even with negative numbers**, which is exactly where sliding windows fail.
 
-## 1. Which associative container?
+## 1. Prefix sums in 1D
 
-| Container | Lookup | Ordered iteration | Notes |
-|---|---|---|---|
-| plain `vector<int>` / `array` indexed by key | O(1), fastest | yes | keys small and dense (≤ ~10⁷) |
-| `unordered_map` / `unordered_set` | O(1) average | no | node-based, ~2–5× slower than flat maps; `reserve` up front |
-| `map` / `set` | O(log n) | yes | needed for lower_bound, ordered traversal, deterministic output |
-| sorted `vector` + `lower_bound` | O(log n) | yes | best for build-once/query-many |
-| `std::flat_map` (C++23) | O(log n) | yes | a sorted vector under the hood |
+Define `P[0] = 0` and `P[i+1] = P[i] + a[i]`. So `P[i]` is the sum of the first `i` elements.
 
-## 2. Counting and complement lookup
-
-```cpp
-// two-sum: indices of a pair summing to target
-optional<pair<int,int>> two_sum(const vector<int>& a, int target) {
-    unordered_map<int, int> seen;
-    seen.reserve(a.size() * 2);
-    for (int i = 0; i < (int)a.size(); ++i) {
-        if (auto it = seen.find(target - a[i]); it != seen.end()) return pair{it->second, i};
-        seen.emplace(a[i], i);
-    }
-    return nullopt;
-}
+```text
+index i:    0   1   2   3   4
+a:          3   1   4   1   5
+P:      0   3   4   8   9  14        (P has n+1 entries)
 ```
 
-> [!WARNING]
-> `m[key]` **inserts** a default value if the key is missing. In a "does it exist?" check, that silently grows the map (and is illegal on a `const` map). Use `find`, `contains` (C++20) or `count` for lookups, and `m[key]++` only when insertion is intended.
-
-## 3. Hashing custom keys
-
-`std::unordered_map<pair<int,int>, int>` doesn't compile, because there's no `std::hash<pair>`. Provide one:
-
-```cpp
-struct PairHash {
-    size_t operator()(const pair<int,int>& p) const noexcept {
-        uint64_t x = (uint64_t)(uint32_t)p.first << 32 | (uint32_t)p.second;   // pack two ints into 64 bits
-        x ^= x >> 33; x *= 0xff51afd7ed558ccdULL; x ^= x >> 33;                 // mix (murmur finaliser)
-        return x;
-    }
-};
-unordered_map<pair<int,int>, int, PairHash> grid_cost;
-
-// for a struct: also define operator== (or a defaulted <=>) so the map can compare keys
-struct Cell { int r, c; bool operator==(const Cell&) const = default; };
-struct CellHash { size_t operator()(Cell k) const noexcept { return PairHash{}({k.r, k.c}); } };
-```
-
-Combining hashes with `h1 ^ h2` is weak (symmetric: `(a, b)` and `(b, a)` collide). Pack the fields or use a mixing step, like `boost::hash_combine`'s `seed ^= h + 0x9e3779b9 + (seed << 6) + (seed >> 2)`.
-
-## 4. Prefix sums in C++
+**The sum of `a[l..r]` (inclusive) is `P[r+1] − P[l]`.** Everything up to `r`, minus everything before `l`.
 
 ```cpp
 vector<long long> P(n + 1, 0);
-for (int i = 0; i < n; ++i) P[i + 1] = P[i] + a[i];       // explicit and clear
-// or: partial_sum(a.begin(), a.end(), P.begin() + 1);    // careful: accumulates in the OUTPUT element type
-
-auto range_sum = [&](int l, int r) { return P[r] - P[l]; };   // [l, r)
+for (int i = 0; i < n; ++i) P[i + 1] = P[i] + a[i];
+auto range_sum = [&](int l, int r) { return P[r + 1] - P[l]; };   // O(1)
 ```
 
-### Subarray sum equals k (negatives allowed)
+> [!TIP]
+> The extra leading 0 removes every special case for `l = 0`. Always build `P` with `n + 1` entries.
 
-```cpp
-long long count_subarrays(const vector<int>& a, long long k) {
-    unordered_map<long long, int> cnt;
-    cnt.reserve(a.size() * 2);
-    cnt[0] = 1;
-    long long pre = 0, total = 0;
-    for (int x : a) {
-        pre += x;
-        if (auto it = cnt.find(pre - k); it != cnt.end()) total += it->second;
-        ++cnt[pre];
-    }
-    return total;
-}
-```
+The same idea works for any **invertible** operation:
 
-### 2-D prefix sums (integral image)
+- **XOR:** `x[l..r] = X[r+1] ^ X[l]`.
+- **Counts:** a prefix count of vowels, of 1s, of elements equal to `k`.
+
+It doesn't work for `max`/`min`, which have no inverse. Use a sparse table or a segment tree for those (later topics).
+
+## 2. Prefix sums in 2D
+
+For a grid, `S[i][j]` is the sum of the rectangle from `(0,0)` to `(i−1, j−1)`:
 
 ```cpp
 vector<vector<long long>> S(R + 1, vector<long long>(C + 1, 0));
 for (int i = 0; i < R; ++i)
     for (int j = 0; j < C; ++j)
-        S[i + 1][j + 1] = g[i][j] + S[i][j + 1] + S[i + 1][j] - S[i][j];
-auto rect = [&](int r1, int c1, int r2, int c2) {          // rows [r1, r2), cols [c1, c2)
-    return S[r2][c2] - S[r1][c2] - S[r2][c1] + S[r1][c1];
-};
+        S[i + 1][j + 1] = g[i][j] + S[i][j + 1] + S[i + 1][j] - S[i][j];   // inclusion–exclusion
 ```
 
-### Difference arrays
+The sum of the rectangle with rows `r1..r2` and columns `c1..c2` is:
+
+```text
+S[r2+1][c2+1] − S[r1][c2+1] − S[r2+1][c1] + S[r1][c1]
+```
+
+```text
+ ┌────────────┬──────┐
+ │     A      │  B   │      wanted = Total − A∪B(top) − A∪C(left) + A
+ ├────────────┼──────┤      (A was subtracted twice, so add it back)
+ │     C      │ want │
+ └────────────┴──────┘
+```
+
+## 3. Difference arrays: range updates
+
+You get many updates "add `v` to `a[l..r]`", and you need the final array afterwards. Updating every element is O(n) per update. Instead, record only where the change **starts and stops**:
 
 ```cpp
 vector<long long> D(n + 1, 0);
-for (auto [l, r, v] : updates) { D[l] += v; D[r] -= v; }    // a[l..r-1] += v
-partial_sum(D.begin(), D.end() - 1, D.begin());            // D[i] is now a[i]
+void range_add(int l, int r, long long v) { D[l] += v; D[r + 1] -= v; }   // O(1)
+// after all updates: the prefix sums of D give the total added to each position
+long long run = 0;
+for (int i = 0; i < n; ++i) { run += D[i]; a[i] += run; }
 ```
 
-## 5. Modular prefix tricks
+```text
+add 5 to [1..3] on n = 6:   D = [0, +5, 0, 0, −5, 0, 0]
+prefix of D:                    [0,  5, 5, 5,  0, 0]   ✓
+```
 
-"Count subarrays with a sum divisible by m": C++'s `%` keeps the sign of the dividend, so `-3 % 5 == -3`. Normalise with `((x % m) + m) % m` before using it as a key or index:
+The difference array is the **inverse** of the prefix sum: taking prefix sums of `D` rebuilds the array. Typical uses include flight bookings, "how many intervals cover each point", car pooling, and corporate bonus problems. 2D difference arrays update rectangles with four corner marks.
+
+## 4. Prefix sums + hash map: counting subarrays
+
+**Count subarrays with sum exactly `k`** (values may be negative).
+
+A subarray `a[l..r]` has sum `P[r+1] − P[l]`. We want `P[r+1] − P[l] = k`, which means **`P[l] = P[r+1] − k`**. So while scanning, for each prefix value, ask "how many earlier prefixes equal `current − k`?". A hash map counts the earlier prefixes.
 
 ```cpp
-vector<long long> cnt(m, 0);
-cnt[0] = 1;
-long long pre = 0, ans = 0;
-for (int x : a) {
-    pre = ((pre + x) % m + m) % m;
-    ans += cnt[pre]++;
+long long count_sum_k(const vector<int>& a, long long k) {
+    unordered_map<long long, long long> seen;
+    seen[0] = 1;                                // the empty prefix
+    long long pre = 0, cnt = 0;
+    for (int x : a) {
+        pre += x;
+        auto it = seen.find(pre - k);
+        if (it != seen.end()) cnt += it->second;
+        ++seen[pre];
+    }
+    return cnt;
 }
 ```
 
-## 6. Exam-ready answers
+That's O(n) expected. The `seen[0] = 1` line counts subarrays that start at index 0. Forgetting it is the most common bug.
 
-> [!EXAM]
-> **std::unordered_map vs std::map.** `std::unordered_map` is a hash table with buckets of nodes, giving average O(1) insertion, lookup and deletion but O(n) worst case, unordered iteration, and iterator invalidation on rehash; it requires a hash function and equality for the key type. `std::map` is a balanced binary search tree (typically red–black), giving O(log n) operations, iteration in key order, and ordered queries such as `lower_bound`, requiring only a strict weak ordering. The hash map is usually faster for pure lookups, while the ordered map is needed for ordered traversal, range queries or worst-case guarantees; for small dense integer keys, a plain array outperforms both.
+**Variations of the same idea:**
 
-## 7. Cheat sheet
-
-| Need | C++ |
+| Question | Key stored in the map |
 |---|---|
-| lookup without inserting | `m.find(k)`, `m.contains(k)` |
-| count | `++m[k]` |
-| pair/struct keys | a custom hasher + `operator==` |
-| speed | `reserve`, or an array for dense keys |
-| prefix sums | `vector<long long> P(n + 1)` |
-| non-negative mod | `((x % m) + m) % m` |
+| Subarray sum = k | prefix sum |
+| Sum divisible by m | prefix sum mod m (normalised to `[0, m)`) |
+| Longest subarray with sum = k | the **first** index of each prefix value |
+| Equal numbers of 0s and 1s | prefix of (+1 for a 1, −1 for a 0); want sum 0 |
+| Subarray XOR = k | prefix XOR, looking up `pre ^ k` |
 
-> [!INTERVIEW]
-> **"Why might your `unordered_map` solution TLE while the same logic in a `vector` passes?"** Node allocation per element, pointer chasing, rehashing as it grows (call `reserve`), a poor or attackable hash (identity hashing of integers lets crafted inputs collide), and a large constant factor compared with direct indexing. Use an array when the keys are dense, a sorted vector for static data, or a flat hash map from a library.
+**Modulo with negatives.** In C++, `-7 % 3 == -1`. Normalise with `((x % m) + m) % m` before using it as a key.
+
+## 5. Choosing between prefix sums and a sliding window
+
+| Situation | Tool |
+|---|---|
+| Many range-sum queries, static array | prefix sums |
+| Many range updates, then read everything | difference array |
+| Count subarrays with sum = k (any signs) | prefix sums + hash map |
+| Longest/shortest subarray, non-negative values, sum constraint | sliding window |
+| Updates and queries interleaved | Fenwick tree or segment tree (later) |
+
+## 6. Worked example: the longest subarray with equal 0s and 1s
+
+Replace each 0 with −1. Equal counts means the subarray sum is 0, so `P[r+1] == P[l]`. For each prefix value, store the **first** index where it appeared. The longest subarray ending here starts right after that first occurrence.
+
+```cpp
+int longest_balanced(const vector<int>& bits) {
+    unordered_map<int, int> first{{0, -1}};      // prefix value -> first index where it occurred
+    int pre = 0, best = 0;
+    for (int i = 0; i < (int)bits.size(); ++i) {
+        pre += bits[i] ? 1 : -1;
+        auto [it, inserted] = first.try_emplace(pre, i);
+        if (!inserted) best = max(best, i - it->second);
+    }
+    return best;
+}
+```
+
+## 7. Complexity
+
+| Operation | Time |
+|---|---|
+| Build 1D/2D prefix | O(n) / O(R·C) |
+| Range-sum query | O(1) |
+| Range add (difference array) | O(1), plus an O(n) final pass |
+| Count subarrays with sum k | O(n) expected (hash map), or O(n log n) with a sorted map |
+
+## 8. Common mistakes
+
+- **Off-by-one errors.** Use `P` of size `n+1`, and `sum(l..r) = P[r+1] − P[l]`.
+- **`int` overflow.** Prefix sums of 10⁶ values up to 10⁹ need `long long`.
+- **Forgetting `seen[0] = 1`** (or `first[0] = −1`).
+- **Updating the map before querying it.** For sum k = 0 you would count the empty subarray. Query first, then insert.
+- **Negative modulo** used as a key without normalisation.
+- **Using a sliding window when values can be negative.**
+
+## 9. Interview questions
+
+> [!INTERVIEW] "Count subarrays with sum k when the numbers can be negative."
+> A sliding window fails, because validity isn't monotone with negatives. Use prefix sums: a subarray (l, r] has sum P[r] − P[l]. While scanning, count the earlier prefixes equal to P[r] − k in a hash map, seeded with {0: 1} for the empty prefix. That's O(n) expected time and O(n) space.
+
+> [!EXAM] How do you apply q range-add updates to an array of size n and then print the array, in O(n + q)?
+> Use a difference array D: for each update (l, r, v), do D[l] += v and D[r+1] −= v. Then a single prefix-sum pass over D gives the total added at each position.
+
+## Check your understanding
+
+1. Using `P = [0, 3, 4, 8, 9, 14]`, what is the sum of `a[1..3]`?
+2. Why does the hash map approach query `pre − k` *before* inserting `pre`?
+3. How would you count subarrays whose sum is divisible by 5?
+
+<details><summary>Answers</summary>
+
+1. P[4] − P[1] = 9 − 3 = 6 (that's 1 + 4 + 1).
+2. Inserting first would let a subarray of length 0 match itself when k = 0, which counts an empty subarray.
+3. Store the counts of `pre mod 5` (normalised to 0..4). Two prefixes with the same remainder bound a subarray whose sum is divisible by 5. Seed the map with remainder 0 → 1.
+
+</details>
