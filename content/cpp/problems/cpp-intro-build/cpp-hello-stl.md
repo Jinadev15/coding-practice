@@ -48,6 +48,11 @@ words: 0
 longest: -
 
 
+## Hints
+- `while (std::cin >> w)` reads words until end of input; push each into a `std::vector<std::string>`.
+- Track the longest word with a strict `>` comparison so the first one wins ties; start with `"-"` for the empty case.
+- Print in reverse with an index loop going down, or with `words.rbegin()` / `rend()`.
+
 ## Solution
 ```cpp
 #include <iostream>

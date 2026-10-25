@@ -84,3 +84,74 @@ for tick in range(1000):
 > [!EXAM]
 > **What problem does the Entity-Component-System architecture solve compared with deep inheritance hierarchies?**
 > With inheritance, every combination of behaviours (moving, shooting, flying, damageable) needs its own subclass, the hierarchy becomes rigid and fragile, and behaviour can't change at runtime. ECS makes an entity just an id, stores data in independent component types, and puts all logic in systems that process every entity having a given set of components. Behaviour comes from composition (which components an entity has) and can change at runtime by adding or removing components. Systems are decoupled, testable and parallelisable, and storing components contiguously by type or archetype makes iteration cache-friendly. Structural changes are deferred through command buffers to keep iteration safe.
+
+## Worked example: one tick of a tiny ECS
+
+**Entities** are just ids. **Components** are plain data stored per entity. **Systems** are functions that process every entity that has a given set of components.
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class Position:
+    x: float
+    y: float
+
+@dataclass
+class Velocity:
+    dx: float
+    dy: float
+
+@dataclass
+class Health:
+    hp: int
+
+class World:
+    def __init__(self):
+        self.next_id = 0
+        self.stores: dict[type, dict[int, object]] = {}
+    def spawn(self, *components) -> int:
+        e = self.next_id; self.next_id += 1
+        for c in components:
+            self.stores.setdefault(type(c), {})[e] = c
+        return e
+    def query(self, *types):
+        first, *rest = (self.stores.get(t, {}) for t in types)
+        for e, c in first.items():
+            if all(e in s for s in rest):
+                yield e, (c, *(s[e] for s in rest))
+
+def movement(world: World, dt: float):
+    for _, (p, v) in world.query(Position, Velocity):
+        p.x += v.dx * dt; p.y += v.dy * dt
+
+w = World()
+ship = w.spawn(Position(0, 0), Velocity(1, 2), Health(10))
+rock = w.spawn(Position(5, 5))                 # no Velocity, so movement ignores it
+movement(w, 0.5)
+print(w.stores[Position][ship], w.stores[Position][rock])
+```
+
+```output
+Position(x=0.5, y=1.0) Position(x=5, y=5)
+```
+
+Behaviour comes from **which components an entity has**, not from a class hierarchy. A rock becomes movable when you add a `Velocity`, and no new class is needed.
+
+## Common mistakes
+
+- **Putting logic in components.** Components are data, and systems hold the behaviour.
+- **Removing entities while iterating over a query.** Collect the ids first, then despawn them after the loop.
+- **Running systems in an unclear order.** Fix the order (input → AI → movement → collision → render) and document it.
+
+## Check your understanding
+
+1. How do you make an entity invulnerable for 2 seconds?
+2. Why can ECS be faster than deep inheritance in big games?
+
+<details><summary>Answers</summary>
+
+1. Add an `Invulnerable(remaining=2.0)` component. The damage system skips entities that have it, and a timer system removes it when it runs out.
+2. Each system loops over tightly packed arrays of one component type (cache-friendly) and skips entities that don't match, with no virtual dispatch per object.
+
+</details>

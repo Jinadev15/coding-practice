@@ -27,6 +27,10 @@ There is no input. Spelling, capitalisation and punctuation must match exactly. 
 Hello, Judge!
 Python runs on a virtual machine.
 
+## Hints
+- Two `print` calls, one per line. `print` adds the newline for you.
+- Copy the text exactly: the judge compares character by character, including the comma, capital letters and the final full stop.
+
 ## Solution
 Each `print()` call writes its arguments followed by a newline (`end="\n"` by default), so two calls give two lines.
 

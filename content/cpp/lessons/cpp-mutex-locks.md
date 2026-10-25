@@ -125,3 +125,71 @@ Config& config() {                 // function-local statics are initialised thr
 
 > [!INTERVIEW]
 > **"What's the difference between `lock_guard`, `unique_lock` and `scoped_lock`?"** `lock_guard` is the minimal RAII wrapper: lock on construction, unlock on destruction, non-movable, no other operations. `unique_lock` owns a lock flexibly: deferred locking, `try_lock`, timeouts, manual unlock and relock, movable. That's required for `condition_variable::wait`, which must unlock and relock. `scoped_lock` (C++17) takes any number of mutexes and locks them all with a deadlock-avoidance algorithm, the right tool for operations spanning several resources, and with a single mutex it's like `lock_guard`. Use the simplest one that works.
+
+## Worked example: a race, then the fix
+
+```cpp
+#include <iostream>
+#include <mutex>
+#include <thread>
+#include <vector>
+
+struct Account {
+    std::mutex m;
+    long balance = 0;
+};
+
+void deposit_many(Account& a, int times) {
+    for (int i = 0; i < times; ++i) {
+        std::lock_guard lock(a.m);       // unlocks automatically at the end of each iteration
+        ++a.balance;
+    }
+}
+
+void transfer(Account& from, Account& to, long amount) {
+    std::scoped_lock lock(from.m, to.m); // locks both, deadlock-free, in any argument order
+    from.balance -= amount;
+    to.balance += amount;
+}
+
+int main() {
+    Account a, b;
+    {
+        std::vector<std::jthread> ts;
+        for (int t = 0; t < 4; ++t) ts.emplace_back(deposit_many, std::ref(a), 100000);
+    }
+    std::cout << a.balance << '\n';      // always 400000 with the lock
+
+    {
+        std::jthread t1([&] { for (int i = 0; i < 1000; ++i) transfer(a, b, 1); });
+        std::jthread t2([&] { for (int i = 0; i < 1000; ++i) transfer(b, a, 1); });
+    }
+    std::cout << a.balance + b.balance << '\n';   // money is conserved
+}
+```
+
+```output
+400000
+400000
+```
+
+- **Remove the `lock_guard`** and the first number becomes random and usually smaller. `++balance` is a read, an add and a write, so two threads can read the same old value.
+- **Two `lock_guard`s taken in opposite orders** by `t1` and `t2` can deadlock: each holds one mutex and waits forever for the other. `std::scoped_lock` acquires both with a deadlock-avoidance algorithm.
+
+## Common mistakes
+
+- **Holding a lock while doing slow work** (I/O, sleeping, calling user callbacks). Keep critical sections short.
+- **Returning references to data guarded by a mutex.** The caller then uses it without the lock.
+- **Locking the same `std::mutex` twice in one thread.** That's undefined behaviour, and usually a deadlock. Restructure the code; `recursive_mutex` is a last resort.
+
+## Check your understanding
+
+1. What's the difference between `lock_guard` and `unique_lock`?
+2. How does `scoped_lock` avoid deadlock?
+
+<details><summary>Answers</summary>
+
+1. `lock_guard` locks for exactly its scope. `unique_lock` can unlock, relock, defer or move its lock, and condition variables need it.
+2. It uses `std::lock`, which acquires all the mutexes together and backs off and retries instead of waiting while holding just one.
+
+</details>

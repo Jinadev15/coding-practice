@@ -108,3 +108,59 @@ async def main():
 
 > [!INTERVIEW]
 > **"How do you download 10,000 URLs as fast as possible, handling failures?"** It's I/O-bound, so use a `ThreadPoolExecutor` with a bounded number of workers (20–100, respecting the server's rate limits), or asyncio with aiohttp and a semaphore for even higher concurrency. Submit all tasks, keep a dict from future to URL, and iterate `as_completed`, catching each future's exception individually so one failure doesn't stop the batch. Give each request a timeout, retry transient errors with exponential backoff, and stream results to disk instead of keeping everything in memory. Processes would add pickling overhead and no benefit, since the work is waiting, not computing.
+
+## Worked example: threads for I/O, processes for CPU
+
+```python
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+import time
+
+def io_task(n):                 # waits, like a download
+    time.sleep(0.2)
+    return n
+
+def cpu_task(n):                # computes, like image processing
+    return sum(i * i for i in range(n))
+
+if __name__ == "__main__":
+    t = time.perf_counter()
+    with ThreadPoolExecutor(max_workers=5) as ex:
+        print(list(ex.map(io_task, range(5))), f"{time.perf_counter() - t:.1f}s")
+
+    with ProcessPoolExecutor() as ex:
+        futures = {ex.submit(cpu_task, n): n for n in (10**6, 10**5, 10**4)}
+        for f in as_completed(futures):           # in order of completion
+            print(futures[f], f.result())
+```
+
+Typical output (the `as_completed` order can vary):
+
+```output
+[0, 1, 2, 3, 4] 0.2s
+10000 333283335000
+100000 333328333350000
+1000000 333332833333500000
+```
+
+- **Five 0.2 s sleeps took 0.2 s in total.** Threads overlap waiting, and the GIL is released during `sleep` and I/O.
+- **CPU work needs processes.** Threads would take turns holding the GIL.
+- **`map` returns results in input order. `as_completed` yields futures as each one finishes**, so you can show progress early.
+- **The `if __name__ == "__main__":` guard is required** for process pools on Windows and macOS, because child processes re-import the module.
+
+## Common mistakes
+
+- **Forgetting `.result()`.** Exceptions raised inside tasks stay hidden in the future until you call it.
+- **Sending unpicklable things to processes** (lambdas, open files, locks). Use module-level functions and plain data.
+- **Creating a new pool per task.** Create one pool and reuse it.
+
+## Check your understanding
+
+1. Why can threads speed up downloads despite the GIL?
+2. What happens to an exception raised inside a submitted task?
+
+<details><summary>Answers</summary>
+
+1. Blocking I/O releases the GIL, so other threads run while one waits for the network.
+2. It's stored in the future and re-raised in the caller when `.result()` is called.
+
+</details>

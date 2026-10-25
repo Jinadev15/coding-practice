@@ -108,3 +108,60 @@ The standard library uses this for things like `std::literals`.
 
 > [!INTERVIEW]
 > **"Why is `using namespace std;` considered bad practice?"** It imports hundreds of names (`count`, `distance`, `size`, `data`, `max`…) into the current scope, so your own identifiers may clash or silently resolve to a different overload. Future standard library additions can break code that compiles today. In a header, it imposes all that on every includer. Qualify names, or import specific ones locally.
+
+## Worked example: organising a small library
+
+```cpp
+#include <iostream>
+
+namespace robo::units {                         // nested namespace (C++17)
+    constexpr double cm_per_m = 100.0;
+    double to_cm(double m) { return m * cm_per_m; }
+}
+
+namespace robo {
+    namespace {                                 // anonymous: private to this file
+        int calls = 0;
+    }
+    struct Pose { double x, y; };
+    void print(const Pose& p) {                 // found by ADL for robo::Pose
+        ++calls;
+        std::cout << "(" << p.x << ", " << p.y << ")\n";
+    }
+    int print_calls() { return calls; }
+}
+
+int main() {
+    using robo::units::to_cm;                   // using-declaration: one name only
+    std::cout << to_cm(1.5) << " cm\n";
+    robo::Pose p{1, 2};
+    print(p);                                   // no robo:: needed, thanks to ADL
+    std::cout << robo::print_calls() << " call\n";
+}
+```
+
+```output
+150 cm
+(1, 2)
+1 call
+```
+
+**Argument-dependent lookup (ADL):** `print(p)` works without `robo::` because `p` is a `robo::Pose`, so the compiler also searches namespace `robo`. That is how `std::cout << x` finds `operator<<` for your own types.
+
+## Common mistakes
+
+- **`using namespace std;` at global scope in a header.** Name clashes appear in unrelated files.
+- **Using `static` globals in C++ code**, where an anonymous namespace is idiomatic. Both give internal linkage, but the anonymous namespace also works for types.
+- **Defining a function in a namespace in a header without `inline`.** Each `.cpp` that includes it gets a definition, and the linker complains about multiple definitions.
+
+## Check your understanding
+
+1. Can you add a function to namespace `robo` from another file?
+2. What does an anonymous namespace give its contents?
+
+<details><summary>Answers</summary>
+
+1. Yes. Namespaces are open, and any file can reopen `namespace robo { ... }`. (Adding to `std` is not allowed, though.)
+2. Internal linkage: the names are visible only in that translation unit.
+
+</details>

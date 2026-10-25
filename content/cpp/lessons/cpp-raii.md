@@ -142,3 +142,64 @@ flowchart TD
 
 > [!INTERVIEW]
 > **"Why doesn't C++ need `finally`?"** Because RAII makes it unnecessary. Any cleanup goes in a destructor, and destructors run automatically on every exit path, including exceptions. A `finally` block would duplicate cleanup at every use site, while RAII writes it once in the type. (Java and Python added `try-with-resources` and `with` to get closer to the same guarantee.)
+
+## Worked example: cleanup that survives exceptions
+
+```cpp
+#include <cstdio>
+#include <iostream>
+#include <stdexcept>
+
+class File {                                    // RAII wrapper around FILE*
+    std::FILE* f_;
+public:
+    File(const char* path, const char* mode) : f_(std::fopen(path, mode)) {
+        if (!f_) throw std::runtime_error("cannot open file");
+        std::cout << "opened\n";
+    }
+    ~File() { std::fclose(f_); std::cout << "closed\n"; }   // always runs
+    File(const File&) = delete;                 // one owner: no copies
+    File& operator=(const File&) = delete;
+    void write(const char* s) { std::fputs(s, f_); }
+};
+
+void process(bool fail) {
+    File log("/tmp/raii_demo.txt", "w");
+    log.write("start\n");
+    if (fail) throw std::runtime_error("sensor error");      // early exit
+    log.write("done\n");
+}
+
+int main() {
+    try { process(true); }
+    catch (const std::exception& e) { std::cout << "caught: " << e.what() << '\n'; }
+}
+```
+
+```output
+opened
+closed
+caught: sensor error
+```
+
+**"closed" prints before "caught".** As the exception propagates out of `process`, every local object's destructor runs (this is called *stack unwinding*). With raw `fopen`/`fclose`, the early `throw` would leak the file handle.
+
+The same idea is behind `std::unique_ptr` (memory), `std::lock_guard` (mutexes), `std::jthread` (threads) and `std::fstream` (files).
+
+## Common mistakes
+
+- **Forgetting to delete copying.** Two copies would `fclose` the same handle twice. Delete the copy operations, or implement moves.
+- **Throwing from a destructor.** During unwinding, that calls `std::terminate`. Destructors should be `noexcept` (they are by default).
+- **Calling `new` and `delete` by hand in application code.** Use `std::make_unique` and containers.
+
+## Check your understanding
+
+1. When does a local object's destructor run?
+2. Why is RAII better than `try/finally`?
+
+<details><summary>Answers</summary>
+
+1. When it goes out of scope, through normal flow, `return`, `break`, or an exception, in reverse order of construction.
+2. The cleanup is written once, in the type, and can't be forgotten at any call site. It also works for any number of resources, in the right order.
+
+</details>

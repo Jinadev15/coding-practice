@@ -103,3 +103,61 @@ Read `int (*row)[4]` as "row is a pointer to an array of 4 ints". The parenthese
 
 > [!INTERVIEW]
 > **"Is an array name a pointer?"** No. An array is an object containing its elements, and its name designates that object. It *converts* to a pointer to the first element in most expressions, which is why the confusion exists. The proofs that it isn't a pointer: `sizeof arr` gives the whole array size, `arr = p` doesn't compile, and `&arr` has type pointer-to-array.
+
+## Worked example: watching decay happen
+
+```c
+#include <stdio.h>
+
+static void show(int a[], size_t n) {          /* `int a[]` really means `int *a` */
+    printf("inside: sizeof a = %zu (a pointer)\n", sizeof a);
+    for (size_t i = 0; i < n; i++)
+        printf("%d%c", *(a + i), i + 1 < n ? ' ' : '\n');   /* a[i] is *(a + i) */
+}
+
+int main(void) {
+    int v[4] = {10, 20, 30, 40};
+    printf("outside: sizeof v = %zu (whole array)\n", sizeof v);
+    printf("elements = %zu\n", sizeof v / sizeof v[0]);
+    show(v, sizeof v / sizeof v[0]);           /* v decays to &v[0] here */
+
+    int (*whole)[4] = &v;                      /* pointer to the whole array */
+    printf("v + 1 moves %td bytes, &v + 1 moves %td bytes\n",
+           (char *)(v + 1) - (char *)v, (char *)(whole + 1) - (char *)whole);
+    return 0;
+}
+```
+
+```output
+outside: sizeof v = 16 (whole array)
+elements = 4
+inside: sizeof a = 8 (a pointer)
+10 20 30 40
+v + 1 moves 4 bytes, &v + 1 moves 16 bytes
+```
+
+Line by line:
+
+- **`sizeof v` is 16** (4 ints × 4 bytes). The array is a real object of known size.
+- **Inside the function the same expression gives 8**, the size of a pointer. The length is lost, which is why C functions always take `n`. GCC even warns about it: `-Wsizeof-array-argument`.
+- **Pointer arithmetic counts in elements, not bytes.** `v + 1` moves one `int`; `&v + 1` moves one *whole array*.
+
+(The byte counts assume a typical 64-bit machine with 4-byte `int`.)
+
+## Common mistakes
+
+- **`sizeof(arr)/sizeof(arr[0])` on a parameter.** It gives `8/4 = 2` regardless of the real length. Pass the length explicitly.
+- **Modifying a string literal** (`char *s = "hi"; s[0] = 'H';`). That's undefined behaviour. Use `char s[] = "hi";` for a modifiable copy.
+- **Returning a pointer to a local array.** It dies when the function returns. Return a `malloc`ed buffer, or take the output buffer as a parameter.
+
+## Check your understanding
+
+1. What is `3[v]` equivalent to?
+2. Why does `void f(int m[][4])` need the 4 but not the first dimension?
+
+<details><summary>Answers</summary>
+
+1. `v[3]`, because both mean `*(v + 3)`, and addition commutes. Never write it in real code.
+2. To compute `m[i][j]` the compiler needs the row length (`i * 4 + j`). The number of rows doesn't affect the address arithmetic.
+
+</details>

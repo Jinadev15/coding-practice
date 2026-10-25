@@ -48,6 +48,11 @@ print(lo, hi)
 ---
 -1000000000000 1000000000000
 
+## Hints
+- Start with `lo = hi = nums[0]`, then walk the rest of the list once.
+- Update `lo` when you see something smaller and `hi` when you see something larger.
+- `return lo, hi` returns a tuple; the caller unpacks it with `lo, hi = min_max(nums)`.
+
 ## Solution
 Start both trackers at the first element (never at 0, which might not be in the list), then update them as you scan.
 

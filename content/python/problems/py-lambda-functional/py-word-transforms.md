@@ -46,6 +46,11 @@ SOLO
 solo
 S
 
+## Hints
+- `map(len, words)` gives the lengths; `print(*iterable)` prints them separated by spaces.
+- `filter(lambda w: len(w) > k, words)` keeps the long words; wrap it in `map(str.upper, ...)`.
+- `functools.reduce(f, words)` folds the list pairwise: for the longest word, `f = lambda a, b: b if len(b) > len(a) else a` keeps the first one on ties.
+
 ## Solution
 Each line is one functional tool: `map` transforms, `filter` selects, and `reduce` combines pairwise.
 

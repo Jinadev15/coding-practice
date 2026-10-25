@@ -31,6 +31,10 @@ int main(void) {
 Hello, C!
 Compiled, assembled, linked.
 
+## Hints
+- A complete C program needs `#include <stdio.h>` and `int main(void) { ... return 0; }`.
+- `printf` needs an explicit `\n`; `puts` adds the newline itself.
+
 ## Solution
 ```c
 #include <stdio.h>

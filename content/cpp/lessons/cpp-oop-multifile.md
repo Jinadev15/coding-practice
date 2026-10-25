@@ -106,3 +106,70 @@ Modules replace textual inclusion: each is compiled once, there are no include-o
 > [!EXAM]
 > **What may appear in a C++ header file without violating the One Definition Rule, and why?**
 > Headers are included into many translation units, so they may contain declarations, plus definitions that the ODR allows to be repeated identically: class and enum definitions, `inline` functions (including member functions defined in the class body and `constexpr` functions, which are implicitly inline), `inline` variables and constants, templates, type aliases and concepts. Ordinary non-inline function or variable definitions must appear in exactly one `.cpp` file, or the linker sees multiple definitions. The `inline` exemption also requires every copy to be token-for-token identical, and violations there are undefined behaviour without a diagnostic.
+
+## Worked example: a class split into header and source
+
+```cpp
+// ---- geometry/vec2.hpp ----
+#pragma once
+#include <iosfwd>                     // forward declarations only: cheap
+
+namespace geo {
+class Vec2 {
+public:
+    Vec2(double x, double y) : x_(x), y_(y) {}   // trivial: fine to define in the header
+    double length() const;                       // declared here, defined in the .cpp
+    Vec2 operator+(const Vec2& o) const { return {x_ + o.x_, y_ + o.y_}; }
+    friend std::ostream& operator<<(std::ostream&, const Vec2&);
+private:
+    double x_, y_;
+};
+}
+
+// ---- geometry/vec2.cpp ----
+// #include "geometry/vec2.hpp"
+#include <cmath>
+#include <ostream>
+namespace geo {
+double Vec2::length() const { return std::hypot(x_, y_); }
+std::ostream& operator<<(std::ostream& os, const Vec2& v) { return os << '(' << v.x_ << ", " << v.y_ << ')'; }
+}
+
+// ---- main.cpp ----
+// #include "geometry/vec2.hpp"
+#include <iostream>
+int main() {
+    geo::Vec2 a{3, 4}, b{1, 1};
+    std::cout << a + b << " length " << a.length() << '\n';
+}
+```
+
+```output
+(4, 5) length 5
+```
+
+(The three files are shown together here so the example runs as one. In a project you compile `vec2.cpp` and `main.cpp` separately and link them: `g++ -c vec2.cpp`, `g++ -c main.cpp`, `g++ vec2.o main.o`.)
+
+The rules in short:
+
+- **The header has declarations and tiny inline functions.** Each `.cpp` has the definitions.
+- **Templates and `inline`/`constexpr` functions must be fully defined in headers**, because every file that uses them needs the body.
+- **Include what you use**, and use `<iosfwd>` or forward declarations in headers to keep rebuilds fast.
+
+## Common mistakes
+
+- **Defining a non-inline function in a header.** It gets defined once per including `.cpp`, which causes "multiple definition" linker errors.
+- **Defining a template in a `.cpp`.** The result is "undefined reference" at link time.
+- **Missing include guards or `#pragma once`.** Including a header twice in one file redefines its classes.
+
+## Check your understanding
+
+1. Why can `Vec2`'s constructor live in the header without `inline`?
+2. What does `<iosfwd>` buy you?
+
+<details><summary>Answers</summary>
+
+1. Member functions defined inside the class body are implicitly `inline`.
+2. Declarations of `std::ostream` and friends without the whole heavy `<iostream>` header, which means faster compiles for every includer.
+
+</details>

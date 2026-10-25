@@ -47,6 +47,11 @@ int main(void) {
 0.250 m, 0.1571 m/s, 1.5708 rad
 -1.000 m, -0.6283 m/s, -0.7854 rad
 
+## Hints
+- Named constants replace magic numbers: `#define` is textual replacement, `const double` is a typed read-only variable, and `enum { N = 1024 };` gives an integer constant.
+- Speed: revolutions per second = ticks / TICKS_PER_REV, then multiply by the wheel circumference `2 * PI * WHEEL_RADIUS_M`.
+- Use `%.3f` and `%.4f` in `printf` to control the decimals.
+
 ## Solution
 ```c
 #include <stdio.h>

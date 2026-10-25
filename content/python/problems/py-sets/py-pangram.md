@@ -42,6 +42,11 @@ ZYXWVUTSRQPONMLKJIHGFEDCBA 123
 ---
 PANGRAM
 
+## Hints
+- `string.ascii_lowercase` is all 26 letters; turn it into a set.
+- Set difference does the work: `set(ascii_lowercase) - set(sentence.lower())` is the set of missing letters.
+- Print the missing letters with `"".join(sorted(missing))`.
+
 ## Solution
 The missing letters are exactly the set difference *alphabet − letters used*.
 

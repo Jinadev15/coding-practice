@@ -60,6 +60,11 @@ empty
 ---
 start=2 len=4: 2 3 4 5
 
+## Hints
+- Keep two pointers: the start of the current run and the start of the best run.
+- A run ends when `a[i] <= a[i-1]` or at the end of the array; compare its length with the best and replace only if strictly longer (first run wins ties).
+- Pointer subtraction gives a length: `(size_t)((a + i) - cur)`.
+
 ## Solution
 One pass tracks the start of the current run. Whenever the run breaks (or the array ends), compare its length with the best so far.
 

@@ -63,6 +63,11 @@ new w
 ['x', 'z'] True
 ['w']
 
+## Hints
+- Default values are evaluated **once**, when `def` runs, so a list default is shared by every call.
+- Use `None` as the default and create the list inside the function: `if bag is None: bag = []`.
+- When a list *is* passed in, append to it and return that same object, so callers see the change.
+
 ## Solution
 Use `None` as a sentinel default and create the list inside the body, so each call that omits `bag` gets a fresh one.
 

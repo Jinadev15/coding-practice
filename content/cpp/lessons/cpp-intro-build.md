@@ -91,3 +91,58 @@ Use at least `-std=c++17`. This platform compiles with **`-std=c++23`** (g++ 15)
 
 > [!INTERVIEW]
 > **"What does the zero-overhead principle mean?"** Two things. You don't pay for what you don't use: a program without exceptions or virtual functions doesn't carry their cost. And what you do use, you couldn't hand-code any better: `std::vector<int>` indexing compiles to the same instructions as a raw array, and `std::sort` with a lambda typically beats C's `qsort`, because the comparison is inlined instead of called through a function pointer.
+
+## Worked example: from source file to running program
+
+```cpp
+// hello.cpp
+#include <iostream>
+#include <string>
+#include <vector>
+
+int main() {
+    std::vector<std::string> names{"Ada", "Linus", "Grace"};
+    for (const auto& n : names)              // range-for, no indices
+        std::cout << "Hello, " << n << "!\n";
+    std::cout << names.size() << " greetings\n";
+}
+```
+
+```output
+Hello, Ada!
+Hello, Linus!
+Hello, Grace!
+3 greetings
+```
+
+Build it the way the judge does:
+
+```bash
+g++ -std=c++23 -Wall -Wextra -O2 hello.cpp -o hello   # preprocess → compile → assemble → link
+./hello
+```
+
+What each piece of the build does:
+
+- **`#include <iostream>`** pastes in the declarations for `std::cout`. The preprocessor runs first.
+- **The compiler** turns `hello.cpp` into an object file. **The linker** joins it with the C++ standard library (`libstdc++`) into an executable.
+- **`-Wall -Wextra`** turns on warnings. Treat them as bugs you get told about for free.
+- **`main` may omit `return 0;`.** C++ returns 0 automatically from `main` only.
+
+## Common mistakes
+
+- **Compiling C++ with `gcc`** instead of `g++`. You get "undefined reference to `std::cout`" because the C++ library isn't linked.
+- **`using namespace std;` in headers.** It pollutes every file that includes them. Fine in a small `.cpp`, never in a `.h`.
+- **`std::endl` in loops.** It flushes the stream on every line, which is slow. Use `'\n'`.
+
+## Check your understanding
+
+1. Which stage reports "undefined reference to `foo()`"?
+2. What does `-std=c++23` change?
+
+<details><summary>Answers</summary>
+
+1. The linker. The function was declared (so compiling succeeded), but no object file defined it.
+2. Which language standard the compiler accepts: newer features (`std::print`, `std::expected`) and some changed rules.
+
+</details>

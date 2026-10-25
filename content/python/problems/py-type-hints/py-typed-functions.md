@@ -83,6 +83,11 @@ None
 4
 (7, 7)
 
+## Hints
+- Type hints use built-in generics: `list[str]`, `dict[str, int]`, `tuple[int, int]`, and `float | None` for optional results.
+- `Callable[[int], int]` means "a function taking one int and returning an int"; import it from `collections.abc`.
+- An `Iterable` can only be walked once, so compute the min and the max in a single loop instead of calling `min` then `max`.
+
 ## Solution
 ```python
 from collections.abc import Callable, Iterable

@@ -103,3 +103,66 @@ The tag object is empty and gets optimised away, so the selection costs nothing 
 
 > [!INTERVIEW]
 > **"What's wrong with `std::vector<bool>`?"** It's a specialisation that packs bits for space efficiency, so it can't return a real `bool&`: `v[i]` returns a proxy object. Generic code breaks: `auto& x = v[0]` doesn't compile, `bool* p = &v[0]` is impossible, `auto x = v[0]` captures a proxy that dangles if the vector is destroyed, and concurrent writes to different elements race because they share bytes. It also doesn't satisfy the container requirements. The lesson is that a specialisation should preserve the primary template's interface and semantics. Use `std::vector<char>`, `std::deque<bool>` or `std::bitset` instead.
+
+## Worked example: a general template with special cases
+
+```cpp
+#include <iostream>
+#include <string>
+#include <type_traits>
+#include <vector>
+
+template <class T>                                  // primary template
+struct Describe { static std::string name() { return "something"; } };
+
+template <>                                         // full specialization
+struct Describe<int> { static std::string name() { return "int"; } };
+
+template <class T>                                  // partial specialization: any vector
+struct Describe<std::vector<T>> {
+    static std::string name() { return "vector of " + Describe<T>::name(); }
+};
+
+template <class T>
+std::string show(const T& v) {
+    if constexpr (std::is_arithmetic_v<T>) return std::to_string(v);   // compile-time branch
+    else return "[" + Describe<T>::name() + "]";
+}
+
+int main() {
+    std::cout << Describe<double>::name() << '\n';
+    std::cout << Describe<std::vector<std::vector<int>>>::name() << '\n';
+    std::cout << show(7) << ' ' << show(std::vector<int>{1, 2}) << '\n';
+}
+```
+
+```output
+something
+vector of vector of int
+7 [vector of int]
+```
+
+How the compiler picks a version:
+
+- `Describe<int>` matches the full specialization exactly.
+- `Describe<std::vector<std::vector<int>>>` matches the partial specialization with `T = std::vector<int>`, which recursively matches again.
+- `Describe<double>` matches nothing special, so the primary template is used.
+- `if constexpr` discards the branch that doesn't apply, so `std::to_string` is never instantiated for vectors.
+
+## Common mistakes
+
+- **Partially specializing a function template.** That isn't allowed. Use overloading, `if constexpr`, or a class template helper.
+- **Declaring a specialization after it has already been used.** That's ill-formed. Put specializations next to the primary template.
+- **Specializing `std::` templates other than the allowed ones** (`std::hash` for your own types is fine).
+
+## Check your understanding
+
+1. What does `template <>` introduce?
+2. Why does `if constexpr` matter in `show`?
+
+<details><summary>Answers</summary>
+
+1. A full (explicit) specialization: a version for one exact set of template arguments.
+2. Without it, both branches would be compiled for every `T`, and `std::to_string(std::vector<int>)` would fail to compile.
+
+</details>

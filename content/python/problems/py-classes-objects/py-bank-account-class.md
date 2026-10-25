@@ -70,6 +70,11 @@ error: invalid amount
 error: invalid amount
 x: 0 ['deposit 10', 'withdraw 10']
 
+## Hints
+- Store the state in `__init__`: `self.owner`, `self.balance`, and an empty list for the history.
+- Check for errors **before** changing anything: validate `amount`, then update the balance, then record the history entry.
+- `raise ValueError("invalid amount")` stops the method immediately; the driver catches it and prints the message.
+
 ## Solution
 State lives in the instance (owner, balance, the log), and every change goes through a method that enforces the rules. That's the point of a class.
 

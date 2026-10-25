@@ -38,6 +38,11 @@ nums = list(map(int, input().split()))
 ---
 4 0 0
 
+## Hints
+- Read the numbers with `list(map(int, input().split()))`.
+- A comparison like `x > 0` is a `bool`, and `True` counts as 1, so `sum(x > 0 for x in nums)` counts the positives.
+- Zeros don't need their own loop: `zeros = n - positives - negatives`.
+
 ## Solution
 Each comparison produces a `bool`, and `sum` treats `True` as 1 and `False` as 0.
 

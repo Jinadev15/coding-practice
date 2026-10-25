@@ -37,6 +37,11 @@ y 5 z4y5
 q 1 q
 a 3 a2b2a3
 
+## Hints
+- `itertools.groupby(s)` yields `(char, group)` pairs for each run of equal consecutive characters; `len(list(group))` is the run length.
+- Collect the runs into a list of `(char, length)` first; both answers come from that list.
+- To keep the **first** longest run on ties, replace the best only when the new length is strictly greater (`>`, not `>=`).
+
 ## Solution
 `groupby` yields each run of identical characters as `(char, group)`. Its length is `len(list(group))`, and a strict `>` comparison keeps the first longest run.
 

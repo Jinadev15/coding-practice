@@ -96,3 +96,63 @@ The Linux kernel uses this for nearly everything (processes, timers, devices), a
 > [!EXAM]
 > **How do the first-member rule and `container_of` implement inheritance in C?**
 > C guarantees that a pointer to a struct, converted, points to its first member, with no padding before it. Embedding a base struct as the first member of a derived struct therefore makes `&derived->base` and `(Base *)derived` the same address. Base-class functions taking `Base *` work on derived objects (upcasting), and a downcast is valid when the dynamic type is known. `container_of(ptr, Type, member)` generalises this to a member at any offset by subtracting `offsetof(Type, member)` from the member's address. That allows several embedded "bases" per object and intrusive data structures like the Linux kernel's `list_head`, where the list links live inside the objects themselves.
+
+## Worked example: "inheritance" with the base as the first member
+
+```c
+#include <stdio.h>
+#include <stddef.h>
+
+typedef struct Shape {
+    const char *name;
+    double (*area)(const struct Shape *self);     /* "virtual" method */
+} Shape;
+
+typedef struct { Shape base; double r; } Circle;  /* base must come FIRST */
+typedef struct { Shape base; double w, h; } Rect;
+
+static double circle_area(const Shape *s) {
+    const Circle *c = (const Circle *)s;          /* safe: base is at offset 0 */
+    return 3.14159 * c->r * c->r;
+}
+static double rect_area(const Shape *s) {
+    const Rect *r = (const Rect *)s;
+    return r->w * r->h;
+}
+
+int main(void) {
+    Circle c = {{"circle", circle_area}, 1.0};
+    Rect   r = {{"rect", rect_area}, 2.0, 3.0};
+    Shape *shapes[] = {&c.base, &r.base};          /* treat both as Shape */
+    for (size_t i = 0; i < 2; i++)
+        printf("%s %.2f\n", shapes[i]->name, shapes[i]->area(shapes[i]));
+    printf("offset of base in Rect: %zu\n", offsetof(Rect, base));
+    return 0;
+}
+```
+
+```output
+circle 3.14
+rect 6.00
+offset of base in Rect: 0
+```
+
+The C standard guarantees that a pointer to a struct, suitably converted, points to its first member. So casting `Shape*` back to `Circle*` is valid exactly when the object really is a `Circle` and `base` is its first member. When the base isn't first (or an object belongs to several lists), `container_of` recovers the outer struct using `offsetof`.
+
+## Common mistakes
+
+- **Putting the base anywhere but first, then casting.** That's undefined behaviour. Use `container_of` instead.
+- **Casting a `Shape*` to the wrong derived type.** C won't stop you. Store a type tag or a vtable pointer and check it.
+- **Copying derived objects through the base** (`Shape s = *(Shape*)&c;`). This "slices" off the derived fields.
+
+## Check your understanding
+
+1. What does `container_of(ptr, Circle, base)` compute?
+2. Why put the function pointer in the base rather than in each derived struct?
+
+<details><summary>Answers</summary>
+
+1. `(Circle *)((char *)ptr - offsetof(Circle, base))`, the address of the enclosing `Circle`.
+2. So code holding only a `Shape*` can call it. That is dynamic dispatch, the same idea as a C++ vtable.
+
+</details>

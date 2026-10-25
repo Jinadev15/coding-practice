@@ -71,6 +71,11 @@ same
 len=0,4 cmp=-1 words=0,1
 copy=[] truncated=no rev=[emas]
 
+## Hints
+- A C string ends at the byte `'\0'`; `my_strlen` walks until it finds it.
+- In `my_strcmp`, advance while the characters are equal and not `'\0'`, then return the difference of the current bytes cast to `unsigned char`.
+- `my_strlcpy`: copy at most `size - 1` characters, always write the terminating `'\0'` when `size > 0`, and return the full source length so the caller can detect truncation.
+
 ## Solution
 ```c
 #include <stddef.h>

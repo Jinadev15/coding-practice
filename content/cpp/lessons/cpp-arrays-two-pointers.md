@@ -113,3 +113,68 @@ vector<int> window_max(const vector<int>& a, int k) {
 
 > [!INTERVIEW]
 > **"Remove duplicates from a sorted array in place in C++."** `auto it = unique(a.begin(), a.end()); a.erase(it, a.end());`. That's O(n) with no extra memory. `unique` is the reader/writer two-pointer algorithm: it keeps an element when it differs from the last kept one. Mention that `unique` only removes *adjacent* duplicates, so the input must be sorted (or grouped) first.
+
+## Worked example: pair sum and a sliding window
+
+```cpp
+#include <algorithm>
+#include <iostream>
+#include <vector>
+
+// two pointers on sorted data: does any pair sum to target?
+bool pair_sum(const std::vector<int>& a, int target) {
+    std::size_t i = 0, j = a.size();
+    if (j == 0) return false;
+    --j;
+    while (i < j) {
+        int s = a[i] + a[j];
+        if (s == target) return true;
+        if (s < target) ++i; else --j;    // move the pointer that can fix the sum
+    }
+    return false;
+}
+
+// sliding window: longest subarray with sum <= limit (all values non-negative)
+std::size_t longest_window(const std::vector<int>& a, int limit) {
+    std::size_t best = 0, left = 0;
+    long sum = 0;
+    for (std::size_t right = 0; right < a.size(); ++right) {
+        sum += a[right];
+        while (sum > limit) sum -= a[left++];   // shrink from the left
+        best = std::max(best, right - left + 1);
+    }
+    return best;
+}
+
+int main() {
+    std::vector<int> v{8, 1, 5, 3, 9};
+    std::sort(v.begin(), v.end());              // 1 3 5 8 9
+    std::cout << std::boolalpha << pair_sum(v, 13) << ' ' << pair_sum(v, 2) << '\n';
+    std::cout << longest_window({2, 1, 3, 4, 1, 1}, 6) << '\n';
+}
+```
+
+```output
+true false
+3
+```
+
+**Why they're O(n):** each pointer only moves forward (or only backward), so together they take at most `2n` steps, compared with O(n²) for checking every pair.
+
+## Common mistakes
+
+- **`a.size() - 1` on an empty vector.** `size()` is unsigned, so `0 - 1` wraps around to a huge number. Check for empty first (as above).
+- **Using two pointers on unsorted data** for pair sum. The logic depends on sortedness.
+- **Using a sliding window with negative numbers** for "sum <= limit". Shrinking no longer guarantees the sum decreases, so use prefix sums instead.
+
+## Check your understanding
+
+1. In `pair_sum`, why is it safe to discard `a[i]` when the sum is too small?
+2. What is the time complexity of `longest_window`?
+
+<details><summary>Answers</summary>
+
+1. `a[j]` is the largest value still available. If even that pairing is too small, no pairing with `a[i]` can reach the target.
+2. O(n). `left` and `right` each advance at most n times.
+
+</details>

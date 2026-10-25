@@ -109,3 +109,74 @@ SOLID is a means, not a goal. An interface with a single implementation and no t
 > [!EXAM]
 > **Explain the Dependency Inversion Principle and two ways to implement it in C++.**
 > High-level modules, such as a navigation policy, shouldn't depend on low-level details like a CAN motor driver or a specific localiser. Both should depend on abstractions owned by the high-level layer, which keeps the policy reusable and testable. In C++ this is done at runtime by defining abstract interfaces (pure virtual classes) that the high-level class receives by reference or `unique_ptr` through its constructor, with concrete implementations wired in the composition root. At compile time, it's done by making the dependency a template parameter constrained by a concept, giving zero-overhead static dependency injection. Type erasure (`std::function`, or hand-written erasure) is a third option, combining value semantics with runtime substitution.
+
+## Worked example: dependency inversion with an interface
+
+```cpp
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+
+struct Notifier {                                     // abstraction (interface)
+    virtual ~Notifier() = default;
+    virtual void send(const std::string& msg) = 0;
+};
+
+struct ConsoleNotifier : Notifier {                   // production detail
+    void send(const std::string& msg) override { std::cout << "ALERT: " << msg << '\n'; }
+};
+
+struct RecordingNotifier : Notifier {                 // test double
+    std::vector<std::string> sent;
+    void send(const std::string& msg) override { sent.push_back(msg); }
+};
+
+class BatteryMonitor {                                // high-level policy
+    Notifier& notifier_;                              // depends only on the abstraction
+public:
+    explicit BatteryMonitor(Notifier& n) : notifier_(n) {}
+    void update(const std::string& robot, double level) {
+        if (level < 0.15) notifier_.send(robot + " battery low");
+    }
+};
+
+int main() {
+    ConsoleNotifier console;
+    BatteryMonitor live(console);
+    live.update("R2", 0.10);
+
+    RecordingNotifier fake;                           // a unit test would do exactly this
+    BatteryMonitor tested(fake);
+    tested.update("R3", 0.50);
+    tested.update("R3", 0.05);
+    std::cout << fake.sent.size() << " message(s) recorded\n";
+}
+```
+
+```output
+ALERT: R2 battery low
+1 message(s) recorded
+```
+
+`BatteryMonitor` never names a concrete notifier, so you can add `SlackNotifier` or `SmsNotifier` without touching it (open/closed), and tests need no network (dependency inversion).
+
+If the choice is fixed at compile time, a template parameter with a concept gives the same flexibility without virtual calls ("compile-time SOLID").
+
+## Common mistakes
+
+- **Interfaces without a virtual destructor.** Deleting through a base pointer is then undefined behaviour.
+- **One fat interface** (`IRobot` with 30 methods). Split it by client need (interface segregation).
+- **Abstracting before there is a second implementation or a test.** That adds indirection with no benefit.
+
+## Check your understanding
+
+1. Why does `BatteryMonitor` store a reference, not a `ConsoleNotifier`?
+2. What would violate Liskov substitution for `Notifier`?
+
+<details><summary>Answers</summary>
+
+1. So any `Notifier` implementation can be supplied by whoever constructs it (dependency injection).
+2. A subclass whose `send` throws for normal messages, or silently requires a call to `connect()` first. Callers of the base contract would break.
+
+</details>

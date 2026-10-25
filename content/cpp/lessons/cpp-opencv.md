@@ -126,3 +126,65 @@ Performance habits:
 
 > [!INTERVIEW]
 > **"You store camera frames in a `std::vector<cv::Mat>` buffer and every entry ends up showing the latest frame. Why?"** `cap.read(frame)` reuses the same pixel buffer, and `push_back(frame)` copies only the header, so every element shares one buffer that gets overwritten. Push `frame.clone()` instead (or read into a fresh Mat each time). It's the reference-counted shallow-copy semantics.
+
+## Worked example: a complete processing pipeline on a synthetic image
+
+```cpp
+#include <iostream>
+#include <opencv2/imgproc.hpp>
+
+int main() {
+    cv::Mat img(100, 100, CV_8UC1, cv::Scalar(0));                 // black 100x100, 1 channel
+    cv::rectangle(img, {20, 20}, {59, 49}, cv::Scalar(255), cv::FILLED);   // 40x30 white box
+    cv::circle(img, {80, 80}, 8, cv::Scalar(255), cv::FILLED);
+
+    cv::Mat blurred, bin;
+    cv::GaussianBlur(img, blurred, {5, 5}, 0);                       // reduce noise
+    cv::threshold(blurred, bin, 127, 255, cv::THRESH_BINARY);        // back to black/white
+
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(bin, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    std::cout << contours.size() << " objects\n";
+    for (const auto& c : contours) {
+        cv::Rect box = cv::boundingRect(c);
+        std::cout << "box at (" << box.x << "," << box.y << ") size " << box.width << "x" << box.height << '\n';
+    }
+
+    cv::Mat roi = img(cv::Rect(20, 20, 40, 30));                     // a VIEW, not a copy
+    roi.setTo(0);                                                    // changes img too
+    std::cout << "white pixels left: " << cv::countNonZero(img) << '\n';
+}
+```
+
+Output (the judge links this with `libs: opencv`):
+
+```output
+2 objects
+box at (73,73) size 15x15
+box at (20,20) size 40x30
+white pixels left: 197
+```
+
+The 197 remaining white pixels are the filled circle. The 1,200-pixel rectangle was erased through the ROI.
+
+- **`cv::Mat` is a reference-counted handle.** Copying it (`cv::Mat b = a;`) shares the pixels. Use `a.clone()` for a deep copy.
+- **A region of interest (`img(rect)`) is a view.** Writing to it writes to the original, which is very efficient for cropping without copies.
+- **The standard pipeline is:** grayscale → blur → threshold or edge detection → contours → measurements.
+
+## Common mistakes
+
+- **Expecting `b = a` to copy pixels.** It doesn't. Call `clone()` or `copyTo()`.
+- **Mixing up (x, y) with (row, col).** `cv::Point(x, y)`, but `img.at<uchar>(row, col)`, so y comes first.
+- **Using the wrong type in `at<T>`** (`at<int>` on a `CV_8UC1` image). That's undefined behaviour. The type must match the depth.
+
+## Check your understanding
+
+1. Why does `roi.setTo(0)` change `img`?
+2. Which call deep-copies a `cv::Mat`?
+
+<details><summary>Answers</summary>
+
+1. The ROI shares `img`'s pixel buffer. It is a header pointing into the same memory.
+2. `clone()` (or `src.copyTo(dst)`).
+
+</details>

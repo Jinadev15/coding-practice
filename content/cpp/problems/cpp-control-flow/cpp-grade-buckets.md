@@ -43,6 +43,11 @@ x 69
 ---
 C: x(70)
 
+## Hints
+- `try_emplace(name, score)` inserts only if the key is new and returns `{iterator, inserted}`; if not inserted, compare and keep the higher score.
+- `if (auto [it, ins] = m.try_emplace(k, v); !ins && v > it->second)` is an if-statement with an initialiser: the variables exist only inside the if.
+- `std::map` keeps keys sorted, so iterating it already gives names in alphabetical order; group them into one vector per grade.
+
 ## Solution
 ```cpp
 #include <iostream>

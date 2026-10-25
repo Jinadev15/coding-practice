@@ -113,3 +113,77 @@ std::shared_mutex                                           // reader-writer loc
 
 > [!INTERVIEW]
 > **"What does guaranteed copy elision in C++17 change?"** When a function returns a prvalue (`return T{...};`), or an object is initialised from a prvalue of the same type, the object is now constructed **directly** in its final storage. It's no longer an optimisation the compiler *may* do, it's mandated, so no copy or move constructor is called or even required. That lets factory functions return non-copyable, non-movable types (`std::atomic`, `std::mutex` holders) by value. Named return value optimisation (returning a local variable) is still optional, with a move as the fallback, so `return std::move(local);` is a pessimisation that blocks NRVO.
+
+## Worked example: C++17 features in one short program
+
+```cpp
+#include <filesystem>
+#include <iostream>
+#include <map>
+#include <optional>
+#include <string_view>
+#include <variant>
+
+namespace fs = std::filesystem;
+
+std::optional<int> parse_int(std::string_view s) {           // maybe a value
+    int v = 0;
+    if (s.empty()) return std::nullopt;
+    for (char c : s) {
+        if (c < '0' || c > '9') return std::nullopt;
+        v = v * 10 + (c - '0');
+    }
+    return v;
+}
+
+int main() {
+    for (std::string_view s : {"42", "4x2"}) {
+        if (auto v = parse_int(s)) std::cout << s << " -> " << *v << '\n';
+        else std::cout << s << " -> invalid\n";
+    }
+
+    std::map<std::string, int> stock{{"bolt", 3}};
+    if (auto [it, inserted] = stock.try_emplace("nut", 10); inserted)   // structured binding + if-init
+        std::cout << "added " << it->first << '\n';
+
+    std::variant<int, std::string> cell = std::string("hello");
+    std::cout << (std::holds_alternative<std::string>(cell) ? "string" : "int") << '\n';
+
+    fs::path p = fs::path("logs") / "robot" / "run1.csv";              // portable paths
+    std::cout << p.filename() << ' ' << p.extension() << '\n';
+}
+```
+
+```output
+42 -> 42
+4x2 -> invalid
+added nut
+string
+"run1.csv" ".csv"
+```
+
+| Feature | Replaces |
+|---|---|
+| `std::optional<T>` | sentinel values like `-1` or `nullptr` |
+| `std::string_view` | `const std::string&` parameters (avoids allocations) |
+| structured bindings | `.first` / `.second` |
+| `std::variant` | unions plus a type tag |
+| `std::filesystem` | platform-specific path code |
+
+## Common mistakes
+
+- **Returning a `string_view` into a temporary string.** The view dangles once the string is destroyed.
+- **Calling `*opt` without checking.** That's undefined behaviour if empty. Use `if (opt)`, `opt.value()` (which throws) or `opt.value_or(x)`.
+- **Passing `string_view` to C functions** that expect a null terminator. A view isn't null-terminated.
+
+## Check your understanding
+
+1. When should a function take `std::string_view` instead of `const std::string&`?
+2. What does guaranteed copy elision mean for `return T{...};`?
+
+<details><summary>Answers</summary>
+
+1. When it only reads the characters and doesn't store them. It then accepts literals, `std::string`s and substrings without allocating.
+2. The object is constructed directly in the caller's storage. No copy or move happens, so it works even for non-movable types.
+
+</details>

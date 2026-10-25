@@ -108,3 +108,89 @@ while (running) {
 > [!EXAM]
 > **Why do robotics frameworks prefer behavior trees to large finite state machines, and what does `RUNNING` enable?**
 > Behaviour trees compose behaviour hierarchically from reusable nodes. Control nodes (Sequence, Fallback) and decorators (Retry, Inverter, Timeout) combine leaf actions and conditions, so adding or reusing a behaviour means inserting a subtree, rather than rewiring the quadratically growing transitions of an FSM, and the tree is easy to read and edit (often as XML). The three-valued tick result makes nodes non-blocking. `RUNNING` lets long actions (navigation, grasping) span many control cycles while the tree keeps ticking, so reactive nodes can re-check conditions each tick and halt a running action the moment its preconditions fail.
+
+## Worked example: a three-node behaviour tree
+
+```cpp
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+
+enum class Status { Success, Failure, Running };
+
+struct Node {
+    virtual ~Node() = default;
+    virtual Status tick() = 0;
+};
+
+struct Action : Node {                         // leaf: wraps the outside world
+    std::string name;
+    std::function<Status()> fn;
+    Action(std::string n, std::function<Status()> f) : name(std::move(n)), fn(std::move(f)) {}
+    Status tick() override { auto s = fn(); std::cout << "  " << name << '\n'; return s; }
+};
+
+struct Sequence : Node {                       // composite: all children must succeed, in order
+    std::vector<std::unique_ptr<Node>> kids;
+    Status tick() override {
+        for (auto& k : kids)
+            if (auto s = k->tick(); s != Status::Success) return s;   // stop at Failure/Running
+        return Status::Success;
+    }
+};
+
+struct Fallback : Node {                       // composite: try children until one succeeds
+    std::vector<std::unique_ptr<Node>> kids;
+    Status tick() override {
+        for (auto& k : kids)
+            if (auto s = k->tick(); s != Status::Failure) return s;
+        return Status::Failure;
+    }
+};
+
+int main() {
+    double battery = 0.1;
+    auto root = std::make_unique<Fallback>();
+    auto charge = std::make_unique<Sequence>();
+    charge->kids.push_back(std::make_unique<Action>("battery low?", [&] { return battery < 0.2 ? Status::Success : Status::Failure; }));
+    charge->kids.push_back(std::make_unique<Action>("go to dock", [&] { battery = 1.0; return Status::Success; }));
+    root->kids.push_back(std::move(charge));
+    root->kids.push_back(std::make_unique<Action>("patrol", [] { return Status::Running; }));
+
+    for (int t = 1; t <= 2; ++t) { std::cout << "tick " << t << '\n'; root->tick(); }
+}
+```
+
+```output
+tick 1
+  battery low?
+  go to dock
+tick 2
+  battery low?
+  patrol
+```
+
+- **Tick 1:** the battery is low, so the charge sequence succeeds and the fallback stops there.
+- **Tick 2:** the battery is full, so "battery low?" fails, the sequence fails, and the fallback moves on to "patrol".
+
+The whole behaviour is a **tree of small objects** (Composite pattern), re-evaluated on every tick. Change the priorities by rearranging the tree, not by rewriting nested `if`s.
+
+## Common mistakes
+
+- **Blocking inside a leaf** (sleeping until the robot arrives). Return `Running` and check again on the next tick.
+- **Sharing mutable state through globals.** Pass a blackboard or context object to the leaves.
+- **Raw `new` for children.** `unique_ptr` makes the parent own them, and destroying the root frees the tree.
+
+## Check your understanding
+
+1. What does a `Sequence` return if its second child returns `Running`?
+2. How do you make "patrol" interruptible by low battery?
+
+<details><summary>Answers</summary>
+
+1. `Running`, immediately, without ticking later children.
+2. That's already the design: the charge branch comes first under the fallback, so every tick re-checks the battery before patrolling.
+
+</details>

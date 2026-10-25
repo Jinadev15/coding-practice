@@ -118,3 +118,64 @@ if (error) [[unlikely]] { handle(); }       // C++20: branch prediction hints
 
 > [!INTERVIEW]
 > **"What's the difference between `for (auto x : v)` and `for (auto& x : v)` for `std::vector<std::string>`?"** The first copies every string into `x`, which is slow for long strings and means changes don't affect `v`. The second binds a reference to each element: no copies, and modifications change the vector. For read-only loops use `const auto&`. This is a frequent code-review comment in C++ teams.
+
+## Worked example: modern control flow in one program
+
+```cpp
+#include <iostream>
+#include <map>
+#include <string>
+
+enum class Grade { A, B, C, F };
+
+Grade grade_of(int score) {
+    if (score >= 90) return Grade::A;
+    if (score >= 75) return Grade::B;
+    if (score >= 50) return Grade::C;
+    return Grade::F;
+}
+
+int main() {
+    std::map<std::string, int> scores{{"asha", 91}, {"ben", 48}, {"chen", 77}};
+
+    for (const auto& [name, score] : scores) {           // structured bindings
+        switch (grade_of(score)) {                        // enum class in a switch
+            case Grade::A: std::cout << name << ": excellent\n"; break;
+            case Grade::B:
+            case Grade::C: std::cout << name << ": pass\n"; break;   // deliberate shared case
+            case Grade::F: std::cout << name << ": retry\n"; break;
+        }
+    }
+    if (auto it = scores.find("ben"); it != scores.end() && it->second < 50)   // if-with-initialiser
+        std::cout << "ben needs help (" << it->second << ")\n";
+}
+```
+
+```output
+asha: excellent
+ben: retry
+chen: pass
+ben needs help (48)
+```
+
+- **`const auto& [name, score]`** unpacks each `std::pair` without copying it.
+- **`if (init; cond)`** keeps `it` scoped to the `if`, so it can't be misused later.
+- **Switching on an `enum class`** lets the compiler warn (`-Wswitch`) if you forget a case. Leave out `default:` so that warning can fire.
+
+## Common mistakes
+
+- **Missing `break`**, so execution falls through into the next case. When you mean it, write `[[fallthrough]];`.
+- **`for (auto x : big_vector)`** copies every element. Use `const auto&`.
+- **Changing a container while range-looping over it** (`push_back` inside the loop) invalidates the iterators.
+
+## Check your understanding
+
+1. What is the scope of a variable declared in `if (auto x = f(); x > 0)`?
+2. Why prefer `enum class` over a plain `enum`?
+
+<details><summary>Answers</summary>
+
+1. The whole `if` statement, including any `else` branches, and nothing after it.
+2. Its names are scoped (`Grade::A`) and it doesn't convert to `int` implicitly, which prevents mix-ups.
+
+</details>

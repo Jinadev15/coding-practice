@@ -114,3 +114,59 @@ async def main():
 
 > [!INTERVIEW]
 > **"What happens if you call `time.sleep(5)` inside an async function?"** The whole event loop blocks for 5 seconds: `time.sleep` doesn't yield control, so no other task can run, timers fire late, and network handlers stall. Async concurrency only works if every task cooperatively awaits at points where it would wait. The fix is `await asyncio.sleep(5)`. For unavoidably blocking calls (legacy libraries, CPU work), use `await asyncio.to_thread(...)` or `loop.run_in_executor(...)`, which run them in a thread or process pool while the loop keeps serving other tasks.
+
+## Worked example: seeing concurrency happen
+
+```python
+import asyncio, time
+
+async def fetch(name: str, delay: float) -> str:
+    print(f"start {name}")
+    await asyncio.sleep(delay)          # simulates waiting for a network reply
+    print(f"done  {name}")
+    return name.upper()
+
+async def main():
+    t = time.perf_counter()
+    results = await asyncio.gather(fetch("a", 0.3), fetch("b", 0.1), fetch("c", 0.2))
+    print(results, f"{time.perf_counter() - t:.1f}s")
+
+asyncio.run(main())
+```
+
+```output
+start a
+start b
+start c
+done  b
+done  c
+done  a
+['A', 'B', 'C'] 0.3s
+```
+
+Read the output carefully:
+
+- **All three start immediately.** Each `await asyncio.sleep` hands control back to the event loop, which starts the next coroutine.
+- **They finish in order of delay**, not in the order they were written.
+- **`gather` returns results in argument order**, regardless of finishing order.
+- **The total time is about 0.3 s** (the longest wait), not 0.6 s (the sum).
+
+Now replace `await asyncio.sleep(delay)` with `time.sleep(delay)`. Everything runs one after another and takes 0.6 s, because a blocking call never gives control back to the loop.
+
+## Common mistakes
+
+- **Calling a coroutine without `await`** (`fetch("a", 1)`). That only creates a coroutine object, and nothing runs. Python warns "coroutine was never awaited".
+- **Blocking calls inside async code** (`time.sleep`, `requests`, heavy CPU loops). Use async libraries or `await asyncio.to_thread(func)`.
+- **Calling `asyncio.run()` inside an already-running loop** (for example in Jupyter). Use `await main()` there instead.
+
+## Check your understanding
+
+1. Is asyncio parallel?
+2. When would threads be a better choice than asyncio?
+
+<details><summary>Answers</summary>
+
+1. No. It is *concurrent* on a single thread: tasks interleave at `await` points. CPU work does not speed up.
+2. When you must use blocking libraries that have no async version. For CPU-bound work, use processes.
+
+</details>

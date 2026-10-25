@@ -54,6 +54,11 @@ x-axis
 Q2
 Q4
 
+## Hints
+- Check the most specific cases first: the origin (both zero), then the axes (one zero), then the quadrants.
+- Use `if / elif / else` so exactly one branch runs per point.
+- Once you know neither coordinate is 0, the sign of `x` splits Q1/Q4 from Q2/Q3, and the sign of `y` finishes the job.
+
 ## Solution
 Handle the special zero cases first (specific before general). After that, both coordinates are non-zero, so the signs pick the quadrant.
 

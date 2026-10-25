@@ -95,3 +95,69 @@ class Robot:
 > [!EXAM]
 > **What is the difference between a value object and an entity, and how do you implement each in Python?**
 > A value object has no identity: it's defined entirely by its attributes, so two with equal attributes are interchangeable. It should be immutable, validated at construction, and compared and hashed by value. In Python, use `@dataclass(frozen=True)` with `__post_init__` validation, and return new instances from operations. An entity has a stable identity that persists while its attributes change, such as a robot or an account. Implement it as a regular (mutable) class carrying an id, with equality and hashing based on that id (or default identity), and with methods that enforce its invariants as its state changes.
+
+## Worked example: from a paragraph to classes
+
+> *"Robots are rented by customers for whole days. A robot can't be rented twice at the same time. Each rental has a price per day; customers get 10% off rentals of 7+ days."*
+
+**Step 1: underline the nouns** (candidate classes): robot, customer, rental, price.
+**Step 2: underline the verbs** (candidate methods): rent, overlap check, price calculation.
+**Step 3: decide what is an entity (has identity) and what is a value (defined by its data):**
+
+- `Robot` and `Customer` are entities: two robots with the same model are still different robots.
+- `DateRange` and `Money` are values: two ranges with the same dates are the same range.
+
+```python
+from dataclasses import dataclass
+from datetime import date
+
+@dataclass(frozen=True)
+class DateRange:                         # value object: validated, immutable
+    start: date
+    end: date                            # exclusive
+    def __post_init__(self):
+        if self.end <= self.start:
+            raise ValueError("empty range")
+    @property
+    def days(self) -> int:
+        return (self.end - self.start).days
+    def overlaps(self, other: "DateRange") -> bool:
+        return self.start < other.end and other.start < self.end
+
+class Robot:                             # entity: owns the rule that protects its own data
+    def __init__(self, rid: str, per_day: int):
+        self.rid, self.per_day, self._rentals = rid, per_day, []
+    def rent(self, period: DateRange) -> int:
+        if any(period.overlaps(p) for p in self._rentals):
+            raise ValueError("already rented")
+        self._rentals.append(period)
+        price = self.per_day * period.days
+        return price * 9 // 10 if period.days >= 7 else price
+
+r = Robot("R2", 1000)
+print(r.rent(DateRange(date(2026, 1, 1), date(2026, 1, 8))))   # 7 days, discounted
+```
+
+```output
+6300
+```
+
+Notice that the caller never checks for overlaps itself. It **tells** the robot to rent, and the robot enforces its own rule ("tell, don't ask").
+
+## Common mistakes
+
+- **Anaemic models:** classes with only getters and setters, plus a big "service" that holds all the logic.
+- **Primitive obsession:** passing `(start, end)` tuples and `float` prices everywhere instead of `DateRange` and `Money`.
+- **Making everything mutable.** Values should be frozen. Only entities change over time.
+
+## Check your understanding
+
+1. Is an email address an entity or a value?
+2. Which object should validate that `end > start`?
+
+<details><summary>Answers</summary>
+
+1. A value. It is defined entirely by its text, so make it a frozen dataclass that validates the format.
+2. `DateRange` itself, in `__post_init__`. Then an invalid range can never exist anywhere in the program.
+
+</details>

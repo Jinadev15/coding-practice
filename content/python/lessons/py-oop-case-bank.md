@@ -89,3 +89,69 @@ def transfer(self, request_id: str, src: str, dst: str, amount: Decimal, day: in
 > [!EXAM]
 > **Why do banking systems use an append-only ledger and idempotency keys?**
 > An append-only ledger records every money movement as an immutable entry. Balances are derived from it (or verified against it), there's a complete audit trail, and errors are corrected with compensating entries rather than by rewriting history. Double-entry transfers make each transfer's legs sum to zero, so invariants like "total money is conserved" can be checked at any time. Idempotency keys handle the reality of networks: a client that times out and retries a transfer must not move the money twice. The bank stores each request id with its outcome and returns the stored result for duplicates.
+
+## Worked example: balance as a fold over the ledger
+
+The key decision in this case study is that **balances are never stored**. They are computed from an append-only list of entries. A minimal version:
+
+```python
+from dataclasses import dataclass
+from decimal import Decimal
+
+@dataclass(frozen=True)
+class Entry:
+    account: str
+    amount: Decimal        # +credit / -debit
+    txn_id: str
+
+class Ledger:
+    def __init__(self):
+        self.entries: list[Entry] = []
+        self.seen: set[str] = set()
+
+    def balance(self, account: str) -> Decimal:
+        return sum((e.amount for e in self.entries if e.account == account), Decimal("0"))
+
+    def transfer(self, txn_id: str, src: str, dst: str, amount: Decimal) -> str:
+        if txn_id in self.seen:              # idempotency: a retried request does nothing twice
+            return "DUPLICATE"
+        if amount <= 0 or self.balance(src) < amount:
+            return "REJECTED"
+        # both legs together, or neither: a transfer always sums to zero
+        self.entries += [Entry(src, -amount, txn_id), Entry(dst, amount, txn_id)]
+        self.seen.add(txn_id)
+        return "OK"
+
+L = Ledger()
+L.entries.append(Entry("alice", Decimal("100"), "seed"))
+print(L.transfer("t1", "alice", "bob", Decimal("30")))
+print(L.transfer("t1", "alice", "bob", Decimal("30")))   # network retry
+print(L.balance("alice"), L.balance("bob"))
+```
+
+```output
+OK
+DUPLICATE
+70 30
+```
+
+- **Why a ledger?** You get the history for free and the books always balance. A bug can't silently "create" money, because every transfer has two equal and opposite entries.
+- **Why idempotency keys?** Mobile networks retry requests. Without the `seen` set, a retry would move the money twice.
+
+## Common mistakes
+
+- **Using `float` for money.** `0.1 + 0.2 != 0.3`. Use `Decimal` or integer minor units.
+- **Updating two stored balances one after the other.** A crash between the two updates loses money. Write both legs in one transaction.
+- **Checking the balance and then writing without a lock**, when transfers can run concurrently.
+
+## Check your understanding
+
+1. How would an overdraft limit fit into the polymorphic rules section?
+2. Why is `Entry` frozen?
+
+<details><summary>Answers</summary>
+
+1. As an account-type policy: `can_withdraw(balance, amount)` returns `balance - amount >= -limit` for overdraft accounts and `>= 0` for savings accounts.
+2. History must never change. Corrections are new reversing entries, which keeps an audit trail.
+
+</details>

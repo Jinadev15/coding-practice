@@ -15,8 +15,65 @@ async function api(path, { method = "GET", body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+  if (res.status === 401 && !path.startsWith("/auth/")) { showLogin(); throw Object.assign(new Error("Please sign in."), { status: 401 }); }
   if (!res.ok) throw Object.assign(new Error(data.error || `HTTP ${res.status}`), { status: res.status });
   return data;
+}
+
+// ------------------------------------------------------------------ accounts (shared mode)
+
+let me = { multi_user: false, user: null };
+
+function showLogin() {
+  document.body.classList.add("signed-out");
+  const signup = me.signup;
+  main.innerHTML = `<div class="page"><div class="card auth-card">
+    <h1 style="margin-top:0">Coding Practice</h1>
+    <p class="sub">Sign in to continue where you left off. Your progress is private to your account.</p>
+    <div class="tabs auth-tabs">${signup ? `<button class="tab active" data-m="login">Sign in</button><button class="tab" data-m="signup">Create account</button>` : ""}</div>
+    <form id="auth-form" autocomplete="on">
+      <label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="24" pattern="[a-z0-9_]+" title="lowercase letters, digits or _"></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required minlength="8"></label>
+      <label class="invite" hidden>Invite code<input name="invite" autocomplete="off"></label>
+      <button class="btn primary" type="submit">Sign in</button>
+      <div class="auth-err" role="alert"></div>
+    </form></div></div>`;
+  let mode = "login";
+  const form = $("#auth-form");
+  for (const b of $$(".auth-tabs .tab")) b.addEventListener("click", () => {
+    mode = b.dataset.m;
+    $$(".auth-tabs .tab").forEach((x) => x.classList.toggle("active", x === b));
+    $(".invite", form).hidden = mode !== "signup";
+    $("input[name=invite]", form).required = mode === "signup";
+    form.password.autocomplete = mode === "signup" ? "new-password" : "current-password";
+    $("button[type=submit]", form).textContent = mode === "signup" ? "Create account" : "Sign in";
+  });
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const body = Object.fromEntries(new FormData(form));
+    body.username = (body.username || "").trim().toLowerCase();
+    try {
+      await api(`/auth/${mode}`, { method: "POST", body });
+      me = await api("/auth/me");
+      document.body.classList.remove("signed-out");
+      renderUserFoot();
+      router();
+    } catch (err) { $(".auth-err", form).textContent = err.message; }
+  });
+}
+
+function renderUserFoot() {
+  const foot = $(".sidebar-foot");
+  $("#user-foot")?.remove();
+  if (!me.multi_user || !me.user) return;
+  foot.insertAdjacentHTML("afterbegin", `<span id="user-foot" class="foot-link" title="Signed in">${esc(me.user)} · <a href="#" id="sign-out">Sign out</a></span>`);
+  $("#sign-out").addEventListener("click", async (e) => {
+    e.preventDefault();
+    await api("/auth/logout", { method: "POST", body: {} }).catch(() => {});
+    me.user = null;
+    renderUserFoot();
+    showLogin();
+  });
 }
 
 let toastTimer;
@@ -191,6 +248,7 @@ const routes = [
 
 async function router() {
   if (cleanup) { try { await cleanup(); } catch (e) {} cleanup = null; }
+  if (me.multi_user && !me.user) return showLogin();
   const path = location.hash.replace(/^#\/?/, "");
   refreshSidebar();
   for (const [re, fn] of routes) {
@@ -285,7 +343,7 @@ async function viewDashboard() {
   const totalActs = Object.values(hm.cells).reduce((a, c) => a + c.total, 0);
 
   main.innerHTML = `<div class="page">
-    <div class="page-head"><div><h1>${greet}, Jinadev</h1><div class="sub">${new Date().toLocaleDateString("en", { weekday: "long", month: "long", day: "numeric" })} · ${hm.streak ? `${plural(hm.streak, "day")} streak — don't break it` : "Start a streak today"}</div></div></div>
+    <div class="page-head"><div><h1>${greet}, ${esc(me.multi_user && me.user ? me.user : "Jinadev")}</h1><div class="sub">${new Date().toLocaleDateString("en", { weekday: "long", month: "long", day: "numeric" })} · ${hm.streak ? `${plural(hm.streak, "day")} streak — don't break it` : "Start a streak today"}</div></div></div>
 
     <div class="grid grid-4" style="margin-bottom:16px">
       <div class="card stat"><div class="label">Current streak</div><div class="value">${hm.streak}<span class="muted small"> days</span></div><div class="hint">Best: ${hm.best_streak} days</div></div>
@@ -930,8 +988,11 @@ async function viewMilestone(lid, n) {
     ${m.unlocked ? (m.problems_list.length ? `<div class="card">${problemTable(lid, m.problems_list)}</div>`
       : `<div class="card empty"><h3>Unlocked — problems coming soon</h3>This special quiz's problems haven't been written yet.</div>`)
       : `<div class="card empty"><h3>🔒 Locked</h3>Complete ${m.requires_pct}% of all ${esc(m.lang_name)} topics to unlock. You're at ${Math.round(m.pct)}%.
-         <div class="bar" style="max-width:320px;margin:16px auto 0"><span style="width:${Math.min(100, (100 * m.pct) / m.requires_pct)}%"></span></div></div>`}
+         <div class="bar" style="max-width:320px;margin:16px auto 0"><span style="width:${Math.min(100, (100 * m.pct) / m.requires_pct)}%"></span></div>
+         ${m.guide ? `<p style="margin-top:14px">You can read the study guide below now and prepare in advance.</p>` : ""}</div>`}
+    ${m.guide ? `<h2 style="margin:28px 0 12px">Study guide</h2><article class="prose card" id="ms-guide"></article>` : ""}
   </div>`;
+  if (m.guide) await renderMarkdown($("#ms-guide"), m.guide);
 }
 
 // ------------------------------------------------------------------ review
@@ -1038,4 +1099,4 @@ $("#theme-toggle").addEventListener("click", () => {
   router();
 });
 applyTheme(document.documentElement.dataset.theme || store("theme") || "dark");
-router();
+api("/auth/me").then((m) => { me = m; }).catch(() => {}).finally(() => { renderUserFoot(); router(); });

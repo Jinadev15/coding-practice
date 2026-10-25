@@ -129,3 +129,62 @@ Give your wrapper the gcc attribute `__attribute__((format(printf, 2, 3)))` and 
 
 > [!INTERVIEW]
 > **"Why does `printf("%d\n", 3.0)` print garbage instead of 3?"** printf is variadic: the double 3.0 is passed (in a floating-point register on x86-64), but `%d` makes printf read an `int` (from an integer register or stack slot) with `va_arg(ap, int)`. The types disagree, which is undefined behaviour. Only the compiler's `-Wformat` warning catches it, because the function itself can't know what was passed.
+
+## Worked example: a typed sum with a count
+
+```c
+#include <stdarg.h>
+#include <stdio.h>
+
+static double average(int count, ...) {
+    va_list ap;
+    va_start(ap, count);                 /* start after the last named parameter */
+    double total = 0;
+    for (int i = 0; i < count; i++)
+        total += va_arg(ap, double);     /* caller must really pass doubles */
+    va_end(ap);
+    return count ? total / count : 0.0;
+}
+
+static void log_msg(const char *level, const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    printf("[%s] ", level);
+    vprintf(fmt, ap);                    /* forward the whole list */
+    va_end(ap);
+    putchar('\n');
+}
+
+int main(void) {
+    printf("%.2f\n", average(3, 1.0, 2.0, 4.5));
+    log_msg("WARN", "battery %d%% on robot %s", 14, "R2");
+    return 0;
+}
+```
+
+```output
+2.50
+[WARN] battery 14% on robot R2
+```
+
+**The function can't discover how many arguments it got, or their types.** Something has to tell it: a count (`average`), a format string (`printf`), or a sentinel value (`NULL` at the end).
+
+**Default promotions:** in the `...` part, a `float` is passed as a `double`, and a `char` or `short` as an `int`. That's why `va_arg(ap, float)` is always wrong.
+
+## Common mistakes
+
+- **Passing an `int` where the function reads a `double`** (`average(2, 1, 2)`). That is undefined behaviour, and it often prints garbage. Write `1.0, 2.0`.
+- **Reusing a `va_list` after passing it to `vprintf`.** Use `va_copy` if you need it twice.
+- **Forgetting `va_end`.** On most platforms it does nothing, but the standard requires it.
+
+## Check your understanding
+
+1. Why can't `va_arg(ap, char)` work?
+2. How does `printf` know the type of each argument?
+
+<details><summary>Answers</summary>
+
+1. A `char` argument is promoted to `int` when passed through `...`. Read it with `va_arg(ap, int)`.
+2. From the format string: `%d` means read an `int`, `%f` means read a `double`, and so on. Compilers warn about mismatches with `-Wformat`.
+
+</details>

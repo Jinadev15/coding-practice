@@ -62,6 +62,11 @@ mean=0.000 lo=0.000 hi=0.000
 mean=0.000 lo=-999.000 hi=-999.000
 
 
+## Hints
+- A non-const reference (`std::vector<double>&`) lets the function modify the caller's vector; `const&` reads it without copying.
+- `normalize`: find the largest absolute value first; if it is 0, return early, otherwise divide every element (loop with `double& x`).
+- `minmax` returns two values through the reference parameters `lo` and `hi`; leave them untouched for an empty vector.
+
 ## Solution
 ```cpp
 #include <vector>

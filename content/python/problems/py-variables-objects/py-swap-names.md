@@ -34,6 +34,10 @@ C++ Python
 ---
 2 1
 
+## Hints
+- `a, b = input().split()` reads both words at once.
+- `a, b = b, a` builds the tuple `(b, a)` first, then unpacks it, so no temporary variable is needed.
+
 ## Solution
 The right-hand side `b, a` is evaluated into a tuple first, then unpacked into the names on the left.
 

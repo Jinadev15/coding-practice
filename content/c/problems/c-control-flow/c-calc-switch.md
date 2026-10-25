@@ -59,6 +59,11 @@ error: bad exponent
 3
 10000000000
 
+## Hints
+- Read each line with `scanf("%lld %c %lld", &a, &op, &b)`; the space before `%c` skips whitespace.
+- Each `case` needs a `break`, otherwise execution falls through to the next case. Stacking `case '/': case '%':` on purpose shares code.
+- For `^`, multiply in a loop `b` times starting from 1, after checking `0 <= b <= 62`; the `default:` label catches unknown operators.
+
 ## Solution
 ```c
 #include <stdio.h>

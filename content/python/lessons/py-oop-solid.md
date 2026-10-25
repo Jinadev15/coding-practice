@@ -107,3 +107,82 @@ In production you inject `SlackNotifier` and `SystemClock`. Tests inject `ListNo
 > [!EXAM]
 > **Give a Python example of the Open/Closed Principle and explain what makes it "closed".**
 > A format-export function that looks up formatters in a registry populated by a decorator (`@formatter("csv")`) is open for extension: adding Markdown output means writing a new class and decorating it. It's closed for modification, because `export()` and all existing formatter classes stay untouched and their tests stay valid. The opposite design is an `if/elif` chain over format names inside `export()`, which must be edited, and re-tested, for every new format.
+
+## Worked example: refactoring step by step
+
+Here is a typical "first version" that breaks several principles at once:
+
+```python
+class Robot:
+    def __init__(self, name):
+        self.name = name
+    def report(self, fmt):
+        data = {"name": self.name, "battery": 0.8}
+        if fmt == "csv":
+            return f"{data['name']},{data['battery']}"
+        elif fmt == "json":
+            import json
+            return json.dumps(data)
+        # every new format means editing this method (violates O)
+```
+
+**Step 1 (S):** reading a robot's state and formatting it are two different reasons to change, so split them.
+
+```python
+from dataclasses import dataclass
+from typing import Protocol
+import json
+
+@dataclass(frozen=True)
+class Status:
+    name: str
+    battery: float
+
+class Formatter(Protocol):              # I: one small role
+    def format(self, s: Status) -> str: ...
+
+class CsvFormatter:
+    def format(self, s: Status) -> str:
+        return f"{s.name},{s.battery}"
+
+class JsonFormatter:
+    def format(self, s: Status) -> str:
+        return json.dumps({"name": s.name, "battery": s.battery})
+```
+
+**Step 2 (O + D):** the reporting code depends on the `Formatter` abstraction and receives one from outside.
+
+```python
+def report(status: Status, formatter: Formatter) -> str:
+    return formatter.format(status)
+
+print(report(Status("r1", 0.8), CsvFormatter()))
+print(report(Status("r1", 0.8), JsonFormatter()))
+```
+
+```output
+r1,0.8
+{"name": "r1", "battery": 0.8}
+```
+
+Adding a Markdown format is now a new class. No existing line changes, and the existing tests stay valid.
+
+## Common mistakes
+
+- **Applying every principle to every class.** A 20-line script doesn't need protocols and injection. Refactor toward SOLID when change actually hurts.
+- **Confusing SRP with "one method per class".** Responsibility means *one reason to change*. A class can still have many methods.
+- **Breaking LSP by "disabling" inherited methods** (`def fly(self): raise NotImplementedError` in `Penguin`). If a subclass can't do what the base promises, it shouldn't be a subclass.
+
+## Check your understanding
+
+1. A `UserService` sends welcome emails directly with `smtplib`. Which principle makes testing hard, and how do you fix it?
+2. Why do `Protocol`s make interface segregation cheap in Python?
+3. Is `class Square(Rectangle)` with independent `set_width`/`set_height` a problem?
+
+<details><summary>Answers</summary>
+
+1. Dependency inversion. Inject a `Notifier` (an abstraction) and pass a fake one in tests.
+2. Classes match a protocol structurally, without inheriting from it, so you can define many tiny role protocols at no cost to the implementing classes.
+3. Yes, it violates Liskov substitution. Code that sets the width and then expects the height unchanged breaks for a `Square`.
+
+</details>

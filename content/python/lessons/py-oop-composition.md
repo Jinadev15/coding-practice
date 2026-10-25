@@ -121,3 +121,62 @@ Frameworks such as FastAPI's `Depends`, `dependency-injector` and `punq` provide
 > [!EXAM]
 > **Why prefer composition over inheritance? Give a concrete example.**
 > Inheritance binds a subclass to its parent's implementation at definition time. Changes to the base can break subclasses (the fragile base class problem), and combining independent variations requires a class for every combination: robots varying in locomotion, power and sensors would need 3×3×3 = 27 subclasses. With composition, a `Robot` holds `locomotion`, `power` and `sensors` objects behind small interfaces and delegates to them, so the 9 part classes combine freely, can be chosen or swapped at runtime, are tested in isolation, and are injected from outside (dependency injection), making the robot easy to configure and to test with fakes.
+
+## Worked example: from subclass explosion to composition
+
+Suppose robots can have different **drives** (wheels, legs) and **sensors** (lidar, camera). With inheritance you'd need a class for every combination: `WheeledLidarRobot`, `LeggedCameraRobot`, and so on, which is 2 × 2 = 4 classes already. With composition, the robot simply **has** a drive and a sensor:
+
+```python
+from typing import Protocol
+
+class Drive(Protocol):
+    def move(self, metres: float) -> str: ...
+
+class Sensor(Protocol):
+    def scan(self) -> str: ...
+
+class Wheels:
+    def move(self, metres): return f"rolled {metres} m"
+
+class Legs:
+    def move(self, metres): return f"walked {metres} m"
+
+class Lidar:
+    def scan(self): return "360° point cloud"
+
+class Robot:
+    def __init__(self, drive: Drive, sensor: Sensor):     # dependencies injected
+        self.drive, self.sensor = drive, sensor
+    def patrol(self) -> list[str]:
+        return [self.drive.move(5), self.sensor.scan()]   # delegation
+
+print(Robot(Legs(), Lidar()).patrol())
+```
+
+```output
+['walked 5 m', '360° point cloud']
+```
+
+- Any drive can now pair with any sensor without a new class.
+- You can **swap parts at runtime** (`robot.drive = Wheels()`).
+- Tests can inject a `FakeDrive` that records calls.
+
+**When is inheritance still right?** When there is a true *is-a* relationship with a stable shared contract. A `ValueError` is an `Exception`; a `FileHandler` is a `logging.Handler`.
+
+## Common mistakes
+
+- **Inheriting just to reuse a helper method.** Use a function or a component instead.
+- **Mixins that depend on each other's attributes.** They become hidden coupling. Keep each mixin self-contained.
+- **Creating dependencies inside `__init__`** (`self.db = Database()`). That stops tests replacing them. Accept them as parameters.
+
+## Check your understanding
+
+1. What is the difference between delegation and inheritance?
+2. Why does injecting dependencies make testing easier?
+
+<details><summary>Answers</summary>
+
+1. Delegation forwards the call to a *contained* object chosen at runtime. Inheritance fixes the behaviour at class definition and exposes the parent's entire interface.
+2. A test passes fakes in through the constructor, without patching modules or touching real databases and networks.
+
+</details>

@@ -40,6 +40,11 @@ int main(void) {
 ---
 0
 
+## Hints
+- A **prototype** (declaration) tells the compiler the function exists; the **linker** still needs a **definition** (a body) somewhere.
+- Add `long long cube(long long x) { return x * x * x; }` below `main` (or anywhere in the file).
+- Read and print with `%lld` because the values are `long long`.
+
 ## Solution
 The prototype satisfies the **compiler**; the **linker** still needs a body. Add the definition (before or after `main`, since the prototype covers calls that come first):
 

@@ -116,3 +116,59 @@ An exception escaping a thread function calls `std::terminate`. To transfer erro
 
 > [!INTERVIEW]
 > **"What happens if a `std::thread` object goes out of scope without `join()` or `detach()`?"** Its destructor calls `std::terminate()`, aborting the program. The design forces you to decide explicitly what happens to the thread, rather than silently leaking or blocking. The trap is exceptions thrown between creating the thread and calling `join()`: the stack unwinds, the joinable thread is destroyed, and the program terminates. The solutions are RAII: `std::jthread` (C++20) joins in its destructor, or a scope guard. Also mention passing references with `std::ref` and object lifetimes.
+
+## Worked example: splitting work across threads
+
+```cpp
+#include <iostream>
+#include <numeric>
+#include <thread>
+#include <vector>
+
+int main() {
+    std::vector<int> data(1'000'000);
+    std::iota(data.begin(), data.end(), 1);           // 1, 2, ..., 1,000,000
+
+    const unsigned n = 4;
+    std::vector<long long> partial(n, 0);             // one slot per thread: no sharing
+    {
+        std::vector<std::jthread> workers;            // jthread joins in its destructor
+        std::size_t chunk = data.size() / n;
+        for (unsigned t = 0; t < n; ++t) {
+            auto begin = data.begin() + t * chunk;
+            auto end = (t == n - 1) ? data.end() : begin + chunk;
+            workers.emplace_back([&partial, t, begin, end] {
+                partial[t] = std::accumulate(begin, end, 0LL);
+            });
+        }
+    }                                                 // all threads joined here
+    std::cout << std::accumulate(partial.begin(), partial.end(), 0LL) << '\n';
+}
+```
+
+```output
+500000500000
+```
+
+Why this is safe without a mutex:
+
+- **No thread writes a location another thread touches.** Each one writes only its own `partial[t]`.
+- **The main thread reads the results only after the `jthread`s are destroyed**, which means after they have all been joined.
+
+## Common mistakes
+
+- **Letting a `std::thread` be destroyed without `join()` or `detach()`.** The program calls `std::terminate`. Use `std::jthread`.
+- **Capturing loop variables by reference** (`[&]`) and launching threads in the loop. By the time the thread runs, `t` has changed. Capture by value.
+- **Multiple threads doing `total += x` on one variable.** That's a data race. Use per-thread results, `std::atomic`, or a mutex.
+
+## Check your understanding
+
+1. Why does `std::thread` copy its arguments by default?
+2. When are the threads guaranteed to have finished in the example?
+
+<details><summary>Answers</summary>
+
+1. The new thread might outlive the caller's locals. Copying makes that safe by default; use `std::ref` to opt in to references deliberately.
+2. At the closing brace of the block, where the `workers` vector (and each `jthread`) is destroyed and joined.
+
+</details>

@@ -68,6 +68,11 @@ rect 10 0.1
 1.000
 total 16.566
 
+## Hints
+- Each file is a module: `import geometry` makes `geometry.circle_area` available in `main.py`; `from formatting import fmt` imports one name.
+- Code at the top level of a module runs on import, so keep self-tests under `if __name__ == "__main__":`.
+- `fmt(x)` is just `f"{x:.3f}"`; keep a running `total` in `main.py`.
+
 ## Solution
 Each module has one responsibility: maths, presentation, and orchestration. `main.py` only wires them together.
 

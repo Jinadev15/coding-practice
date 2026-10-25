@@ -64,6 +64,11 @@ rc=-1 min=12345 max=12345 mean=99.00
 rc=0 min=8 max=8 mean=8.00
 -24 
 
+## Hints
+- Output parameters are pointers: write results with `*min = lo;`, and the caller passes `&lo`.
+- Handle `n == 0` first and return `-1` without touching the outputs.
+- Accumulate the sum in a `long long` to avoid overflow, then cast to `double` for the mean. `scale` changes the array in place through `a[i] *= k`.
+
 ## Solution
 The caller passes addresses, and the function writes results through them. `const int *a` documents (and enforces) that `stats` doesn't modify the array.
 

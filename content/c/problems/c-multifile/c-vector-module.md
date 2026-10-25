@@ -85,6 +85,11 @@ dot=2.00 len=0.000 n=(0.000, 0.000)
 s=(4.000, 0.000)
 dot=2.00 len=4.000 n=(1.000, 0.000)
 
+## Hints
+- The header holds the type and the prototypes, wrapped in an include guard (`#ifndef VEC_H / #define VEC_H / #endif`) so including it twice is harmless.
+- `vec.c` includes `vec.h` and defines every function. Mark the helper `static` so it is private to that file.
+- `vec_length` is `sqrt(sq(v.x) + sq(v.y))`; `sqrt` comes from `<math.h>` (the judge links `-lm`). Normalising a zero vector must return (0, 0), not divide by zero.
+
 ## Solution
 The header declares the type and the interface. The implementation defines the functions and keeps `sq` private with `static`. The include guard makes the double inclusion through `util.h` harmless.
 

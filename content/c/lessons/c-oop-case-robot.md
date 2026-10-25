@@ -129,3 +129,64 @@ In tests, the loop runs without sleeping, stepping simulated time directly. A th
 > [!EXAM]
 > **Why should robot control logic depend on driver interfaces (vtables) rather than concrete drivers?**
 > Depending on abstract interfaces such as `MotorOps` and `RangeOps` inverts the dependency: the control logic and the concrete drivers both depend on the small interface header, not on each other. The same controller then runs against real hardware drivers, a simulator, or scripted fakes, selected in one composition root. Behaviour (slowing, stopping, fault latching) can be tested deterministically on a PC, hardware vendors can be swapped by writing one new driver, and the safety-critical logic stays small and free of I/O details, which makes it easier to review and certify.
+
+## Worked example: the controller tested with fake drivers
+
+The point of this architecture is that the **controller logic can be tested on a laptop**, with fake sensors instead of real hardware:
+
+```c
+#include <stdio.h>
+
+typedef struct { double (*read_m)(void *self); void *self; } RangeSensor;
+typedef struct { void (*set_speed)(void *self, double v); void *self; } Motor;
+
+/* pure logic: no hardware, no globals */
+static void controller_step(RangeSensor *s, Motor *m) {
+    double d = s->read_m(s->self);
+    m->set_speed(m->self, d < 0.3 ? 0.0 : d < 1.0 ? 0.2 : 0.5);
+}
+
+/* fakes for testing */
+typedef struct { double values[3]; int i; } FakeSensor;
+static double fake_read(void *self) { FakeSensor *f = self; return f->values[f->i++]; }
+typedef struct { double last; } FakeMotor;
+static void fake_set(void *self, double v) { ((FakeMotor *)self)->last = v; }
+
+int main(void) {
+    FakeSensor fs = {{2.0, 0.6, 0.1}, 0};
+    FakeMotor fm = {0};
+    RangeSensor s = {fake_read, &fs};
+    Motor m = {fake_set, &fm};
+    for (int k = 0; k < 3; k++) {
+        controller_step(&s, &m);
+        printf("distance %.1f -> speed %.1f\n", fs.values[k], fm.last);
+    }
+    return 0;
+}
+```
+
+```output
+distance 2.0 -> speed 0.5
+distance 0.6 -> speed 0.2
+distance 0.1 -> speed 0.0
+```
+
+On the real robot, `main` (the composition root) builds a `RangeSensor` backed by the ultrasonic driver and a `Motor` backed by PWM. `controller_step` doesn't change at all.
+
+## Common mistakes
+
+- **Calling hardware functions directly from the logic** (`gpio_write(...)` inside the controller). That makes testing impossible off-target.
+- **Globals for driver state.** Pass `self` pointers so you can run two sensors, or a fake alongside a real one.
+- **Deciding speeds from one raw reading.** Real sensors are noisy, so add filtering in a separate decorator-style module.
+
+## Check your understanding
+
+1. Which file is allowed to know about both the drivers and the controller?
+2. How would you add an emergency-stop button without editing `controller_step`?
+
+<details><summary>Answers</summary>
+
+1. The composition root (`main.c`). It wires the concrete drivers into the interfaces.
+2. Wrap the motor interface in an "e-stop motor" that forwards `set_speed` only while the button is released, and returns 0 otherwise.
+
+</details>

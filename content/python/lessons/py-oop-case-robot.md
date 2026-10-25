@@ -81,3 +81,71 @@ Every scenario is deterministic:
 > [!EXAM]
 > **Why model robot tasks as command objects with separate `check` and `apply` methods?**
 > Command objects make each task a self-contained unit that the executor can queue, plan, log, retry or reorder without knowing its type, which is open/closed: new task types don't change the executor. Separating `check` (preconditions, which inspect state without changing it) from `apply` (effects) lets the executor validate a task before committing to it, report precise failure reasons, and lets a planner simulate a mission ahead of time, such as inserting charging detours, using the same model. Injected time and world state keep the whole mission deterministic and testable.
+
+## Worked example: commands as objects
+
+The core idea of this case study is that **each command is an object** with an `execute(robot)` method, and the controller just runs them in order. Here is a stripped-down version you can run:
+
+```python
+from dataclasses import dataclass
+from typing import Protocol
+
+@dataclass
+class Robot:
+    x: int = 0
+    y: int = 0
+    heading: str = "N"
+
+class Command(Protocol):
+    def execute(self, r: Robot) -> None: ...
+
+TURN_LEFT = {"N": "W", "W": "S", "S": "E", "E": "N"}
+STEP = {"N": (0, 1), "E": (1, 0), "S": (0, -1), "W": (-1, 0)}
+
+@dataclass
+class Forward:
+    n: int
+    def execute(self, r: Robot) -> None:
+        dx, dy = STEP[r.heading]
+        r.x += dx * self.n; r.y += dy * self.n
+
+class Left:
+    def execute(self, r: Robot) -> None:
+        r.heading = TURN_LEFT[r.heading]
+
+def run(program: list[Command]) -> Robot:
+    r = Robot()
+    for cmd in program:
+        cmd.execute(r)
+    return r
+
+print(run([Forward(2), Left(), Forward(3)]))
+```
+
+```output
+Robot(x=-3, y=2, heading='W')
+```
+
+Why this design?
+
+- New commands (`Wait`, `Scan`) are new classes. The executor never changes.
+- A program is **data**: you can log it, validate it before running it, or replay it.
+- Tests can check one command at a time against a fresh `Robot`.
+
+## Common mistakes
+
+- **A giant `if cmd == "forward" ... elif ...` loop.** This is the design that commands as objects replace.
+- **Letting commands reach into globals.** Pass everything they need (robot, map, clock) explicitly so tests can supply fakes.
+- **Mixing parsing and executing.** Parse the text into command objects first, then run them. Syntax errors are found before the robot moves.
+
+## Check your understanding
+
+1. How would you add "undo"?
+2. Where should a collision check live?
+
+<details><summary>Answers</summary>
+
+1. Give each command an `undo(robot)` method (or have `execute` return an inverse command) and keep a history stack.
+2. In a map or world object that commands consult (`world.is_free(x, y)`), passed in alongside the robot, not hard-coded in every command.
+
+</details>

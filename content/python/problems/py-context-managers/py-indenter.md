@@ -89,6 +89,11 @@ say top
     still level 1
 top
 
+## Hints
+- `with obj:` calls `obj.__enter__()` at the start and `obj.__exit__(...)` at the end, even if the block raises.
+- Keep a counter `self.level`: add 1 in `__enter__`, subtract 1 in `__exit__`.
+- Return `False` (or nothing) from `__exit__` so exceptions are not swallowed; `say` prints `"    " * self.level + text`.
+
 ## Solution
 `__enter__` increments a level counter and `__exit__` decrements it. Because `__exit__` always runs, the level is restored after an exception too. Returning `False` (or `None`) lets that exception keep propagating.
 

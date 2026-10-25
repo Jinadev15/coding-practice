@@ -96,3 +96,55 @@ fleetops = "fleetops.cli:main"
 > [!EXAM]
 > **What causes circular imports in Python, and how do you fix them properly?**
 > During an import, Python executes the module top to bottom and registers it in `sys.modules` before it finishes. If module A imports B while B (directly or indirectly) imports names from A, B sees a partially initialised A and fails with an `ImportError` or `AttributeError`. The proper fix is structural: move the shared definitions into a separate lower-level module, or invert the dependency with an abstraction (a `Protocol` in a ports module), so the import graph becomes acyclic and layered. Imports needed only for type hints can go under `if TYPE_CHECKING:` with postponed evaluation of annotations. Function-local imports are a last resort.
+
+## Worked example: from one file to a package
+
+Start with a single `app.py` that has grown to 400 lines. The move happens in four steps:
+
+```text
+fleet/
+├── pyproject.toml
+├── src/fleetops/
+│   ├── __init__.py        # public API: from .domain import Robot; from .service import FleetService
+│   ├── domain.py          # Robot, Mission (pure logic, no I/O)
+│   ├── repository.py      # SqliteRobotRepository (talks to the database)
+│   ├── service.py         # FleetService (use cases; depends on a repository *protocol*)
+│   └── cli.py             # main(): parses args, builds objects, calls the service
+└── tests/
+    └── test_service.py    # uses an in-memory fake repository
+```
+
+1. **Move pure classes first** (`domain.py`). They import nothing from your project.
+2. **Move I/O next** (`repository.py`). It imports `domain`.
+3. **Use cases** (`service.py`) import `domain` and a `Protocol` describing the repository, never the concrete SQLite class.
+4. **Wiring** (`cli.py`) is the only module that knows about everything. It creates `SqliteRobotRepository(...)` and passes it to `FleetService`.
+
+```python
+# cli.py: the composition root
+from fleetops.repository import SqliteRobotRepository
+from fleetops.service import FleetService
+
+def main() -> None:
+    service = FleetService(SqliteRobotRepository("fleet.db"))
+    print(service.available_robots())
+```
+
+The import arrows all point **inward**: cli → service → domain. That one rule prevents circular imports.
+
+## Common mistakes
+
+- **Circular imports** (`a.py` imports `b`, `b.py` imports `a`). Move the shared piece into a third module, or depend on a `Protocol`.
+- **Running a module inside a package as a script** (`python src/fleetops/cli.py`) breaks relative imports. Use `python -m fleetops.cli` or an entry point.
+- **Putting heavy code in `__init__.py`.** Keep it to re-exports, so importing the package stays fast and side-effect free.
+
+## Check your understanding
+
+1. Which module should create the database connection, and why?
+2. What does `__all__` control?
+
+<details><summary>Answers</summary>
+
+1. The composition root (`cli.py` or a `create_app()`). Everything else receives it, so tests can pass an in-memory version.
+2. What `from package import *` exports. It also documents the public API.
+
+</details>

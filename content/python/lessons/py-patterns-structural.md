@@ -152,3 +152,63 @@ Share immutable state among many objects: `sys.intern` for strings, small-int ca
 > [!EXAM]
 > **Explain Python decorators and how they relate to the GoF Decorator pattern.**
 > A Python decorator is syntax for applying a higher-order function at definition time: `@d` above `def f` means `f = d(f)`. The decorator returns a wrapper (decorated with `functools.wraps` to keep the original metadata) that adds behaviour such as retries, caching, timing or validation around calls. Parameterised decorators are factories that return the decorator. The GoF Decorator pattern wraps an *object* to add behaviour while keeping its interface. Both add behaviour by wrapping without modifying the original and can be stacked, but Python decorators operate on functions and classes at definition time, while GoF decorators compose objects at runtime.
+
+## Worked example: Adapter, Decorator and Facade together
+
+You have a third-party sonar library with an awkward interface, and your code expects `read() -> metres`.
+
+```python
+class VendorSonar:                       # third-party: centimetres, odd method name
+    def get_distance_cm(self) -> int:
+        return 153
+
+class SonarAdapter:                      # Adapter: converts the interface
+    def __init__(self, sonar: VendorSonar):
+        self._s = sonar
+    def read(self) -> float:
+        return self._s.get_distance_cm() / 100
+
+class Clamped:                           # GoF Decorator: same interface, extra behaviour
+    def __init__(self, sensor, lo: float, hi: float):
+        self._s, self.lo, self.hi = sensor, lo, hi
+    def read(self) -> float:
+        return min(self.hi, max(self.lo, self._s.read()))
+
+class ObstacleChecker:                   # Facade: one simple call over several parts
+    def __init__(self, sensor, threshold: float):
+        self.sensor, self.threshold = sensor, threshold
+    def blocked(self) -> bool:
+        return self.sensor.read() < self.threshold
+
+sensor = Clamped(SonarAdapter(VendorSonar()), 0.2, 1.0)
+print(sensor.read(), ObstacleChecker(sensor, 1.2).blocked())
+```
+
+```output
+1.0 True
+```
+
+| Pattern | Changes the interface? | Purpose |
+|---|---|---|
+| Adapter | **yes**, to the one you expect | make incompatible code fit |
+| Decorator | no, same interface | add behaviour by wrapping |
+| Proxy | no, same interface | control access (lazy loading, caching, permissions) |
+| Facade | gives a **new, simpler** one | hide a complicated subsystem |
+
+## Common mistakes
+
+- **Confusing Python's `@decorator` syntax with the GoF Decorator.** The first wraps *functions* at definition time; the second wraps *objects* at runtime. They share an idea, not a mechanism.
+- **Adapters that leak the adaptee** (returning vendor types). Convert everything at the boundary.
+- **A Facade that becomes a god object.** It should delegate, not reimplement the logic.
+
+## Check your understanding
+
+1. You wrap a slow API client so repeated calls return cached results. Which pattern is that?
+2. Why can the decorators stack (`Clamped(Smoothed(sensor))`)?
+
+<details><summary>Answers</summary>
+
+1. A (caching) Proxy. It has the same interface and controls access to the real object.
+2. Each wrapper has the same interface as the thing it wraps, so any wrapper can wrap any other.
+
+</details>

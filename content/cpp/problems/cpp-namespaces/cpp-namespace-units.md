@@ -72,6 +72,11 @@ ang 90 grad
 2.0000 rad
 error: unknown unit grad
 
+## Hints
+- Nested namespaces can be written as `namespace units::length { ... }`.
+- Put the shared lookup helper inside an anonymous namespace `namespace { ... }`: it is visible only in this file.
+- Store the conversion factors in a `static const std::map<std::string, double>`; `find` returns `end()` for an unknown unit, so throw `std::invalid_argument` then.
+
 ## Solution
 ```cpp
 #include <string>

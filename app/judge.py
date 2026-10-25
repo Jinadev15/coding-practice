@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 
@@ -34,14 +35,75 @@ if PYTHON == str(_JUDGE_VENV_PY) and _JUDGE_ENV_FILE.exists():
     PY_EXTRA_ENV = _json.loads(_JUDGE_ENV_FILE.read_text())
 
 
+# ------------------------------------------------------------------ sandbox
+# When the app is shared (server.py --multi-user), every compile and run goes through bubblewrap:
+# no network, its own PID namespace, a read-only view of the system toolchains only (the repository,
+# reference solutions and progress databases are not visible), and a writable temp workspace.
+SANDBOX = os.environ.get("JUDGE_SANDBOX", "auto")     # "on" | "off" | "auto" (on when bwrap works)
+_RO_DIRS = ["/usr", "/etc", "/opt"]
+
+
+def _bwrap_prefix(workdir: Path) -> list[str]:
+    cmd = ["bwrap", "--unshare-all", "--die-with-parent", "--new-session",
+           "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp"]
+    for d in _RO_DIRS:
+        if os.path.isdir(d):
+            cmd += ["--ro-bind", d, d]
+    for top in ("bin", "lib", "lib64", "sbin"):
+        p = Path("/" + top)
+        if p.is_symlink():
+            cmd += ["--symlink", os.readlink(p), str(p)]
+        elif p.is_dir():
+            cmd += ["--ro-bind", str(p), str(p)]
+    venv = _JUDGE_VENV_PY.parent.parent
+    if venv.is_dir():
+        cmd += ["--ro-bind", str(venv), str(venv)]
+    return cmd + ["--bind", str(workdir), str(workdir), "--chdir", str(workdir), "--"]
+
+
+def _sandbox_works() -> bool:
+    if not shutil.which("bwrap"):
+        return False
+    with tempfile.TemporaryDirectory(prefix="cp-probe-") as d:
+        try:
+            r = subprocess.run(_bwrap_prefix(Path(d)) + ["true"], capture_output=True, timeout=10)
+            return r.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+
+
+def sandbox_enabled() -> bool:
+    global SANDBOX
+    if SANDBOX == "auto":
+        SANDBOX = "on" if _sandbox_works() else "off"
+    return SANDBOX == "on"
+
+
+def _user_procs() -> int:
+    uid, n = os.getuid(), 0
+    for d in os.listdir("/proc"):
+        if d.isdigit():
+            try:
+                if os.stat(f"/proc/{d}").st_uid == uid:
+                    n += len(os.listdir(f"/proc/{d}/task"))
+            except OSError:
+                pass
+    return n
+
+
 def _limits(mem_mb: int, cpu_s: int):
+    # RLIMIT_NPROC counts every thread of this Unix user, so allow headroom above what is running now:
+    # enough for thread pools, not enough for a fork bomb to take the machine down.
+    nproc = _user_procs() + 512 if SANDBOX == "on" else None
     def apply():
         os.setsid()
         resource.setrlimit(resource.RLIMIT_CPU, (cpu_s, cpu_s + 1))
         if mem_mb:
             b = mem_mb * 1024 * 1024
             resource.setrlimit(resource.RLIMIT_AS, (b, b))
-        resource.setrlimit(resource.RLIMIT_FSIZE, (16 << 20, 16 << 20))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_STDOUT, MAX_STDOUT))
+        if nproc:
+            resource.setrlimit(resource.RLIMIT_NPROC, (nproc, nproc))
     return apply
 
 
@@ -159,6 +221,9 @@ class Workspace:
     def __exit__(self, *exc):
         shutil.rmtree(self.dir, ignore_errors=True)
 
+    def _wrap(self, cmd: list[str]) -> list[str]:
+        return _bwrap_prefix(self.dir) + cmd if sandbox_enabled() else cmd
+
     def compile(self) -> tuple[bool, str]:
         cfg = self.lang.config
         cmd = cfg.get("compile")
@@ -168,7 +233,8 @@ class Workspace:
         sources = sorted(n for n in self.files if n.endswith(exts))
         try:
             r = subprocess.run(
-                _expand(cmd, sources, cfg.get("main", ""), self.cflags, self.ldflags), cwd=self.dir, capture_output=True,
+                self._wrap(_expand(cmd, sources, cfg.get("main", ""), self.cflags, self.ldflags)), cwd=self.dir,
+                capture_output=True,
                 text=True, timeout=cfg.get("compile_timeout", 30),
                 preexec_fn=_limits(0, cfg.get("compile_timeout", 30)),
             )
@@ -179,11 +245,19 @@ class Workspace:
 
     def run(self, stdin: str, time_limit: float) -> dict:
         cfg = self.lang.config
-        cmd = _expand(cfg["run"], [], cfg.get("main", ""))
+        cmd = self._wrap(_expand(cfg["run"], [], cfg.get("main", "")))
         start = time.perf_counter()
+        # Output goes to files, not pipes: RLIMIT_FSIZE then caps how much a runaway program can print,
+        # instead of the server buffering gigabytes in memory.
+        out_f = tempfile.TemporaryFile()
+        err_f = tempfile.TemporaryFile()
+
+        def read(f, cap):
+            f.seek(0)
+            return f.read(cap).decode("utf-8", errors="replace").replace("\r\n", "\n")
         try:
             r = subprocess.run(
-                cmd, cwd=self.dir, input=stdin, capture_output=True, text=True,
+                cmd, cwd=self.dir, input=stdin.encode(), stdout=out_f, stderr=err_f,
                 timeout=time_limit + 0.5,
                 preexec_fn=_limits(cfg.get("memory_mb", 512), math.ceil(time_limit) + 1),
                 env={"PATH": os.environ.get("PATH", ""), "PYTHONHASHSEED": "0",
@@ -197,12 +271,14 @@ class Workspace:
                      **self.lib_env,
                      **cfg.get("env", {})},
             )
-        except subprocess.TimeoutExpired as e:
-            out = e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or "")
-            return {"status": "TLE", "stdout": out[:MAX_STDOUT], "stderr": "Time limit exceeded",
-                    "time_ms": int((time.perf_counter() - start) * 1000)}
+        except subprocess.TimeoutExpired:
+            with out_f, err_f:
+                return {"status": "TLE", "stdout": read(out_f, MAX_STDOUT), "stderr": "Time limit exceeded",
+                        "time_ms": int((time.perf_counter() - start) * 1000)}
         ms = int((time.perf_counter() - start) * 1000)
-        stderr = r.stderr.replace(str(self.dir) + "/", "")[:MAX_OUT]
+        with out_f, err_f:
+            stdout, stderr = read(out_f, MAX_STDOUT), read(err_f, MAX_OUT)
+        stderr = stderr.replace(str(self.dir) + "/", "")[:MAX_OUT]
         status = "OK"
         if r.returncode != 0:
             status = "TLE" if r.returncode in (-9, -24) else "RE"
@@ -210,7 +286,9 @@ class Workspace:
                 stderr = f"Killed by signal {-r.returncode}"
         if ms > time_limit * 1000 and status == "OK":
             status = "TLE"
-        return {"status": status, "stdout": r.stdout[:MAX_STDOUT], "stderr": stderr, "time_ms": ms}
+        if r.returncode == -25:     # SIGXFSZ
+            stderr = (stderr + "\nOutput limit exceeded (your program printed too much).").strip()
+        return {"status": status, "stdout": stdout, "stderr": stderr, "time_ms": ms}
 
 
 def problem_libs(problem: Problem) -> list[str]:
@@ -244,8 +322,22 @@ def expected_outputs(lang: Language, problem: Problem) -> list[str]:
     return _expected_cache[key]
 
 
+# At most this many submissions compile/run at once; the rest wait their turn.
+_slots = threading.BoundedSemaphore(int(os.environ.get("JUDGE_WORKERS", max(2, (os.cpu_count() or 4) // 2))))
+
+
 def judge(lang: Language, problem: Problem, user_files: dict[str, str], samples_only=False,
           custom_input: str | None = None) -> dict:
+    if not _slots.acquire(timeout=300):
+        raise RuntimeError("The judge is busy. Please try again in a minute.")
+    try:
+        return _judge(lang, problem, user_files, samples_only, custom_input)
+    finally:
+        _slots.release()
+
+
+def _judge(lang: Language, problem: Problem, user_files: dict[str, str], samples_only=False,
+           custom_input: str | None = None) -> dict:
     files = build_files(lang, problem, user_files)
     tl = float(problem.meta.get("time_limit", lang.config.get("time_limit", 2)))
     mode = problem.meta.get("compare", "lines")

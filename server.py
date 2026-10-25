@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import mimetypes
 import random
 import re
+import threading
 import traceback
 import webbrowser
 from http import HTTPStatus
@@ -15,7 +17,8 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from app import judge as judge_mod
-from app.content import Catalog
+from app.auth import Accounts, AuthError
+from app.content import CONTENT, Catalog
 from app.db import DB, now
 from app.progress import QUIZ_PASS, QUIZ_SIZE, UNLOCK_SCORE, Progress
 
@@ -23,8 +26,33 @@ ROOT = Path(__file__).resolve().parent
 STATIC = ROOT / "static"
 
 catalog = Catalog()
-db = DB()
-progress = Progress(db)
+MAX_BODY = 2 << 20            # request bodies above 2 MB are refused
+SESSION_COOKIE = "cp_session"
+
+# Each request runs with the signed-in user's own database. `db` and `progress` below are proxies to
+# the current request's objects, so the handlers read like single-user code.
+_ctx = threading.local()
+_local_db = None              # single-user mode: data/progress.db
+accounts: Accounts | None = None   # set in shared (multi-user) mode
+INVITE_CODE = os.environ.get("CP_INVITE_CODE", "")
+_progress_for: dict[int, Progress] = {}
+
+
+class _Current:
+    def __init__(self, attr):
+        self._attr = attr
+
+    def __getattr__(self, name):
+        return getattr(getattr(_ctx, self._attr), name)
+
+
+db = _Current("db")
+progress = _Current("progress")
+
+
+def _bind_user(user_db: DB) -> None:
+    _ctx.db = user_db
+    _ctx.progress = _progress_for.setdefault(id(user_db), Progress(user_db))
 
 
 class ApiError(Exception):
@@ -131,13 +159,18 @@ def get_topic(lid, tid):
 def post_lesson_read(lid, tid, body):
     lang = lang_or_404(lid)
     need(tid in lang.topic_map)
+    with db.lock:
+        _set_read(lid, tid, body)
+    return {"ok": True}
+
+
+def _set_read(lid, tid, body):
     if body.get("read", True):
         if not db.q("SELECT 1 FROM lessons WHERE lang=? AND topic=?", (lid, tid)):
             db.x("INSERT INTO lessons VALUES (?,?,?)", (lid, tid, now()))
             db.event(lid, "lesson_read", tid)
     else:
         db.x("DELETE FROM lessons WHERE lang=? AND topic=?", (lid, tid))
-    return {"ok": True}
 
 
 def get_quiz(lid, tid):
@@ -268,9 +301,11 @@ def get_problem(lid, pid):
 def clean_files(lang, p, body) -> dict[str, str]:
     files = body.get("files") or {}
     need(isinstance(files, dict) and files, 400, "No code submitted")
+    need(len(files) <= 24, 400, "Too many files")
     allowed = set(p.starters)
     for name in files:
-        need(name in allowed or re.fullmatch(r"[\w.\-]+", name), 400, f"Bad file name {name}")
+        need(name in allowed or (re.fullmatch(r"[\w.\-]+", name) and not name.startswith(".")),
+             400, f"Bad file name {name}")
     return {k: str(v) for k, v in files.items()}
 
 
@@ -278,10 +313,12 @@ def post_run(lid, pid, body):
     lang = lang_or_404(lid)
     p = lang.problems.get(pid)
     need(p)
+    if p.milestone:
+        need(milestone_unlocked(lang, p.milestone), 403, "Milestone locked")
     files = clean_files(lang, p, body)
     custom = body.get("custom_input")
     return judge_mod.judge(lang, p, files, samples_only=True,
-                           custom_input=custom if custom is not None else None)
+                           custom_input=str(custom) if custom is not None else None)
 
 
 def post_submit(lid, pid, body):
@@ -292,6 +329,12 @@ def post_submit(lid, pid, body):
         need(milestone_unlocked(lang, p.milestone), 403, "Milestone locked")
     files = clean_files(lang, p, body)
     res = judge_mod.judge(lang, p, files)
+    with db.lock:          # two tabs submitting at once must not lose an attempt or a completion
+        return _record_submission(lang, p, files, res)
+
+
+def _record_submission(lang, p, files, res):
+    lid, pid = lang.id, p.id
     score = res["score"]
     db.x("INSERT INTO submissions (lang, problem, ts, score, passed, total, files, result) "
          "VALUES (?,?,?,?,?,?,?,?)", (lid, pid, now(), score, res["passed"], res["total"],
@@ -341,7 +384,9 @@ def get_milestone(lid, n):
     need(m)
     probs = [problem_brief(lang, p, s["state"]) for p in lang.milestones.get(n, [])] \
         if m["unlocked"] else []
-    return {"lang": lid, "lang_name": lang.name, **m, "pct": s["pct"], "problems_list": probs}
+    guide = CONTENT / lid / "milestones" / f"milestone-{n}.md"
+    return {"lang": lid, "lang_name": lang.name, **m, "pct": s["pct"], "problems_list": probs,
+            "guide": guide.read_text(encoding="utf-8") if guide.exists() else ""}
 
 
 def get_problems(lid, q):
@@ -396,6 +441,17 @@ ROUTES = [
 ]
 
 
+# ------------------------------------------------------------------ accounts
+
+def get_me(_q, user):
+    if not accounts:
+        return {"multi_user": False, "user": None}
+    return {"multi_user": True, "user": user and user["username"], "signup": bool(INVITE_CODE)}
+
+
+AUTH_FREE = {"/api/auth/me", "/api/auth/login", "/api/auth/signup", "/api/auth/logout"}
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "CodingPractice/1.0"
 
@@ -403,26 +459,105 @@ class Handler(BaseHTTPRequestHandler):
         if args and isinstance(args[0], str) and "/api/" in args[0]:
             super().log_message(fmt, *args)
 
-    def _send(self, status, data: bytes, ctype: str):
+    def _send(self, status, data: bytes, ctype: str, headers: dict | None = None):
         self.send_response(status)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "same-origin")
+        for k, v in (headers or {}).items():
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(data)
 
-    def _json(self, status, obj):
-        self._send(status, json.dumps(obj, default=str).encode(), "application/json")
+    def _json(self, status, obj, headers=None):
+        self._send(status, json.dumps(obj, default=str).encode(), "application/json", headers)
+
+    # -------------------------------------------------------------- sessions
+    def _client(self) -> str:
+        # behind a tunnel or reverse proxy the real client is in the forwarding header
+        return (self.headers.get("CF-Connecting-IP") or self.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+                or self.client_address[0])
+
+    def _token(self) -> str | None:
+        for part in (self.headers.get("Cookie") or "").split(";"):
+            k, _, v = part.strip().partition("=")
+            if k == SESSION_COOKIE:
+                return v
+        return None
+
+    def _cookie(self, token: str, max_age: int) -> dict:
+        secure = "; Secure" if self.headers.get("X-Forwarded-Proto") == "https" else ""
+        return {"Set-Cookie": f"{SESSION_COOKIE}={token}; Path=/; HttpOnly; SameSite=Strict; "
+                              f"Max-Age={max_age}{secure}"}
+
+    def _auth(self, path, method, body):
+        """Handles /api/auth/*; returns (status, payload, headers)."""
+        user = accounts.session_user(self._token()) if accounts else None
+        if path == "/api/auth/me":
+            return 200, get_me({}, user), None
+        if method != "POST" or not accounts:
+            return 404, {"error": "No such endpoint"}, None
+        try:
+            if path == "/api/auth/signup":
+                if not INVITE_CODE or not secrets_equal(str(body.get("invite", "")), INVITE_CODE):
+                    raise AuthError("Invalid invite code.")
+                accounts.create_user(str(body.get("username", "")), str(body.get("password", "")))
+            if path in ("/api/auth/signup", "/api/auth/login"):
+                token = accounts.login(str(body.get("username", "")), str(body.get("password", "")), self._client())
+                return 200, {"ok": True}, self._cookie(token, 30 * 86400)
+            if path == "/api/auth/logout":
+                if self._token():
+                    accounts.logout(self._token())
+                return 200, {"ok": True}, self._cookie("", 0)
+        except AuthError as e:
+            return 400, {"error": str(e)}, None
+        return 404, {"error": "No such endpoint"}, None
 
     def _handle(self, method):
         url = urlparse(self.path)
         if url.path.startswith("/api/"):
+            # Single-user mode has no sign-in, so only answer requests addressed to this machine by name.
+            # This blocks DNS-rebinding pages (Host: evil.example) from driving the judge.
+            if not accounts and (self.headers.get("Host") or "").rsplit(":", 1)[0] not in ("127.0.0.1", "localhost", "[::1]"):
+                return self._json(403, {"error": "Use http://127.0.0.1 to reach this server"})
             q = {k: v[0] for k, v in parse_qs(url.query).items()}
             body = {}
             if method in ("POST", "PUT"):
-                n = int(self.headers.get("Content-Length") or 0)
+                # Cross-site forms can't send JSON or a foreign Origin without CORS, which we never allow.
+                # (A tunnel may rewrite Host to the loopback address; SameSite=Strict cookies still apply there.)
+                origin, host = self.headers.get("Origin"), self.headers.get("Host") or ""
+                proxied = host.split(":")[0] in ("127.0.0.1", "localhost", "[::1]")
+                if origin and not proxied and urlparse(origin).netloc not in (host, self.headers.get("X-Forwarded-Host")):
+                    return self._json(403, {"error": "Cross-origin request refused"})
+                if "application/json" not in (self.headers.get("Content-Type") or ""):
+                    return self._json(415, {"error": "Send JSON"})
+                try:
+                    n = int(self.headers.get("Content-Length") or 0)
+                except ValueError:
+                    n = -1
+                if n < 0 or n > MAX_BODY:
+                    self.close_connection = True
+                    return self._json(413, {"error": "Request too large"})
                 if n:
-                    body = json.loads(self.rfile.read(n))
+                    try:
+                        body = json.loads(self.rfile.read(n))
+                    except ValueError:
+                        return self._json(400, {"error": "Invalid JSON"})
+                    if not isinstance(body, dict):
+                        return self._json(400, {"error": "Invalid JSON"})
+            if url.path.startswith("/api/auth/"):
+                status, payload, headers = self._auth(url.path, method, body)
+                return self._json(status, payload, headers)
+            if accounts:
+                user = accounts.session_user(self._token())
+                if not user:
+                    return self._json(401, {"error": "Please sign in."})
+                _bind_user(accounts.db_for(user))
+            else:
+                _bind_user(_local_db)
             for meth, pat, fn in ROUTES:
                 m = re.fullmatch(pat, url.path)
                 if m and meth == method:
@@ -430,9 +565,9 @@ class Handler(BaseHTTPRequestHandler):
                         return self._json(200, fn(m.groups(), q, body))
                     except ApiError as e:
                         return self._json(e.status, {"error": str(e)})
-                    except Exception as e:  # noqa: BLE001
+                    except Exception:  # noqa: BLE001
                         traceback.print_exc()
-                        return self._json(500, {"error": f"{type(e).__name__}: {e}"})
+                        return self._json(500, {"error": "Internal error. The details were logged on the server."})
             return self._json(404, {"error": "No such endpoint"})
         if method != "GET":
             return self._json(405, {"error": "Method not allowed"})
@@ -457,18 +592,42 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
 
+def secrets_equal(a: str, b: str) -> bool:
+    import hmac
+    return hmac.compare_digest(a.encode(), b.encode())
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no-browser", action="store_true")
+    ap.add_argument("--host", default="127.0.0.1",
+                    help="address to listen on (keep 127.0.0.1 behind a tunnel; 0.0.0.0 exposes it to the LAN)")
+    ap.add_argument("--multi-user", action="store_true",
+                    help="require sign-in; each account gets its own progress database")
     a = ap.parse_args()
+    global accounts, _local_db
+    if a.multi_user:
+        if not judge_mod.sandbox_enabled():
+            raise SystemExit("--multi-user needs the bubblewrap sandbox (bwrap) so friends' code can't touch "
+                             "this machine. Install bubblewrap, or check that unprivileged user namespaces work.")
+        accounts = Accounts()
+        if not accounts.users():
+            print("No accounts yet. Create one with:  python3 tools/users.py add <name> --admin --mine")
+    else:
+        _local_db = DB()
+        if a.host not in ("127.0.0.1", "localhost", "::1"):
+            raise SystemExit("Refusing to listen on a public address without --multi-user (sign-in + sandbox).")
     langs = catalog.get()
     for lang in langs.values():
         for err in lang.errors:
             print(f"[content warning] {lang.id}: {err}")
-    srv = ThreadingHTTPServer(("127.0.0.1", a.port), Handler)
+    srv = ThreadingHTTPServer((a.host, a.port), Handler)
+    srv.daemon_threads = True
     url = f"http://127.0.0.1:{a.port}"
-    print(f"Coding Practice running at {url}  ({', '.join(langs)})")
+    mode = "shared, sign-in required" if accounts else "single user"
+    print(f"Coding Practice running at {url}  ({', '.join(langs)}; {mode}; "
+          f"sandbox {'on' if judge_mod.sandbox_enabled() else 'off'})")
     if not a.no_browser:
         webbrowser.open(url)
     try:

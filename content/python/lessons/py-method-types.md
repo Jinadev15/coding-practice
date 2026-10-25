@@ -136,3 +136,65 @@ print(m.__self__ is t)        # True
 
 > [!INTERVIEW]
 > **"Why should alternative constructors be classmethods rather than staticmethods?"** A classmethod receives `cls`, the class it was called on, so `return cls(...)` builds the right type even for subclasses. A staticmethod would have to hard-code `return Temperature(...)`, so `Kelvin.from_fahrenheit(...)` would wrongly return a `Temperature`. That breaks inheritance.
+
+## Worked example: all three in one class
+
+```python
+from datetime import date
+
+class Reading:
+    count = 0                                   # class-level state shared by all instances
+
+    def __init__(self, sensor: str, value: float, day: date):
+        self.sensor, self.value, self.day = sensor, value, day
+        Reading.count += 1
+
+    def in_range(self, lo: float, hi: float) -> bool:      # instance method: uses self
+        return lo <= self.value <= hi
+
+    @classmethod
+    def from_csv(cls, line: str) -> "Reading":              # alternative constructor: uses cls
+        sensor, value, day = line.split(",")
+        return cls(sensor, float(value), date.fromisoformat(day))
+
+    @staticmethod
+    def celsius_to_f(c: float) -> float:                    # helper: needs neither
+        return c * 9 / 5 + 32
+
+r = Reading.from_csv("temp1,21.5,2026-10-26")
+print(r.sensor, r.value, r.in_range(15, 25))
+print(Reading.celsius_to_f(r.value), Reading.count)
+```
+
+```output
+temp1 21.5 True
+70.7 1
+```
+
+**How to choose:**
+
+| Needs the object's data? | Needs the class? | Use |
+|---|---|---|
+| yes | – | instance method |
+| no | yes (to construct, or for class-wide state) | `@classmethod` |
+| no | no | `@staticmethod`, or a plain module-level function |
+
+`cls(...)` in `from_csv` matters for inheritance: `SubReading.from_csv(...)` builds a `SubReading`, not a `Reading`.
+
+## Common mistakes
+
+- **Writing `Reading(...)` instead of `cls(...)`** inside a classmethod. That breaks subclasses.
+- **Modifying a mutable class attribute through `self`** (`self.items.append(x)` where `items = []` is defined on the class). Every instance shares that one list.
+- **Using `@staticmethod` for everything** because "it doesn't use self yet". A module-level function is often clearer.
+
+## Check your understanding
+
+1. What is printed by `Reading.count` after creating three readings?
+2. Why is `dict.fromkeys` a classmethod?
+
+<details><summary>Answers</summary>
+
+1. `3`. It is shared class state, incremented in `__init__`.
+2. It's an alternative constructor. Called on a `dict` subclass, it returns an instance of that subclass.
+
+</details>

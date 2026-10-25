@@ -47,6 +47,11 @@ x                    0        0.00
 ==================================
 TOTAL                         0.00
 
+## Hints
+- Read whole lines with `std::getline(std::cin, line)`, because names contain spaces.
+- Split a line with a `std::istringstream` and `std::getline(ss, field, ';')`; convert with `std::stoi` and `std::stod`.
+- `std::left << std::setw(16)` and `std::right << std::setw(6)` set alignment and width; `std::fixed << std::setprecision(2)` gives two decimals.
+
 ## Solution
 ```cpp
 #include <iostream>

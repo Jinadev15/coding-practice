@@ -1,13 +1,15 @@
-"""SQLite storage for your progress. One file: data/progress.db."""
+"""SQLite storage for progress. Single-user mode uses data/progress.db; shared mode gives each
+account its own file under data/users/ (see app/auth.py)."""
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import threading
 from datetime import date, datetime
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "progress.db"
+DB_PATH = Path(os.environ.get("CP_DATA_DIR") or Path(__file__).resolve().parent.parent / "data") / "progress.db"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
@@ -40,9 +42,6 @@ CREATE TABLE IF NOT EXISTS mcq_stats (
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 """
 
-_lock = threading.Lock()
-
-
 def now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
@@ -54,17 +53,21 @@ def today() -> str:
 class DB:
     def __init__(self, path: Path = DB_PATH):
         path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(path, check_same_thread=False)
+        self.conn = sqlite3.connect(path, check_same_thread=False, timeout=15)
         self.conn.row_factory = sqlite3.Row
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA synchronous=NORMAL")
+        # one lock per database file: different users never wait for each other
+        self.lock = threading.RLock()
         self.conn.executescript(SCHEMA)
         self.conn.commit()
 
     def q(self, sql: str, args=()) -> list[sqlite3.Row]:
-        with _lock:
+        with self.lock:
             return self.conn.execute(sql, args).fetchall()
 
     def x(self, sql: str, args=()) -> int:
-        with _lock:
+        with self.lock:
             cur = self.conn.execute(sql, args)
             self.conn.commit()
             return cur.lastrowid

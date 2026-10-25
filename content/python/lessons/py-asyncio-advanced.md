@@ -159,3 +159,60 @@ The protocols behind them are `__aiter__`/`__anext__` and `__aenter__`/`__aexit_
 
 > [!INTERVIEW]
 > **"Why is swallowing `CancelledError` dangerous?"** Cancellation is how asyncio implements timeouts, TaskGroup failure handling and graceful shutdown: the runtime raises `CancelledError` inside the task and expects it to propagate. A task that catches it and continues makes `asyncio.timeout` never fire, keeps a TaskGroup waiting forever after a sibling failed, and hangs shutdown. Correct code catches it only to clean up (or uses `finally`) and then re-raises. Similarly, broad `except BaseException` blocks must re-raise. Only use `asyncio.shield` deliberately, for short critical sections.
+
+## Worked example: a bounded producer–consumer pipeline
+
+```python
+import asyncio
+
+async def producer(q: asyncio.Queue, n: int):
+    for i in range(n):
+        await q.put(i)                  # waits when the queue is full (backpressure)
+    for _ in range(2):
+        await q.put(None)               # one stop signal per worker
+
+async def worker(name: str, q: asyncio.Queue, out: list):
+    while (item := await q.get()) is not None:
+        await asyncio.sleep(0.01)       # pretend to process
+        out.append(item * item)
+
+async def main():
+    q, out = asyncio.Queue(maxsize=3), []
+    async with asyncio.TaskGroup() as tg:          # waits for all; cancels siblings on error
+        tg.create_task(producer(q, 6))
+        tg.create_task(worker("w1", q, out))
+        tg.create_task(worker("w2", q, out))
+    print(sorted(out))
+
+asyncio.run(main())
+```
+
+```output
+[0, 1, 4, 9, 16, 25]
+```
+
+The pieces:
+
+- **`Queue(maxsize=3)`:** the producer can't race ahead of the workers, which bounds memory use.
+- **Sentinel `None`s:** a clean way to tell each worker to stop.
+- **`TaskGroup`:** if any task raises, the others are cancelled and the error propagates. You never leak orphaned tasks.
+
+For a time limit on the whole thing, wrap it: `async with asyncio.timeout(5): ...`.
+
+## Common mistakes
+
+- **Swallowing `CancelledError`** (`except Exception` is fine, but a bare `except:` or `except BaseException` catches cancellation). If you catch it to clean up, re-raise it.
+- **`create_task` without keeping a reference.** The task can be garbage-collected mid-flight. `TaskGroup` keeps the references for you.
+- **Unbounded `gather` over 10,000 URLs.** Limit concurrency with `asyncio.Semaphore(20)`.
+
+## Check your understanding
+
+1. What does `TaskGroup` do when one child task fails?
+2. How do you stop the workers if the producer crashes?
+
+<details><summary>Answers</summary>
+
+1. It cancels the remaining children, waits for them, then raises an `ExceptionGroup` containing the failure(s).
+2. Run them all in the same `TaskGroup`. The producer's exception cancels the workers automatically.
+
+</details>

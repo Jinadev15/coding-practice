@@ -28,6 +28,28 @@ script also exposes `rclpy` and the message packages to the judge, and every run
 C++ library problems (Eigen, OpenCV, GoogleTest, fmt, spdlog, Boost, nlohmann/json, rclcpp) use system packages. Run
 `python3 tools/setup_cpp_libs.py` once to record the ROS 2 `rclcpp` build flags (other libraries resolve through pkg-config).
 
+## Sharing with friends
+
+By default the app is single-user and listens only on 127.0.0.1. To let friends use it at the same time as you:
+
+```bash
+python3 tools/users.py add <your-name> --admin --mine     # --mine keeps your existing progress
+CP_INVITE_CODE=pick-a-secret tools/share.sh
+```
+
+`share.sh` starts **shared mode** (`server.py --multi-user`) and, if `cloudflared` is installed, prints a public
+`https://….trycloudflare.com` link. Friends open it, choose **Create account** and type the invite code.
+
+Shared mode does the following:
+
+- **Sign-in is required.** Passwords are hashed with scrypt, sessions are HttpOnly SameSite=Strict cookies, and failed logins are rate-limited.
+- **Every account gets its own progress database** (`data/users/<name>.db`), so nobody can see or overwrite anyone else's progress, and two people submitting at once never block each other.
+- **Every compile and run happens inside a bubblewrap sandbox:** no network, a private process namespace, a read-only view of the toolchains only (not your files, the reference solutions or anyone's progress), and limits on CPU time, memory, output size and process count. The server refuses to start in shared mode if the sandbox isn't available.
+- **At most `JUDGE_WORKERS` submissions are judged at once** (default: half your CPU cores); the rest wait their turn.
+
+Manage accounts with `tools/users.py list | add | passwd | delete`. Progress is only reachable while your laptop and
+`share.sh` are running. Vercel or other serverless hosts can't run the judge (no compilers, no sandbox, no persistent disk).
+
 ## How it works
 
 - **Study** a topic's lesson, or skip it if you already know the material, and mark it studied.

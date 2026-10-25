@@ -52,6 +52,11 @@ max = 0
 max = 12
 ------------
 
+## Hints
+- C compiles top to bottom: a function must be declared before it is called.
+- Put prototypes (`int max3(int a, int b, int c);`) above `main`, and the full definitions after it.
+- `print_line` is a loop of `putchar('-')` followed by `putchar('\n')`.
+
 ## Solution
 ```c
 #include <stdio.h>

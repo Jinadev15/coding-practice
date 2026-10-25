@@ -7,3 +7,4 @@ data/*.db-shm
 .claude/settings.local.json
 .venv-judge/
 .cache/
+data/

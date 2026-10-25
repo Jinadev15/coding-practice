@@ -50,6 +50,11 @@ n = int(input())
 0x59D39E7F3B34
 98765432109876
 
+## Hints
+- Format specs go after a colon inside an f-string: `f"{n:,}"` adds thousands separators.
+- `b` is binary, `X` is uppercase hexadecimal: `f"{n:b}"`, `f"0x{n:X}"`.
+- `f"{n:010d}"` means: pad with zeros to width 10. Numbers wider than 10 digits are printed in full automatically.
+
 ## Solution
 Each line is one format spec: `,` for grouping, `b` for binary, `X` for uppercase hex (the `0x` is plain text, because `#X` would give `0X`), and `010d` for zero-padding to width 10.
 

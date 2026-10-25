@@ -143,3 +143,72 @@ def test_create_mission():
 > [!EXAM]
 > **How does FastAPI use type hints, and why is dependency injection valuable?**
 > Each endpoint parameter's annotation and default decide where it comes from (path, query, header, or JSON body for Pydantic models) and how it's validated and converted. Invalid input automatically gets a 422 with field-level errors, and the same metadata generates the OpenAPI schema and docs. Dependency injection (`Depends`) declares an endpoint's requirements, such as authentication, database sessions and settings, as reusable functions resolved per request, with cleanup via `yield`. That removes duplicated boilerplate, keeps endpoints focused on logic, and makes testing easy, because dependencies can be swapped with `dependency_overrides`.
+
+## Worked example: a complete mini API with a test
+
+```python
+from fastapi import FastAPI, HTTPException
+from fastapi.testclient import TestClient
+from pydantic import BaseModel, Field
+
+app = FastAPI()
+ROBOTS: dict[int, dict] = {}
+
+class RobotIn(BaseModel):
+    name: str = Field(min_length=1, max_length=32)
+    battery: float = Field(ge=0, le=1)
+
+class RobotOut(RobotIn):
+    id: int
+
+@app.post("/robots", response_model=RobotOut, status_code=201)
+def create(robot: RobotIn):
+    rid = len(ROBOTS) + 1
+    ROBOTS[rid] = robot.model_dump()
+    return {"id": rid, **ROBOTS[rid]}
+
+@app.get("/robots/{rid}", response_model=RobotOut)
+def read(rid: int):
+    if rid not in ROBOTS:
+        raise HTTPException(status_code=404, detail="robot not found")
+    return {"id": rid, **ROBOTS[rid]}
+
+client = TestClient(app)
+print(client.post("/robots", json={"name": "r1", "battery": 0.9}).json())
+print(client.post("/robots", json={"name": "", "battery": 2}).status_code)   # validation fails
+print(client.get("/robots/99").status_code)
+```
+
+```output
+{'name': 'r1', 'battery': 0.9, 'id': 1}
+422
+404
+```
+
+What FastAPI did for you:
+
+- parsed the JSON body into `RobotIn`
+- **validated** it (empty name or battery > 1 → automatic 422 with details)
+- converted the path parameter `rid` to `int`
+- filtered the response through `RobotOut`
+- generated interactive docs at `/docs`
+
+`TestClient` runs requests in-process, with no server needed.
+
+## Common mistakes
+
+- **Blocking calls inside `async def` endpoints** (`time.sleep`, `requests.get`). They freeze every request. Either use a plain `def` (FastAPI runs it in a thread pool) or use async libraries.
+- **Returning database objects directly.** Always declare a `response_model`, so internal fields such as password hashes never leak.
+- **Global mutable state** like `ROBOTS` above. That's fine for a demo, but real apps inject a repository through `Depends`.
+
+## Check your understanding
+
+1. What status code does FastAPI return for a body that fails Pydantic validation?
+2. Why separate `RobotIn` and `RobotOut`?
+
+<details><summary>Answers</summary>
+
+1. 422 Unprocessable Entity, with a JSON list of the field errors.
+2. Clients must not set server-owned fields such as `id`, and responses may include fields that inputs don't.
+
+</details>

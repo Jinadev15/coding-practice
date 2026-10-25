@@ -53,6 +53,11 @@ Makefile 0
 .gz 1 7
 (none) 1 0
 
+## Hints
+- `Path(root).rglob("*")` walks every file and folder recursively; skip anything where `p.is_file()` is false.
+- `p.suffix.lower()` gives `.py` for `a.PY`; an empty suffix means `(none)`. `p.stat().st_size` is the size in bytes.
+- Accumulate `(count, total_bytes)` per extension in a dict, then sort with `key=lambda r: (-r[2], r[0])`.
+
 ## Solution
 `rglob("*")` yields every entry in the tree. Keep only files, group by lower-cased suffix, and sort with a tuple key.
 

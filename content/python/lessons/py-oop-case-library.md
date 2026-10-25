@@ -84,3 +84,71 @@ Define domain exceptions such as `LimitReached`, `FinesOutstanding`, `NotAvailab
 > [!EXAM]
 > **Why should the `Library` act as the aggregate root, instead of letting callers modify `Copy` and `Member` objects directly?**
 > Several business invariants span multiple objects. A copy is on loan if and only if an active loan references it, a member's loan count must respect their tier limit, and a copy returned while holds exist must be reserved for the first member in the queue. If callers could change a copy's status or a member's loan list directly, they could update one object and not the others, breaking these invariants. Routing every state change through the aggregate root's methods (`checkout`, `return_copy`, `place_hold`) keeps the rules in one place, makes them atomic from the caller's perspective, and keeps the model testable.
+
+## Worked example: one borrowing rule, end to end
+
+Take one rule from the requirements, "a member may hold at most 3 books, and can't borrow while they owe fines", and implement it where the data lives:
+
+```python
+from dataclasses import dataclass, field
+
+class LibraryError(Exception): ...
+
+@dataclass
+class Member:
+    name: str
+    fines: int = 0
+    loans: set[str] = field(default_factory=set)
+    MAX_LOANS = 3                                    # class constant, not a dataclass field
+
+    def can_borrow(self) -> bool:
+        return self.fines == 0 and len(self.loans) < self.MAX_LOANS
+
+@dataclass
+class Library:
+    copies: dict[str, int]                           # isbn -> available copies
+    members: dict[str, Member] = field(default_factory=dict)
+
+    def borrow(self, member_name: str, isbn: str) -> None:
+        m = self.members[member_name]
+        if not m.can_borrow():
+            raise LibraryError(f"{m.name} cannot borrow (fines={m.fines}, loans={len(m.loans)})")
+        if self.copies.get(isbn, 0) == 0:
+            raise LibraryError(f"{isbn} unavailable")
+        self.copies[isbn] -= 1
+        m.loans.add(isbn)
+
+lib = Library({"978-0": 1})
+lib.members["asha"] = Member("asha")
+lib.borrow("asha", "978-0")
+try:
+    lib.borrow("asha", "978-0")
+except LibraryError as e:
+    print("error:", e)
+print(lib.copies, lib.members["asha"].loans)
+```
+
+```output
+error: 978-0 unavailable
+{'978-0': 0} {'978-0'}
+```
+
+**Check everything, then change anything.** The checks happen first, and the two updates happen only after every check has passed. A failed borrow leaves no half-finished state behind.
+
+## Common mistakes
+
+- **Returning `False` or `None` for errors**, which callers forget to check. Raise a domain exception with a clear message.
+- **Rules scattered across the UI and the service.** Keep each rule (`can_borrow`) in exactly one domain method.
+- **Testing only the happy path.** Every rule needs a test that breaks it: 4th book, fines owed, no copies left, returning a book that was never borrowed.
+
+## Check your understanding
+
+1. Where should the "fine per late day" calculation live?
+2. How would you add reservations (a queue per book)?
+
+<details><summary>Answers</summary>
+
+1. In a policy object or a `Loan` method (`loan.fine(today, rate)`), because it depends on loan dates rather than on the member.
+2. Keep a `deque` of member names per ISBN. When a copy is returned, hold it for the first member in the queue instead of putting it back on the shelf.
+
+</details>

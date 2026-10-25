@@ -45,6 +45,11 @@ solo,0,0,0,100
 solo 25.0 100 0
 solo
 
+## Hints
+- Split each line on commas: `name, *scores = line.split(",")` puts the first field in `name` and the rest in a list.
+- Convert the scores with `list(map(int, scores))`, then use `sum`, `len`, `max`, `min`.
+- Track the best average as you go, replacing it only when the new average is strictly greater so the earliest student wins ties.
+
 ## Solution
 `name, *scores = parts` handles any number of scores. A strict `>` comparison keeps the earliest student on ties.
 

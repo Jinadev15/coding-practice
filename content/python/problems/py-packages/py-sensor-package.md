@@ -95,9 +95,9 @@ lidar0=2.50
 avg=-12.50
 
 ## Hints
-- `robot/sensors/lidar.py`: `from ..model import Reading` (two dots: up from `robot.sensors` to `robot`).
-- `robot/sensors/__init__.py`: `from .lidar import Lidar` and `from .thermo import Thermometer`.
-- `robot/__init__.py`: `from .model import Reading`, `from .stats import average`, `from .sensors import Lidar, Thermometer`.
+- A package is a folder with an `__init__.py`; the dotted import path mirrors the folder structure.
+- Inside the package, prefer relative imports (`from .model import Reading`, `from ..stats import mean`).
+- Re-export the public names in `robot/__init__.py` so `main.py` can write `from robot import ...`.
 
 ## Solution
 Each file holds one concept, internal imports are relative, and the two `__init__.py` files form the public API, so `main.py` never mentions `robot.sensors.lidar`.

@@ -51,6 +51,10 @@ checked
 not positive
 checked
 
+## Hints
+- Indentation decides which block a line belongs to: lines indented under `if` run only when the condition is true.
+- The final `print("checked")` must start at column 0, after the whole `if/else`, so it always runs.
+
 ## Solution
 `checked` must run whatever the branch, so it is dedented back to the outer level. Zero is not positive, so it falls into `else`.
 

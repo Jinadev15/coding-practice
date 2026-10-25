@@ -55,6 +55,11 @@ int main(void) {
 0 0 0 | 0 0
 7 8 9 | 1 2
 
+## Hints
+- `swap` exchanges through the pointers: save `*a`, copy `*b` into `*a`, then the saved value into `*b`.
+- Three compare-and-swap steps sort three values: (a,b), then (a,c), then (b,c).
+- `divmod` returns two results by writing `*q = a / b; *r = a % b;`.
+
 ## Solution
 Three compare-and-swap steps form a tiny sorting network: the first two put the minimum in `*a`, and the last one orders the remaining pair.
 

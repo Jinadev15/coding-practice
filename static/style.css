@@ -453,3 +453,19 @@ h1, h2, h3, h4 { line-height: 1.25; margin: 0; }
   .prob { grid-template-columns: 1fr; height: auto; }
   .page { padding: 20px 16px 48px; }
 }
+
+/* ---------------------------------------------------------------- sign-in (shared mode) */
+body.signed-out #nav, body.signed-out #today { visibility: hidden; }
+.auth-card { max-width: 420px; margin: 8vh auto 0; padding: 28px; }
+.auth-card form { display: grid; gap: 14px; margin-top: 16px; }
+.auth-card label { display: grid; gap: 6px; font-size: 14px; color: var(--muted, inherit); }
+.auth-card input { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: inherit; font: inherit; }
+.auth-tabs { display: flex; gap: 8px; margin-top: 12px; }
+.auth-tabs:empty { display: none; }
+.auth-err { color: var(--red); min-height: 1.2em; font-size: 14px; }
+#user-foot a { color: inherit; text-decoration: underline; }
+.auth-tabs .tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); cursor: pointer; font: inherit; padding: 8px 10px; }
+.auth-tabs .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.sidebar-foot { flex-wrap: wrap; }
+#user-foot { flex-basis: 100%; cursor: default; }
+.auth-card label[hidden] { display: none; }

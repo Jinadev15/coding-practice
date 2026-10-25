@@ -95,3 +95,82 @@ sim.on<PickDone>([&](Simulator& s, const PickDone& e) {
 > [!EXAM]
 > **Why does a discrete-event simulator order its queue by (time, sequence number), and how is event cancellation implemented efficiently?**
 > The queue must release events in time order. When several events share a timestamp, their relative order would otherwise depend on heap internals, making runs irreproducible, so a monotonically increasing sequence number assigned at scheduling time breaks ties in FIFO order and makes every run deterministic. Cancelling an arbitrary element inside a binary heap is costly (it requires finding and re-heapifying), so simulators cancel lazily: `cancel(id)` records the id in a set, and the run loop silently discards popped events whose ids are marked. That's O(1) per cancellation and amortised O(log n) per pop.
+
+## Worked example: the event loop at the heart of a DES
+
+A discrete-event simulation keeps a **priority queue of future events**, always processes the earliest one next, and lets each event schedule more events:
+
+```cpp
+#include <functional>
+#include <iostream>
+#include <queue>
+#include <string>
+#include <vector>
+
+struct Event {
+    double time;
+    long seq;                                   // tie-breaker: FIFO for equal times
+    std::function<void()> action;
+    bool operator>(const Event& o) const { return time != o.time ? time > o.time : seq > o.seq; }
+};
+
+class Simulator {
+    std::priority_queue<Event, std::vector<Event>, std::greater<>> q_;
+    long seq_ = 0;
+public:
+    double now = 0;
+    void schedule(double delay, std::function<void()> f) { q_.push({now + delay, seq_++, std::move(f)}); }
+    void run(double until) {
+        while (!q_.empty() && q_.top().time <= until) {
+            Event e = q_.top(); q_.pop();
+            now = e.time;                        // jump straight to the next event
+            e.action();
+        }
+    }
+};
+
+int main() {
+    Simulator sim;
+    int served = 0;
+    std::function<void(int)> arrive = [&](int id) {
+        std::cout << "t=" << sim.now << " customer " << id << " arrives\n";
+        sim.schedule(1.5, [&, id] { ++served; std::cout << "t=" << sim.now << " customer " << id << " served\n"; });
+        if (id < 3) sim.schedule(1.0, [&, id] { arrive(id + 1); });
+    };
+    sim.schedule(0, [&] { arrive(1); });
+    sim.run(10);
+    std::cout << served << " served\n";
+}
+```
+
+```output
+t=0 customer 1 arrives
+t=1 customer 2 arrives
+t=1.5 customer 1 served
+t=2 customer 3 arrives
+t=2.5 customer 2 served
+t=3.5 customer 3 served
+3 served
+```
+
+- **Time jumps** from event to event (0 → 1 → 1.5 → 2 ...). Nothing is simulated between events.
+- **The `seq` tie-breaker** makes runs deterministic: two events at the same time always run in scheduling order.
+- **The case study** replaces `std::function` with a `std::variant` of event types plus a visitor, so events are inspectable data rather than opaque callbacks.
+
+## Common mistakes
+
+- **Ticking a clock in fixed small steps.** That's slow, and it rounds event times.
+- **No tie-breaker.** Equal-time events then pop in an unspecified order, so results differ between runs.
+- **Capturing loop variables or locals by reference** in scheduled lambdas that run later. Capture by value.
+
+## Check your understanding
+
+1. Why use `std::greater<>` with the priority queue?
+2. How would you collect "average waiting time"?
+
+<details><summary>Answers</summary>
+
+1. `std::priority_queue` is a max-heap by default. With `greater`, the earliest event is on top.
+2. Record each customer's arrival time. When service starts, add `now - arrival` to a running sum and count, then divide at the end.
+
+</details>

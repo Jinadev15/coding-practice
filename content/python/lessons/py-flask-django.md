@@ -137,3 +137,76 @@ Common to all: put business logic in plain Python modules, independent of the fr
 > [!EXAM]
 > **Compare Flask and Django, and explain WSGI vs ASGI.**
 > Flask is a micro-framework that provides routing, request/response handling, templating and context locals, and leaves the database, auth and forms to extensions of your choice. It suits small services and custom architectures. Django is batteries-included: ORM with migrations, auto-generated admin, authentication, forms, security middleware and a project/app structure, so it's suited to large, data-driven applications at the price of more convention. WSGI is the synchronous Python server interface (one request per worker), while ASGI is its asynchronous successor, supporting many concurrent connections and WebSockets on an event loop. Django supports both, Flask is WSGI, and FastAPI is ASGI-native.
+
+## Worked example: the same endpoint in both frameworks
+
+**Flask:** you choose every piece and wire it yourself.
+
+```python
+from flask import Flask, jsonify, request
+
+def create_app():
+    app = Flask(__name__)
+    notes: list[str] = []
+
+    @app.post("/notes")
+    def add():
+        text = (request.get_json(silent=True) or {}).get("text", "").strip()
+        if not text:
+            return jsonify(error="text required"), 400
+        notes.append(text)
+        return jsonify(id=len(notes), text=text), 201
+
+    return app
+
+client = create_app().test_client()
+print(client.post("/notes", json={"text": "oil the joints"}).get_json())
+print(client.post("/notes", json={}).status_code)
+```
+
+```output
+{'id': 1, 'text': 'oil the joints'}
+400
+```
+
+**Django:** "batteries included". The equivalent is spread over its conventional files:
+
+```python
+# notes/models.py
+class Note(models.Model):
+    text = models.CharField(max_length=200)
+
+# notes/views.py
+def add(request):
+    data = json.loads(request.body or "{}")
+    if not data.get("text"):
+        return JsonResponse({"error": "text required"}, status=400)
+    note = Note.objects.create(text=data["text"])          # ORM writes the SQL
+    return JsonResponse({"id": note.id, "text": note.text}, status=201)
+
+# notes/urls.py
+urlpatterns = [path("notes", views.add)]
+```
+
+**Which to pick:**
+
+- **Flask (or FastAPI)** suits small services and APIs where you want control.
+- **Django** suits database-heavy sites that need an admin panel, authentication, migrations and forms out of the box.
+
+## Common mistakes
+
+- **Module-level `app = Flask(...)` with global state.** Use an application factory (`create_app`) so tests get a fresh app.
+- **Running the dev server in production** (`app.run()`, `manage.py runserver`). Use gunicorn or uvicorn behind a proxy.
+- **Disabling Django's CSRF protection** to "make POST work". Send the token properly instead.
+
+## Check your understanding
+
+1. What do WSGI and ASGI define?
+2. Why is a Django QuerySet called *lazy*?
+
+<details><summary>Answers</summary>
+
+1. The interface between a Python web app and the server. WSGI is synchronous; ASGI also supports async, websockets and long-lived connections.
+2. Building it (`.filter()`, `.order_by()`) runs no SQL. The query executes only when you iterate, slice or count it.
+
+</details>

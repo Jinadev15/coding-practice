@@ -103,3 +103,61 @@ tests/            fakes implementing hal.h, plus unit tests for control/ and est
 > [!EXAM]
 > **How do you keep a large C codebase modular?**
 > Treat each module as a class: a self-contained header that's the only public contract (opaque types, prefixed functions, documented ownership and error conventions), and an implementation file with `static` internals. Keep dependencies acyclic and pointing toward abstractions. High-level logic depends on interface headers (function-pointer tables), and drivers implement them. Lower layers notify higher ones through callbacks with `void *` context pointers, so they never include the higher-level code. Avoid shared mutable globals, wire concrete implementations together in one composition root (`main`), and enforce the structure with per-module build targets, strict warnings and hidden symbol visibility.
+
+## Worked example: a module with a callback and context
+
+Here a low-level timer module must notify higher-level code **without including its headers**. This is dependency inversion in C: a function pointer plus a `void *ctx`.
+
+```c
+#include <stdio.h>
+
+/* ---- timer.h: knows nothing about robots ---- */
+typedef void (*timer_cb)(void *ctx, int tick);
+typedef struct { timer_cb cb; void *ctx; int period; } Timer;
+static void timer_run(Timer *t, int ticks) {
+    for (int i = 1; i <= ticks; i++)
+        if (i % t->period == 0) t->cb(t->ctx, i);   /* calls "up" without knowing who */
+}
+
+/* ---- robot.c: higher layer, supplies the callback ---- */
+typedef struct { const char *name; int beats; } Robot;
+static void on_heartbeat(void *ctx, int tick) {
+    Robot *r = ctx;                                 /* recover our own type */
+    r->beats++;
+    printf("%s heartbeat at tick %d\n", r->name, tick);
+}
+
+int main(void) {
+    Robot r = {"R2", 0};
+    Timer t = {on_heartbeat, &r, 3};
+    timer_run(&t, 7);
+    printf("beats = %d\n", r.beats);
+    return 0;
+}
+```
+
+```output
+R2 heartbeat at tick 3
+R2 heartbeat at tick 6
+beats = 2
+```
+
+The dependency arrow points **down** (robot → timer), yet the timer can still call robot code. Without `ctx`, the callback would need a global variable to find "its" robot, and then you couldn't have two robots.
+
+## Common mistakes
+
+- **Headers that include everything.** Include only what the header itself needs, and forward-declare structs you only point to.
+- **Defining (rather than declaring) variables in headers.** Every `.c` file that includes the header gets its own copy, and you hit linker errors. Use `extern` in the header and define once in a `.c` file.
+- **Public structs when an opaque `typedef struct X X;` would do.** Callers then depend on your field layout.
+
+## Check your understanding
+
+1. Why is `void *ctx` needed alongside the function pointer?
+2. What does `static` on a function in a `.c` file achieve?
+
+<details><summary>Answers</summary>
+
+1. It carries the caller's state into the callback, the C equivalent of a closure or bound object.
+2. Internal linkage. The function is private to that file and can't clash with names in other modules.
+
+</details>

@@ -69,6 +69,11 @@ no words
 [Robotics:3] longest=Robotics
 [a:1] [e:1] [i:1] longest=a
 
+## Hints
+- `const char *` means you may read the characters but not modify them; returning a pointer *into* the input avoids any copying.
+- `skip_spaces`: advance the pointer while `*s` is a space (use `isspace((unsigned char)*s)`).
+- `next_word`: skip spaces, remember the start, walk to the next space, and store `end - start` through `len`; return `NULL` at the end of the string.
+
 ## Solution
 Every function takes `const char *` and returns `const char *`: it promises not to modify the text and doesn't let callers modify it through the returned pointer either.
 
