@@ -343,7 +343,7 @@ async function viewDashboard() {
   const totalActs = Object.values(hm.cells).reduce((a, c) => a + c.total, 0);
 
   main.innerHTML = `<div class="page">
-    <div class="page-head"><div><h1>${greet}, ${esc(me.multi_user && me.user ? me.user : "Jinadev")}</h1><div class="sub">${new Date().toLocaleDateString("en", { weekday: "long", month: "long", day: "numeric" })} · ${hm.streak ? `${plural(hm.streak, "day")} streak — don't break it` : "Start a streak today"}</div></div></div>
+    <div class="page-head"><div><h1>${greet}${(me.user || me.name) ? ", " + esc(me.user || me.name) : ""}</h1><div class="sub">${new Date().toLocaleDateString("en", { weekday: "long", month: "long", day: "numeric" })} · ${hm.streak ? `${plural(hm.streak, "day")} streak — don't break it` : "Start a streak today"}</div></div></div>
 
     <div class="grid grid-4" style="margin-bottom:16px">
       <div class="card stat"><div class="label">Current streak</div><div class="value">${hm.streak}<span class="muted small"> days</span></div><div class="hint">Best: ${hm.best_streak} days</div></div>

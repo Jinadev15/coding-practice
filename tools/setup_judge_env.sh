@@ -6,7 +6,14 @@ cd "$(dirname "$0")/.."
 UV=${UV:-$(command -v uv || echo /snap/bin/uv)}
 # --system-site-packages: ROS 2 (apt) relies on Debian python modules (empy, yaml, lark, ...).
 # Packages installed in the venv still take precedence over the system ones.
-"$UV" venv --python "$(command -v python3)" --system-site-packages .venv-judge --allow-existing
+# Problems target Python 3.14 (e.g. deferred annotations). Use the system python3 if it is new enough,
+# otherwise let uv download a private 3.14 (no admin rights needed).
+PY=$(command -v python3 || true)
+if [ -z "$PY" ] || ! "$PY" -c 'import sys; sys.exit(sys.version_info < (3, 14))'; then
+    "$UV" python install 3.14
+    PY=$("$UV" python find 3.14)
+fi
+"$UV" venv --python "$PY" --system-site-packages .venv-judge --allow-existing
 "$UV" pip install --python .venv-judge/bin/python \
     --index-url https://pypi.org/simple \
     --extra-index-url https://download.pytorch.org/whl/cpu \

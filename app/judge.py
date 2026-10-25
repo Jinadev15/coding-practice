@@ -58,6 +58,11 @@ def _bwrap_prefix(workdir: Path) -> list[str]:
     venv = _JUDGE_VENV_PY.parent.parent
     if venv.is_dir():
         cmd += ["--ro-bind", str(venv), str(venv)]
+        # A uv-managed interpreter lives outside /usr (~/.local/share/uv/python/cpython-X/...), reached through
+        # version symlinks: expose the whole folder of managed interpreters so every hop resolves.
+        base = Path(os.path.realpath(_JUDGE_VENV_PY)).parent.parent
+        if not any(str(base).startswith(d + "/") for d in _RO_DIRS):
+            cmd += ["--ro-bind", str(base.parent), str(base.parent)]
     return cmd + ["--bind", str(workdir), str(workdir), "--chdir", str(workdir), "--"]
 
 

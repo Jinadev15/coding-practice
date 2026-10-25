@@ -4,6 +4,8 @@ A private, local study platform for Python, C and C++ (and any language you add 
 lessons → topic quizzes (MCQ) → hand-typed coding problems judged against test cases, with a
 GitHub-style activity heatmap, per-language daily targets and four special quizzes per language.
 
+> **New here? Follow [GETTING_STARTED.md](GETTING_STARTED.md)**: clone, run `./setup.sh`, then `python3 server.py`.
+
 ## Run
 
 ```bash

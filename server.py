@@ -445,7 +445,12 @@ ROUTES = [
 
 def get_me(_q, user):
     if not accounts:
-        return {"multi_user": False, "user": None}
+        import getpass
+        try:
+            name = os.environ.get("CP_NAME") or getpass.getuser()
+        except Exception:  # noqa: BLE001
+            name = ""
+        return {"multi_user": False, "user": None, "name": name.split("-")[0].split("_")[0].capitalize()}
     return {"multi_user": True, "user": user and user["username"], "signup": bool(INVITE_CODE)}
 
 
