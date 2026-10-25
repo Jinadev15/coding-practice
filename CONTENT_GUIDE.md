@@ -168,7 +168,8 @@ Explanation in Markdown with the reference code in a fenced block.
 ## Libraries in problems
 
 - **Python** submissions run in `.venv-judge` (created by `tools/setup_judge_env.sh` from `requirements-judge.txt`):
-  NumPy, pandas, SciPy, Matplotlib, scikit-learn, PyTorch (CPU), OpenCV, pytest, and `rclpy` when ROS 2 is installed.
+  NumPy, pandas, SciPy, Matplotlib, scikit-learn, PyTorch (CPU), OpenCV, pytest, requests, httpx, FastAPI, Flask, Django,
+  SQLAlchemy, Click, Typer, and `rclpy` when ROS 2 is installed.
 - **C/C++** problems list the libraries they link in the front matter, e.g. `libs: eigen, gtest`. Each name maps to an entry in the
   language's `language.json` `"libs"`: `{"pkg": "<pkg-config name>"}`, explicit `{"cflags": [...], "ldflags": [...]}`, or
   `{"cache": "rclcpp"}` for flags recorded by `tools/setup_cpp_libs.py` (ROS 2 only ships CMake packages). The flags are
