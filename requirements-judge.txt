@@ -12,3 +12,15 @@ torchvision
 opencv-python-headless
 pytest
 hypothesis
+# Applications & frameworks (Python module 15)
+requests
+httpx
+pydantic
+fastapi
+starlette
+uvicorn
+flask
+django
+sqlalchemy
+click
+typer
