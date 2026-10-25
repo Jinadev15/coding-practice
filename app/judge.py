@@ -70,7 +70,12 @@ def resolve_libs(lang: Language, names: list[str]) -> tuple[list[str], list[str]
                 if r.returncode != 0:
                     raise RuntimeError(f"pkg-config can't find '{spec['pkg']}': {r.stderr.strip()}")
                 for flag in r.stdout.split():
-                    (l if flag.startswith(("-l", "-L", "-Wl")) else c).append(flag)
+                    if flag.startswith(("-l", "-L", "-Wl")):
+                        l.append(flag)
+                    elif flag.startswith("-I"):
+                        c += ["-isystem", flag[2:]]      # third-party headers: no warnings in the user's output
+                    else:
+                        c.append(flag)
             if "cache" in spec:
                 cache = json.loads(_LIB_CACHE_FILE.read_text()) if _LIB_CACHE_FILE.exists() else {}
                 if spec["cache"] not in cache:
@@ -183,6 +188,9 @@ class Workspace:
                 preexec_fn=_limits(cfg.get("memory_mb", 512), math.ceil(time_limit) + 1),
                 env={"PATH": os.environ.get("PATH", ""), "PYTHONHASHSEED": "0",
                      "PYTHONIOENCODING": "utf-8", "LANG": "C.UTF-8", "HOME": str(self.dir),
+                     # glibc reserves a 64 MB malloc arena per thread; under RLIMIT_AS that makes threaded
+                     # programs (OpenCV, BLAS, std::thread pools) fail randomly with bad_alloc
+                     "MALLOC_ARENA_MAX": "2",
                      **(PY_EXTRA_ENV if "{python}" in cfg["run"] else {}),
                      # each run gets its own DDS domain so parallel ROS 2 tests can't see each other
                      "ROS_DOMAIN_ID": str(1 + (os.getpid() + int(time.time() * 1000)) % 100),
