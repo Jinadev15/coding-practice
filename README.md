@@ -25,6 +25,9 @@ This creates `.venv-judge/` from `requirements-judge.txt`, and the judge uses it
 so timings are stable and memory limits hold. If ROS 2 is installed under `/opt/ros/<distro>`, the setup
 script also exposes `rclpy` and the message packages to the judge, and every run gets its own DDS domain.
 
+C++ library problems (Eigen, OpenCV, GoogleTest, fmt, spdlog, Boost, nlohmann/json, rclcpp) use system packages. Run
+`python3 tools/setup_cpp_libs.py` once to record the ROS 2 `rclcpp` build flags (other libraries resolve through pkg-config).
+
 ## How it works
 
 - **Study** a topic's lesson, or skip it if you already know the material, and mark it studied.

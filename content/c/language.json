@@ -5,10 +5,40 @@
   "icon": "C",
   "ext": "c",
   "main": "main.c",
-  "source_ext": [".c"],
+  "source_ext": [
+    ".c"
+  ],
   "editor_mode": "text/x-csrc",
-  "compile": ["gcc", "-std=c17", "-O2", "-Wall", "-Wextra", "-pipe", "-o", "prog", "{sources}", "-lm", "-lpthread"],
-  "run": ["./prog"],
+  "compile": [
+    "gcc",
+    "-std=c17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-pipe",
+    "{lib_cflags}",
+    "-o",
+    "prog",
+    "{sources}",
+    "{lib_ldflags}",
+    "-lm",
+    "-lpthread"
+  ],
+  "run": [
+    "./prog"
+  ],
   "time_limit": 1,
-  "memory_mb": 512
+  "memory_mb": 512,
+  "libs": {
+    "m": {
+      "ldflags": [
+        "-lm"
+      ]
+    }
+  },
+  "env": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "OPENCV_FOR_THREADS_NUM": "1"
+  }
 }

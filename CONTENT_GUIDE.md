@@ -114,6 +114,7 @@ order: 1                  (position within the topic)
 tags: arrays, hashing
 time_limit: 2             (seconds per test; optional)
 compare: lines            (lines | tokens | float | unordered | exact; optional)
+libs: eigen, opencv       (C/C++ only, optional: libraries from language.json "libs")
 ---
 ## Statement
 Markdown problem statement, constraints, examples.
@@ -163,3 +164,13 @@ Explanation in Markdown with the reference code in a fenced block.
 - Coding problem: the solution unlocks at ≥ 75% of tests passed. The problem is **completed** only at 100%.
 - A topic is complete when its quiz is passed and all its problems are completed (or, for a lesson-only topic, when the lesson is marked studied).
 - Special quizzes unlock at 25%, 50%, 75% and 100% of the language's topics complete.
+
+## Libraries in problems
+
+- **Python** submissions run in `.venv-judge` (created by `tools/setup_judge_env.sh` from `requirements-judge.txt`):
+  NumPy, pandas, SciPy, Matplotlib, scikit-learn, PyTorch (CPU), OpenCV, pytest, and `rclpy` when ROS 2 is installed.
+- **C/C++** problems list the libraries they link in the front matter, e.g. `libs: eigen, gtest`. Each name maps to an entry in the
+  language's `language.json` `"libs"`: `{"pkg": "<pkg-config name>"}`, explicit `{"cflags": [...], "ldflags": [...]}`, or
+  `{"cache": "rclcpp"}` for flags recorded by `tools/setup_cpp_libs.py` (ROS 2 only ships CMake packages). The flags are
+  substituted for `{lib_cflags}` and `{lib_ldflags}` in the compile command.
+- Available C++ names: `eigen`, `opencv`, `gtest`, `gmock`, `fmt`, `spdlog`, `boost` (header-only parts), `json` (nlohmann), `rclcpp`.

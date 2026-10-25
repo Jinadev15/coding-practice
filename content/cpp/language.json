@@ -5,10 +5,63 @@
   "icon": "C++",
   "ext": "cpp",
   "main": "main.cpp",
-  "source_ext": [".cpp", ".cc"],
+  "source_ext": [
+    ".cpp",
+    ".cc"
+  ],
   "editor_mode": "text/x-c++src",
-  "compile": ["g++", "-std=c++23", "-O2", "-Wall", "-Wextra", "-pipe", "-o", "prog", "{sources}", "-lpthread"],
-  "run": ["./prog"],
+  "compile": [
+    "g++",
+    "-std=c++23",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-pipe",
+    "{lib_cflags}",
+    "-o",
+    "prog",
+    "{sources}",
+    "{lib_ldflags}",
+    "-lpthread"
+  ],
+  "run": [
+    "./prog"
+  ],
   "time_limit": 1,
-  "memory_mb": 512
+  "memory_mb": 512,
+  "libs": {
+    "eigen": {
+      "pkg": "eigen3"
+    },
+    "opencv": {
+      "pkg": "opencv4"
+    },
+    "gtest": {
+      "pkg": "gtest_main"
+    },
+    "gmock": {
+      "pkg": "gmock_main"
+    },
+    "fmt": {
+      "pkg": "fmt"
+    },
+    "spdlog": {
+      "pkg": "spdlog"
+    },
+    "boost": {
+      "ldflags": []
+    },
+    "json": {
+      "cflags": []
+    },
+    "rclcpp": {
+      "cache": "rclcpp"
+    }
+  },
+  "compile_timeout": 90,
+  "env": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "OPENCV_FOR_THREADS_NUM": "1"
+  }
 }

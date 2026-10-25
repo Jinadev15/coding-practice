@@ -5,6 +5,7 @@ language needs no change here.
 """
 from __future__ import annotations
 
+import json
 import math
 import os
 import resource
@@ -44,11 +45,54 @@ def _limits(mem_mb: int, cpu_s: int):
     return apply
 
 
-def _expand(cmd: list[str], sources: list[str], main: str) -> list[str]:
+_LIB_CACHE_FILE = Path(__file__).resolve().parent.parent / ".cache" / "cpp_libs.json"
+_lib_memo: dict[tuple[str, str], tuple[list[str], list[str], dict[str, str]]] = {}
+
+
+def resolve_libs(lang: Language, names: list[str]) -> tuple[list[str], list[str], dict[str, str]]:
+    """Compile flags, link flags and runtime env for the libraries a problem requests (front matter `libs:`).
+
+    language.json maps each name to {"pkg": "<pkg-config name>"}, {"cflags": [...], "ldflags": [...]}
+    or {"cache": "<key>"} (flags recorded by tools/setup_cpp_libs.py, e.g. ROS 2's rclcpp)."""
+    cflags: list[str] = []
+    ldflags: list[str] = []
+    env: dict[str, str] = {}
+    registry = lang.config.get("libs", {})
+    for name in names:
+        key = (lang.id, name)
+        if key not in _lib_memo:
+            spec = registry.get(name)
+            if spec is None:
+                raise RuntimeError(f"unknown library '{name}' (add it to {lang.id}/language.json)")
+            c, l, e = list(spec.get("cflags", [])), list(spec.get("ldflags", [])), dict(spec.get("env", {}))
+            if "pkg" in spec:
+                r = subprocess.run(["pkg-config", "--cflags", "--libs", spec["pkg"]], capture_output=True, text=True)
+                if r.returncode != 0:
+                    raise RuntimeError(f"pkg-config can't find '{spec['pkg']}': {r.stderr.strip()}")
+                for flag in r.stdout.split():
+                    (l if flag.startswith(("-l", "-L", "-Wl")) else c).append(flag)
+            if "cache" in spec:
+                cache = json.loads(_LIB_CACHE_FILE.read_text()) if _LIB_CACHE_FILE.exists() else {}
+                if spec["cache"] not in cache:
+                    raise RuntimeError(f"library '{name}' isn't set up: run tools/setup_cpp_libs.py")
+                entry = cache[spec["cache"]]
+                c += entry["cflags"]; l += entry["ldflags"]; e.update(entry.get("env", {}))
+            _lib_memo[key] = (c, l, e)
+        c, l, e = _lib_memo[key]
+        cflags += c; ldflags += l; env.update(e)
+    return cflags, ldflags, env
+
+
+def _expand(cmd: list[str], sources: list[str], main: str, cflags: list[str] | None = None,
+            ldflags: list[str] | None = None) -> list[str]:
     out: list[str] = []
     for part in cmd:
         if part == "{sources}":
             out.extend(sources)
+        elif part == "{lib_cflags}":
+            out.extend(cflags or [])
+        elif part == "{lib_ldflags}":
+            out.extend(ldflags or [])
         else:
             out.append(part.replace("{main}", main).replace("{python}", PYTHON))
     return out
@@ -93,8 +137,9 @@ def compare(got: str, expected: str, mode: str) -> bool:
 
 
 class Workspace:
-    def __init__(self, lang: Language, files: dict[str, str]):
+    def __init__(self, lang: Language, files: dict[str, str], libs: list[str] | None = None):
         self.lang, self.files = lang, files
+        self.cflags, self.ldflags, self.lib_env = resolve_libs(lang, libs or [])
         self.dir = Path(tempfile.mkdtemp(prefix="cp-judge-"))
         for name, code in files.items():
             dest = (self.dir / name).resolve()
@@ -118,7 +163,7 @@ class Workspace:
         sources = sorted(n for n in self.files if n.endswith(exts))
         try:
             r = subprocess.run(
-                _expand(cmd, sources, cfg.get("main", "")), cwd=self.dir, capture_output=True,
+                _expand(cmd, sources, cfg.get("main", ""), self.cflags, self.ldflags), cwd=self.dir, capture_output=True,
                 text=True, timeout=cfg.get("compile_timeout", 30),
                 preexec_fn=_limits(0, cfg.get("compile_timeout", 30)),
             )
@@ -141,6 +186,7 @@ class Workspace:
                      **(PY_EXTRA_ENV if "{python}" in cfg["run"] else {}),
                      # each run gets its own DDS domain so parallel ROS 2 tests can't see each other
                      "ROS_DOMAIN_ID": str(1 + (os.getpid() + int(time.time() * 1000)) % 100),
+                     **self.lib_env,
                      **cfg.get("env", {})},
             )
         except subprocess.TimeoutExpired as e:
@@ -159,6 +205,11 @@ class Workspace:
         return {"status": status, "stdout": r.stdout[:MAX_STDOUT], "stderr": stderr, "time_ms": ms}
 
 
+def problem_libs(problem: Problem) -> list[str]:
+    raw = problem.meta.get("libs", "")
+    return [x.strip() for x in raw.split(",") if x.strip()] if isinstance(raw, str) else list(raw)
+
+
 def expected_outputs(lang: Language, problem: Problem) -> list[str]:
     """Expected output per test; tests without one are filled from the reference solution."""
     if all(t.output is not None for t in problem.tests):
@@ -169,7 +220,7 @@ def expected_outputs(lang: Language, problem: Problem) -> list[str]:
             raise RuntimeError("tests without expected output need a reference solution")
         files = build_files(lang, problem, problem.solution_files)
         outs = []
-        with Workspace(lang, files) as ws:
+        with Workspace(lang, files, problem_libs(problem)) as ws:
             ok, msg = ws.compile()
             if not ok:
                 raise RuntimeError("reference solution failed to compile:\n" + msg)
@@ -190,7 +241,7 @@ def judge(lang: Language, problem: Problem, user_files: dict[str, str], samples_
     files = build_files(lang, problem, user_files)
     tl = float(problem.meta.get("time_limit", lang.config.get("time_limit", 2)))
     mode = problem.meta.get("compare", "lines")
-    with Workspace(lang, files) as ws:
+    with Workspace(lang, files, problem_libs(problem)) as ws:
         ok, msg = ws.compile()
         if not ok:
             return {"compiled": False, "compile_output": msg, "results": [], "passed": 0,
