@@ -296,6 +296,29 @@ class Workspace:
         return {"status": status, "stdout": stdout, "stderr": stderr, "time_ms": ms}
 
 
+_gen_cache: dict[tuple, str] = {}
+
+
+def test_input(problem: Problem, t) -> str:
+    """A test's stdin. Inputs written as "@gen ARGS" are produced by the problem's ## Generator section
+    (trusted course content, run with this interpreter), so huge tests don't bloat the problem file."""
+    if not t.input.startswith("@gen "):
+        return t.input
+    args = t.input[5:].split()
+    key = (str(problem.path), problem.path.stat().st_mtime, tuple(args))
+    if key not in _gen_cache:
+        if not problem.generator:
+            raise RuntimeError(f"{problem.id}: '@gen' test but no ## Generator section")
+        r = subprocess.run([sys.executable, "-I", "-c", problem.generator, *args],
+                           capture_output=True, text=True, timeout=120)
+        if r.returncode != 0:
+            raise RuntimeError(f"{problem.id}: generator failed: {r.stderr[-2000:]}")
+        if len(_gen_cache) > 64:
+            _gen_cache.clear()
+        _gen_cache[key] = r.stdout
+    return _gen_cache[key]
+
+
 def problem_libs(problem: Problem) -> list[str]:
     raw = problem.meta.get("libs", "")
     return [x.strip() for x in raw.split(",") if x.strip()] if isinstance(raw, str) else list(raw)
@@ -319,7 +342,7 @@ def expected_outputs(lang: Language, problem: Problem) -> list[str]:
                 if t.output is not None:
                     outs.append(t.output)
                     continue
-                r = ws.run(t.input, float(problem.meta.get("time_limit", 5)) * 3)
+                r = ws.run(test_input(problem, t), float(problem.meta.get("time_limit", 5)) * 3)
                 if r["status"] != "OK":
                     raise RuntimeError(f"reference solution {r['status']}: {r['stderr']}")
                 outs.append(r["stdout"])
@@ -359,7 +382,8 @@ def _judge(lang: Language, problem: Problem, user_files: dict[str, str], samples
         for i, (t, exp) in enumerate(zip(problem.tests, expected)):
             if samples_only and not t.sample:
                 continue
-            r = ws.run(t.input, tl)
+            inp = test_input(problem, t)
+            r = ws.run(inp, tl)
             passed = r["status"] == "OK" and compare(r["stdout"], exp, mode)
             if r["status"] == "OK" and not passed:
                 r["status"] = "WA"
@@ -368,7 +392,7 @@ def _judge(lang: Language, problem: Problem, user_files: dict[str, str], samples
             # Show samples fully, and the first failing hidden test so you can learn from it.
             if t.sample or (not passed and not shown_hidden):
                 shown_hidden = shown_hidden or not t.sample
-                item.update(input=t.input[:4000], expected=exp[:4000], got=r["stdout"][:4000],
+                item.update(input=inp[:4000], expected=exp[:4000], got=r["stdout"][:4000],
                             stderr=r["stderr"][:4000])
             results.append(item)
     passed = sum(r["passed"] for r in results)

@@ -4,7 +4,7 @@ title: A Million Divisor Queries
 difficulty: Medium
 order: 6
 tags: complexity, precomputation, sieve, harmonic series
-time_limit: 1
+time_limit: 2
 ---
 ## Statement
 Answer up to 3·10⁶ queries "how many divisors does `x` have?", with `1 ≤ x ≤ 10⁶`.

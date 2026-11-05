@@ -41,6 +41,7 @@ class Problem:
     solution_files: dict[str, str]
     hints: list[str]
     path: Path
+    generator: str = ""            # Python source; tests whose input is "@gen ARGS" are produced by it
 
     @property
     def milestone(self) -> int | None:
@@ -166,6 +167,8 @@ def load_problem(path: Path, lang: str, topic: str, main_file: str) -> Problem:
             p.solution_files[arg] = first_fence(content) or ""
         elif key == "hints":
             p.hints = [h[2:].strip() for h in content.splitlines() if h.startswith("- ")]
+        elif key == "generator":
+            p.generator = first_fence(content) or ""
     if not p.starters:
         p.starters[main_file] = ""
     if not p.solution_files:

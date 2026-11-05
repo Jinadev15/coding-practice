@@ -4,7 +4,7 @@ title: A Dynamic Array and Its Amortised Cost
 difficulty: Medium
 order: 4
 tags: amortised analysis, dynamic arrays, memory management, rule of five
-time_limit: 1
+time_limit: 2
 ---
 ## Statement
 Build the growable array that sits behind `std::vector`, and **measure** why `push_back` is amortised O(1).

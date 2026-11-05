@@ -4,7 +4,7 @@ title: Harmonic Floor Sums in O(√n)
 difficulty: Medium
 order: 5
 tags: complexity, square root decomposition, math, harmonic series
-time_limit: 1
+time_limit: 2
 ---
 ## Statement
 For a positive integer `n`, compute

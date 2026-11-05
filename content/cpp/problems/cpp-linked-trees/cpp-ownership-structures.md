@@ -2,7 +2,7 @@
 id: cpp-ownership-structures
 title: Owning Lists and Index-Based Trees
 difficulty: Hard
-order: 1
+order: 8
 tags: unique_ptr, linked list, iterative destructor, BST, order statistics, ownership
 time_limit: 3
 ---

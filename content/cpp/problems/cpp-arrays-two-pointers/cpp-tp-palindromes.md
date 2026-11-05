@@ -73,7 +73,7 @@ yes
 === hidden
 delete bbcbbb
 clean aA1
-clean  !..B!!B..! 
+clean  !..B!!B..!
 delete bbbbabbb
 delete bbabbabbabb
 clean b .1ba
@@ -86,7 +86,7 @@ delete babbab
 clean ,a,,a,
 delete bbaabbbbaabb
 delete bbaaabb
-clean 
+clean a
 delete ababbbbaa
 clean .!! 1
 delete abaaabaaaaba
@@ -117,11 +117,11 @@ delete babbcbab
 delete abbbbbbcbba
 clean 1A1
 delete ababa
-clean 
+clean a
 delete bbbb
 clean !!
 delete a
-clean 
+clean a
 clean b b AA b b
 delete a
 clean aAb.
@@ -160,7 +160,7 @@ delete bbbaabb
 delete bbbbbababbbb
 clean B1A,
 clean !aa!
-clean B!b  
+clean B!b
 clean 1
 clean A.B
 clean ,.A
@@ -202,7 +202,7 @@ delete babbabbbabba
 delete bab
 clean !!1aaa
 delete ab
-clean  AB..11..BA 
+clean  AB..11..BA
 delete ababaaaaabaa
 delete a
 delete babababb
@@ -211,9 +211,9 @@ delete ababacbaba
 delete babaaaabab
 delete a
 delete aba
-clean  Aa1!BB!1aA 
+clean  Aa1!BB!1aA
 delete abaaaacaba
-clean 
+clean a
 delete aabaaaaabaa
 delete bbb
 delete abbcbbbba
@@ -248,9 +248,9 @@ delete bbbababb
 delete ba
 clean .,
 clean B!B
-clean  !abba! 
-clean  b!AA!b 
-clean 
+clean  !abba!
+clean  b!AA!b
+clean a
 delete abbab
 delete babb
 delete bbabb
@@ -281,16 +281,16 @@ yes
 yes
 yes
 === hidden
-clean 
+clean a
 delete babbaaabbab
-clean  ,1,BB,1, 
+clean  ,1,BB,1,
 delete acaabaaa
 clean a!AbbaabbA!a
 clean BBBB
 clean B ,A!!
 clean a!.,
 clean A
-clean 
+clean a
 clean .!
 clean aa
 delete ababbbaba

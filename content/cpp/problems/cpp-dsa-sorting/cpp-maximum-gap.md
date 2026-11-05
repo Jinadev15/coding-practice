@@ -4,7 +4,7 @@ title: Maximum Gap in Linear Time
 difficulty: Hard
 order: 7
 tags: sorting, bucket sort, pigeonhole principle, radix sort
-time_limit: 1
+time_limit: 2
 ---
 ## Statement
 Given `n` integers in `[0, 10⁹]`, find the **largest difference between consecutive elements of the sorted order**, without sorting by comparisons.

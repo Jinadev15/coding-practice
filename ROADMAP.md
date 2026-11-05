@@ -38,13 +38,13 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] cpp-dsa-sorting: sorting algorithms from scratch (bubble, selection, insertion, merge, quick, heap, counting, radix; stability; comparators)
 
 ### 11 Array and String Patterns
-- [ ] cpp-arrays-two-pointers: two pointers (opposite ends, same direction, fast/slow, partitioning, Dutch flag)
-- [ ] cpp-dsa-sliding-window: fixed and variable windows, "at most K" counting, window plus hash map
-- [ ] cpp-hashing-prefix: prefix sums and difference arrays (1D/2D, subarray-sum-K with hashing, range updates)
-- [ ] cpp-dsa-hashing: hashing patterns (frequency, grouping, custom hashes, anti-collision, rolling ideas)
-- [ ] cpp-dsa-kadane-subarrays: subarray techniques (Kadane, max product, Boyer–Moore voting, cyclic sort, missing/duplicate tricks)
-- [ ] cpp-dsa-intervals-sweep: intervals and sweep line (merge, insert, meeting rooms, events, coordinate compression)
-- [ ] cpp-dsa-strings-basics: string manipulation patterns (palindromes, anagrams, parsing, string building)
+- [x] cpp-arrays-two-pointers: two pointers (opposite ends, same direction, fast/slow, partitioning, Dutch flag)
+- [x] cpp-dsa-sliding-window: fixed and variable windows, "at most K" counting, window plus hash map
+- [x] cpp-hashing-prefix: prefix sums and difference arrays (1D/2D, subarray-sum-K with hashing, range updates)
+- [x] cpp-dsa-hashing: hashing patterns (frequency, grouping, custom hashes, anti-collision, rolling ideas)
+- [x] cpp-dsa-kadane-subarrays: subarray techniques (Kadane, max product, Boyer–Moore voting, cyclic sort, missing/duplicate tricks)
+- [x] cpp-dsa-intervals-sweep: intervals and sweep line (merge, insert, meeting rooms, events, coordinate compression)
+- [x] cpp-dsa-strings-basics: string manipulation patterns (palindromes, anagrams, parsing, string building)
 
 ### 12 Searching
 - [ ] cpp-binary-search: binary search on indices (lower/upper bound, rotated arrays, peak, 2D matrix)
@@ -152,3 +152,52 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done
 - [ ] NLP (tokenisation, embeddings, sequence models), computer vision (augmentation, CNN pipelines)
 - [ ] Applied ML engineering (feature engineering, data leakage, evaluation design, model serving, reproducibility, experiment tracking)
 - [ ] LLM application engineering (embeddings, vector search, RAG pipelines, evaluation; offline)
+
+---
+
+## Career breadth (added 2026-11-05)
+
+**Goal:** Python + C++ (+ C as it is) must be enough to work in **any** field: web products, mechanical and engineering software, data and AI, systems, games and graphics, embedded, robotics. Each area gets the same standard: full lessons from zero, many varied problems, and real-world projects.
+
+### Python: web and backend engineering
+- [ ] HTTP from first principles (requests/responses, status codes, headers, cookies, caching, REST vs RPC); a tiny HTTP server with `socket`
+- [ ] Flask in depth (routing, blueprints, templates with Jinja, forms, sessions, application factory, testing)
+- [ ] FastAPI in depth (Pydantic models, dependency injection, async endpoints, background tasks, OpenAPI)
+- [ ] Django in depth (models/ORM, migrations, admin, views, templates, forms, auth, DRF)
+- [ ] Databases: SQL from zero (joins, grouping, indexes, transactions, normalisation), SQLite/PostgreSQL, SQLAlchemy 2.0, migrations with Alembic
+- [ ] Authentication & security: password hashing, sessions vs JWT, OAuth2 flows, CSRF/XSS/SQL injection (OWASP Top 10), rate limiting
+- [ ] Real-time and async backends: WebSockets, server-sent events, task queues, caching (Redis concepts), pagination, idempotency
+- [ ] API design and testing: versioning, error models, pytest + test clients, contract tests, load-testing ideas
+- [ ] Deployment: environment config, logging, Docker basics, reverse proxies, CI pipelines, observability
+- [ ] Projects: URL shortener, blog with auth, REST API for a shop, real-time chat, job board
+
+### Python: engineering and scientific computing (mechanical, civil, electrical)
+- [ ] Numerical methods (root finding, interpolation, numerical differentiation/integration, linear systems, eigenproblems, error and stability)
+- [ ] ODEs and simulation (Euler, RK4, adaptive steps with SciPy, stiff systems, mechanical vibrations, mass–spring–damper)
+- [ ] Optimisation (gradient methods, constrained optimisation with SciPy, least squares, curve fitting)
+- [ ] Signal processing (FFT, filtering, sampling, noise; sensor data)
+- [ ] Mechanics with code (statics, truss analysis via matrix stiffness method, beam deflection, 1D/2D finite element method from scratch)
+- [ ] Thermo/fluids computations (heat equation by finite differences, simple CFD ideas)
+- [ ] Units and engineering data (pint, uncertainty, CSV/Excel pipelines, plotting reports with matplotlib)
+- [ ] CAD and geometry scripting (parametric geometry, 2D/3D transforms, meshes and STL files, CadQuery/FreeCAD concepts)
+
+### Python: data, automation and software engineering
+- [ ] Data engineering: ETL pipelines, pandas at scale, Parquet, SQL analytics, data validation
+- [ ] Automation: files, scheduling, web scraping, working with APIs, Excel/PDF generation, CLI tools
+- [ ] Software craftsmanship: clean code, refactoring, design reviews, git workflows, documentation, profiling and optimisation
+- [ ] System design fundamentals: scalability, caching, queues, databases, consistency, designing real services (interview level)
+
+### C++: beyond DSA
+- [ ] Modern C++ engineering: CMake projects, package managers (vcpkg/Conan), testing, sanitizers, static analysis, CI
+- [ ] Performance engineering: profiling, cache-aware code, SIMD, move semantics in practice, allocators, benchmarking
+- [ ] Concurrency in practice: thread pools, lock-free queues, async I/O, task graphs
+- [ ] Networking: sockets, a TCP server and an HTTP server from scratch, protocol parsing, Asio
+- [ ] Numerical and engineering computing: linear algebra with Eigen, ODE solvers, FEM from scratch, sparse matrices, simulation loops
+- [ ] Geometry and CAD kernels: vectors and transforms, polygons and meshes, B-splines/Bézier/NURBS, mesh I/O (STL/OBJ), collision detection, spatial partitioning
+- [ ] Graphics and games: math for graphics, a software rasterizer, ray tracing, game loop and ECS, physics engine (rigid bodies, collisions)
+- [ ] Embedded C++: fixed-point maths, memory-constrained design, ISR-safe patterns, state machines, communication protocols
+- [ ] C++ for the web: WebAssembly with Emscripten concepts, exposing C++ to Python (pybind11)
+
+### Career skills (both languages)
+- [ ] Interview preparation tracks: DSA patterns map, low-level design, system design, behavioural answers (STAR)
+- [ ] Reading and contributing to real codebases; code review checklists; writing technical documents

@@ -27,7 +27,14 @@ for block in text.split("\n%%\n"):
     if missing:
         sys.exit(f"block {row.get('id')} missing {missing}")
     rows.append(row)
-import os
+import os, glob
+existing = set()
+for f in glob.glob(os.path.join(os.path.dirname(os.path.abspath(path)), "*.csv")):
+    with open(f, encoding="utf-8") as fh:
+        existing |= {r["id"] for r in csv.DictReader(fh)}
+clash = [r["id"] for r in rows if r["id"] in existing]
+if clash:
+    sys.exit(f"duplicate MCQ ids (already used in this language): {clash}")
 new = not os.path.exists(path)
 with open(path, "a", newline="", encoding="utf-8") as f:
     w = csv.DictWriter(f, fieldnames=cols)

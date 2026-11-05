@@ -1,179 +1,211 @@
-# Linked Lists and Trees
+# Singly Linked Lists from Scratch
 
-Pointer-based structures are where C++ differs most from Python. You must decide **who owns each node** and when it's freed. The options are:
-- `std::unique_ptr` (automatic, exclusive ownership)
-- raw pointers into a pool or arena (fast; the owner frees everything at once)
-- indices into a `std::vector` (cache-friendly, trivially serialisable)
+A **linked list** stores elements in separate **nodes**, each holding a value and a pointer to the next node. Unlike an array, the nodes are scattered around memory. You can't jump to the i-th element, but you can insert or remove a node in O(1) once you hold a pointer to the right place.
 
-This lesson implements linked lists, binary trees and BSTs in each style, shows the destructor pitfall of recursive `unique_ptr` chains, and covers traversals and the standard library alternatives (`std::list`, `std::forward_list`, `std::set`).
+Linked lists matter for three reasons:
 
-## 1. Ownership options for nodes
+1. They are the purest exercise in **pointer manipulation**, and interviewers use them to test exactly that.
+2. They are the building block of stacks, queues, hash-table buckets, LRU caches, adjacency lists and free lists in allocators.
+3. Their techniques (dummy nodes, fast/slow pointers, reversal, merging) reappear in trees and graphs.
 
-| Style | Example | Pros | Cons |
-|---|---|---|---|
-| `unique_ptr<Node> next` | owning links | no leaks, RAII, exception-safe | recursive destruction can overflow the stack; moves are verbose |
-| raw `Node*` + an arena/pool | `vector<unique_ptr<Node>> pool` or `std::deque<Node>` | fast, simple pointer code | must not outlive the pool |
-| indices into a `vector<Node>` | `int left, right` (−1 = null) | contiguous, cache-friendly, copyable | manual free lists if deleting |
-| `shared_ptr` | | shared ownership | refcount overhead; cycles leak (use `weak_ptr` for parent links) |
-
-## 2. A singly linked list with `unique_ptr`
+## 1. The node and the list
 
 ```cpp
 struct Node {
     int val;
-    std::unique_ptr<Node> next;
+    Node* next;
+    explicit Node(int v, Node* n = nullptr) : val(v), next(n) {}
 };
+```
 
-class List {
-    std::unique_ptr<Node> head_;
+```text
+head
+ │
+ ▼
+[3|•]──►[7|•]──►[1|•]──►[9|∅]
+```
+
+`head` points to the first node, and the last node's `next` is `nullptr`. An **empty list** is `head == nullptr`. Every algorithm must handle it.
+
+| Operation | Array / `vector` | Singly linked list |
+|---|---|---|
+| access the i-th element | O(1) | O(i), walking from the head |
+| insert/erase at the front | O(n) | **O(1)** |
+| insert/erase after a known node | O(n) | **O(1)** |
+| insert at the back | amortised O(1) | O(n), or O(1) with a tail pointer |
+| search | O(n) | O(n) |
+| memory per element | the value | value + pointer, plus allocation overhead |
+| cache behaviour | excellent | poor (pointer chasing) |
+
+> [!KEY]
+> In practice `std::vector` beats linked lists for almost everything, because of the cache. Use a linked list when you need **stable addresses** (iterators that never move), **O(1) splicing** of whole sublists, or O(1) removal of an element you already have a pointer to (as in an LRU cache).
+
+## 2. Traversal
+
+```cpp
+int length(Node* head) {
+    int n = 0;
+    for (Node* cur = head; cur; cur = cur->next) ++n;
+    return n;
+}
+```
+
+Get used to the `for (Node* cur = head; cur; cur = cur->next)` loop. When you need the previous node too, walk two pointers together: `prev` and `cur`.
+
+## 3. Insertion and deletion: the pointer surgery
+
+**Inserting after node `p`:**
+
+```cpp
+p->next = new Node(x, p->next);   // the new node points to p's old successor; p points to the new node
+```
+
+```text
+before:  [p]──►[q]                 after:  [p]──►[x]──►[q]
+```
+
+**Deleting the node after `p`:**
+
+```cpp
+Node* dead = p->next;
+p->next = dead->next;             // bypass it
+delete dead;                      // then free it, AFTER relinking
+```
+
+The order matters. If you `delete` first, you lose `dead->next`.
+
+**Deleting by value is awkward at the head**, because the head has no predecessor. That special case is the reason for the next trick.
+
+## 4. The dummy (sentinel) node
+
+Put a fake node **before** the head. Now every real node has a predecessor, and the special cases disappear:
+
+```cpp
+Node* remove_all(Node* head, int x) {
+    Node dummy(0, head);                       // lives on the stack
+    for (Node* p = &dummy; p->next; ) {
+        if (p->next->val == x) { Node* d = p->next; p->next = d->next; delete d; }
+        else p = p->next;                      // only advance when nothing was removed
+    }
+    return dummy.next;                         // the (possibly new) head
+}
+```
+
+> [!TIP]
+> Whenever the head itself might change (insert in sorted order, remove elements, partition, merge), start with a dummy node and return `dummy.next`.
+
+## 5. Ownership in C++: who frees the nodes?
+
+With raw pointers you must free every node exactly once:
+
+```cpp
+void free_list(Node* head) {
+    while (head) { Node* n = head->next; delete head; head = n; }   // iterative: no deep recursion
+}
+```
+
+Modern C++ can make the **list own its nodes** with `std::unique_ptr`:
+
+```cpp
+struct UNode { int val; std::unique_ptr<UNode> next; };
+// destroying the head destroys the whole chain automatically...
+```
+
+…but beware: the default destructor of a 10⁶-node `unique_ptr` chain recurses a million levels deep and **overflows the stack**. A `unique_ptr`-based list needs a destructor that releases the nodes iteratively:
+
+```cpp
+~List() { while (head) head = std::move(head->next); }   // each step destroys one node
+```
+
+In interviews raw pointers are standard. In production, wrap the list in a class with RAII (or use `std::forward_list`/`std::list`).
+
+## 6. Building a list class properly
+
+```cpp
+class SList {
+    Node* head_ = nullptr;
+    Node* tail_ = nullptr;     // makes push_back O(1)
+    size_t size_ = 0;
 public:
-    void push_front(int v) { head_ = std::make_unique<Node>(Node{v, std::move(head_)}); }
+    ~SList() { while (head_) { Node* n = head_->next; delete head_; head_ = n; } }
+    SList() = default;
+    SList(const SList&) = delete;              // or implement a deep copy
+    SList& operator=(const SList&) = delete;
 
-    void reverse() {
-        std::unique_ptr<Node> prev;
-        while (head_) {
-            auto nxt = std::move(head_->next);   // detach the rest
-            head_->next = std::move(prev);       // flip
-            prev = std::move(head_);
-            head_ = std::move(nxt);
-        }
-        head_ = std::move(prev);
+    void push_front(int x) { head_ = new Node(x, head_); if (!tail_) tail_ = head_; ++size_; }
+    void push_back(int x) {
+        Node* n = new Node(x);
+        if (tail_) tail_->next = n; else head_ = n;
+        tail_ = n; ++size_;
     }
-
-    ~List() {                                    // iterative destruction: no recursion depth problem
-        while (head_) head_ = std::move(head_->next);
-    }
-    // (copy operations omitted; a deep copy would need to walk the list)
-};
-```
-
-> [!DANGER]
-> With the default destructor, destroying `head_` destroys `head_->next`, which destroys *its* `next`, and so on: **one recursive call per node**. A list of a million nodes overflows the stack and crashes. Write an iterative destructor (as above), or use an arena.
-
-## 3. Binary trees with an arena (the competitive/performance style)
-
-```cpp
-struct TNode { int val; TNode *left = nullptr, *right = nullptr; };
-
-class Tree {
-    std::deque<TNode> pool_;                 // deque: addresses stay stable as it grows
-public:
-    TNode* make(int v) { pool_.push_back({v}); return &pool_.back(); }
-};                                           // the whole tree is freed when the Tree dies
-
-int height(const TNode* n) { return n ? 1 + std::max(height(n->left), height(n->right)) : 0; }
-
-void inorder(const TNode* n, std::vector<int>& out) {
-    std::vector<const TNode*> st;            // iterative: safe for degenerate trees
-    while (n || !st.empty()) {
-        while (n) { st.push_back(n); n = n->left; }
-        n = st.back(); st.pop_back();
-        out.push_back(n->val);
-        n = n->right;
-    }
-}
-```
-
-`std::deque` (or `std::vector<std::unique_ptr<TNode>>`) keeps node addresses stable. A plain `std::vector<TNode>` would move the nodes when it grows and invalidate every pointer.
-
-## 4. Index-based trees (BST insert)
-
-```cpp
-struct BST {
-    struct N { int key, l = -1, r = -1; };
-    std::vector<N> t;
-    int root = -1;
-
-    void insert(int key) {
-        int node = (int)t.size();
-        t.push_back({key});
-        if (root < 0) { root = node; return; }
-        for (int cur = root;;) {
-            int& next = key < t[cur].key ? t[cur].l : t[cur].r;
-            if (next < 0) { next = node; return; }   // careful: take the reference AFTER push_back
-            cur = next;
-        }
-    }
-    bool contains(int key) const {
-        for (int cur = root; cur >= 0; cur = key < t[cur].key ? t[cur].l : t[cur].r)
-            if (t[cur].key == key) return true;
-        return false;
+    bool pop_front(int& out) {
+        if (!head_) return false;
+        Node* n = head_; out = n->val; head_ = n->next;
+        if (!head_) tail_ = nullptr;           // the list became empty: keep tail consistent
+        delete n; --size_; return true;
     }
 };
 ```
 
-> [!WARNING]
-> Holding a reference such as `int& next = t[cur].l` and then calling `t.push_back(...)` invalidates the reference, because the vector may reallocate. Above, the push happens **before** the walk, so the references taken during the walk stay valid.
+**Class invariants:**
 
-## 5. Traversal recipes in C++
+- `head_ == nullptr` exactly when `tail_ == nullptr` and `size_ == 0`;
+- `tail_->next == nullptr`.
+
+Every method must preserve them. Forgetting to reset `tail_` when the last node is removed is the classic bug.
+
+## 7. Recursion on lists
+
+A list is a recursive structure: either empty, or a node followed by a list. Many operations have elegant recursive versions:
 
 ```cpp
-// level order with std::queue
-std::vector<std::vector<int>> levels(const TNode* root) {
-    std::vector<std::vector<int>> out;
-    if (!root) return out;
-    std::queue<const TNode*> q; q.push(root);
-    while (!q.empty()) {
-        auto& lvl = out.emplace_back();
-        for (size_t k = q.size(); k-- > 0; ) {
-            const TNode* n = q.front(); q.pop();
-            lvl.push_back(n->val);
-            if (n->left) q.push(n->left);
-            if (n->right) q.push(n->right);
-        }
-    }
-    return out;
-}
-
-// diameter: return the height, record the best bend (recursive is fine for balanced trees)
-int diameter(const TNode* root) {
-    int best = 0;
-    auto h = [&](auto&& self, const TNode* n) -> int {
-        if (!n) return 0;
-        int l = self(self, n->left), r = self(self, n->right);
-        best = std::max(best, l + r);
-        return 1 + std::max(l, r);
-    };
-    h(h, root);
-    return best;
+Node* reverse_rec(Node* head) {          // returns the new head
+    if (!head || !head->next) return head;
+    Node* rest = reverse_rec(head->next);
+    head->next->next = head;             // the node after head now points back to head
+    head->next = nullptr;
+    return rest;
 }
 ```
 
-## 6. The standard library alternatives
+They are elegant, but O(n) stack depth. For long lists, prefer the iterative versions (next topics).
 
-| Need | Use instead of a hand-rolled structure |
-|---|---|
-| ordered set/map | `std::set` / `std::map` (red–black trees) |
-| doubly linked list with O(1) splice | `std::list` (`splice` moves nodes without copying) |
-| singly linked list | `std::forward_list` |
-| LRU cache | `std::list<pair<K,V>>` + `unordered_map<K, list::iterator>` |
-| heap | `std::priority_queue`, `std::make_heap` |
-| order statistics | `__gnu_pbds::tree` |
+## 8. The STL lists
 
-```cpp
-// LRU with std::list::splice: O(1) move-to-front without reallocating nodes
-std::list<std::pair<int,int>> items;                   // front = most recent
-std::unordered_map<int, std::list<std::pair<int,int>>::iterator> where;
-void touch(int key) { items.splice(items.begin(), items, where[key]); }
-```
+| Container | Links | Notes |
+|---|---|---|
+| `std::forward_list<T>` | singly linked | `push_front`, `insert_after`, `erase_after`; no `size()` |
+| `std::list<T>` | doubly linked | `splice` moves nodes between lists in O(1); iterators stay valid on insert/erase of other elements |
 
-`std::list` iterators stay valid across `splice`, insertions and other erasures, which is exactly why the map can store them.
+`list::splice` is the reason LRU caches use `std::list`: moving a node to the front is O(1), and no node is copied.
 
-## 7. Exam-ready answers
+## 9. Common mistakes
 
-> [!EXAM]
-> **Ownership of linked structures in C++.** Nodes of linked lists and trees can be owned through `std::unique_ptr` links, giving automatic, exception-safe deallocation with exclusive ownership; but destruction then recurses along the chain, which can overflow the stack for long lists unless the destructor unlinks nodes iteratively. Alternatively, nodes can live in an arena or pool (or a container with stable addresses) and be linked by raw non-owning pointers, or stored in a vector and linked by indices, which improves locality and makes copying and serialisation simple. `std::shared_ptr` suits genuinely shared ownership, but reference cycles such as parent links must use `std::weak_ptr` to avoid leaks.
+- **Dereferencing `nullptr`:** check `cur` (and `cur->next`) before using them.
+- **Losing the rest of the list:** save `cur->next` before you overwrite it.
+- **Freeing before relinking,** or using a node after `delete` (use-after-free).
+- **Forgetting the head case.** Use a dummy node.
+- **Memory leaks:** every `new` needs exactly one `delete`. Run with `-fsanitize=address`.
+- **Recursive destruction** of long `unique_ptr` chains, which overflows the stack.
 
-## 8. Cheat sheet
+## 10. Interview questions
 
-| Task | C++ idiom |
-|---|---|
-| owning links | `unique_ptr<Node> next` + an iterative destructor |
-| fast trees | an arena (`deque<Node>`) + raw pointers |
-| cache-friendly trees | `vector<Node>` with int children |
-| parent pointers | raw/`weak_ptr` (non-owning) |
-| deep trees | an explicit `vector` stack instead of recursion |
-| LRU | `list` + `unordered_map` + `splice` |
+> [!INTERVIEW] "When would you choose a linked list over a vector?"
+> When I need O(1) insertion and removal at known positions without moving other elements, stable addresses or iterators for elements, or O(1) splicing of sublists, as in LRU caches, free lists and intrusive lists in kernels. For iteration-heavy work, a vector is much faster because of contiguous memory and caching, even when there are some middle insertions.
 
-> [!INTERVIEW]
-> **"What's wrong with `struct Node { std::shared_ptr<Node> next, prev; };` for a doubly linked list?"** Each pair of neighbours holds strong references to each other, a cycle, so the reference counts never reach zero and the whole list leaks. Make `prev` a `std::weak_ptr` (or a raw pointer), or use `unique_ptr` for `next` and a raw `prev`, as `std::list`-like designs do.
+> [!EXAM] Why does a dummy head node simplify list code?
+> It gives the first real node a predecessor, so inserting or deleting at the head uses the same code as any other position. The function then returns dummy.next as the new head.
+
+## Check your understanding
+
+1. What is wrong with `delete p->next; p->next = p->next->next;`?
+2. In `SList::pop_front`, why must `tail_` be reset when the list becomes empty?
+3. Why can destroying a long `unique_ptr`-linked list crash?
+
+<details><summary>Answers</summary>
+
+1. After the delete, `p->next` is dangling, and reading `p->next->next` is a use-after-free. Save the node, relink, then delete.
+2. Otherwise `tail_` would point to freed memory, and the next `push_back` would write through it.
+3. Each node's destructor destroys the next node, which nests a million destructor calls and overflows the stack. Release the nodes iteratively.
+
+</details>

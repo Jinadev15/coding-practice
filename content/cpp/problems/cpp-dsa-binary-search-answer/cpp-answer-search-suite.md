@@ -2,7 +2,7 @@
 id: cpp-answer-search-suite
 title: Binary Search on Answers in C++
 difficulty: Hard
-order: 1
+order: 9
 tags: binary search, lower_bound, monotone predicate, two pointers
 time_limit: 3
 ---
