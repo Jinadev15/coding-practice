@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Assemble C++ problems from authoring specs and stress-test them.
+"""Assemble problems (C++, C or Python) from authoring specs and stress-test them.
 
-    python3 tools/build_problem.py SPEC [SPEC...]       build + stress + write content/cpp/problems/<topic>/<id>.md
+    python3 tools/build_problem.py SPEC [SPEC...]       build + stress + write content/<lang>/problems/<topic>/<id>.md
+
+`lang:` in the meta section selects cpp (default), c or python. C/C++ references also run under
+ASan/UBSan; Python references run in the judge's virtual environment (.venv-judge).
 
 Spec format: sections introduced by '=== name' lines:
   meta (key: value lines incl. topic, id, title, difficulty, order, tags, time_limit, compare, libs)
@@ -44,9 +47,30 @@ def tests(block: str) -> list[str]:
     return [t.strip("\n") + "\n" for t in re.split(r"(?m)^---\s*$", block) if t.strip()] if block else []
 
 
+LANG = "cpp"
+LIB_CFLAGS: list[str] = []
+LIB_LDFLAGS: list[str] = []
+PY = str(ROOT / ".venv-judge" / "bin" / "python") if (ROOT / ".venv-judge" / "bin" / "python").exists() else sys.executable
+CC = ["gcc", "-std=c17", "-O2", "-pipe"]
+CSAN = ["gcc", "-std=c17", "-O1", "-g", "-fsanitize=address,undefined", "-fno-sanitize-recover=all", "-pipe"]
+FENCE = {"cpp": "cpp", "c": "c", "python": "python"}
+
+
 def compile_(src: str, out: Path, cmd: list[str], libs: list[str]) -> None:
-    f = out.with_suffix(".cpp"); f.write_text(src)
-    r = subprocess.run(cmd + [str(f), "-o", str(out)] + libs, capture_output=True, text=True)
+    """Build `out` from src. For Python, `out` becomes a launcher script that runs the judge interpreter."""
+    if LANG == "python":
+        f = out.with_suffix(".py"); f.write_text(src)
+        out.write_text(f"#!/bin/sh\nexec {PY} {f}\n"); out.chmod(0o755)
+        r = subprocess.run([PY, "-m", "py_compile", str(f)], capture_output=True, text=True)
+        if r.returncode:
+            sys.exit(f"syntax error in {out.name}:\n{r.stderr[:4000]}")
+        return
+    if LANG == "c":
+        cmd = CSAN if cmd is SAN else CC
+    f = out.with_suffix(".c" if LANG == "c" else ".cpp"); f.write_text(src)
+    extra = ["-lm"] if LANG == "c" else []
+    r = subprocess.run(cmd + LIB_CFLAGS + [str(f), "-o", str(out)] + LIB_LDFLAGS + libs + extra + (["-lpthread"] if LANG == "cpp" else []),
+                       capture_output=True, text=True)
     if r.returncode:
         sys.exit(f"compile failed for {out.name}:\n{r.stderr[:4000]}")
 
@@ -89,7 +113,14 @@ def build(spec: Path) -> None:
     meta = dict(l.split(":", 1) for l in s["meta"].splitlines() if ":" in l)
     meta = {k.strip(): v.strip() for k, v in meta.items()}
     pid, topic = meta["id"], meta["topic"]
-    global FLOAT_MODE
+    global FLOAT_MODE, LANG, LIB_CFLAGS, LIB_LDFLAGS
+    LANG = meta.get("lang", "cpp")
+    LIB_CFLAGS, LIB_LDFLAGS = [], []
+    if meta.get("libs"):
+        sys.path.insert(0, str(ROOT))
+        from app.content import Catalog
+        from app import judge as J
+        LIB_CFLAGS, LIB_LDFLAGS, _ = J.resolve_libs(Catalog().get()[LANG], [x.strip() for x in meta["libs"].split(",") if x.strip()])
     FLOAT_MODE = meta.get("compare") == "float"
     libs = []
     seed0 = int(hashlib.md5(pid.encode()).hexdigest()[:8], 16)
@@ -155,16 +186,17 @@ def build(spec: Path) -> None:
             sys.exit(f"[{pid}] an output line conflicts with the problem file format")
     # assemble
     fm = ["---"] + [f"{k}: {meta[k]}" for k in ("id", "title", "difficulty", "order", "tags", "time_limit", "compare", "libs") if meta.get(k)] + ["---"]
-    md = "\n".join(fm) + "\n## Statement\n" + s["statement"].strip() + "\n\n## Starter\n```cpp\n" + s["starter"].strip() + \
-        "\n```\n\n## Driver\n```cpp\n" + s["driver"].strip() + "\n```\n\n## Tests\n"
+    fl = FENCE[LANG]
+    md = "\n".join(fm) + "\n## Statement\n" + s["statement"].strip() + f"\n\n## Starter\n```{fl}\n" + s["starter"].strip() + \
+        f"\n```\n\n## Driver\n```{fl}\n" + s["driver"].strip() + "\n```\n\n## Tests\n"
     for i, (t, o) in enumerate(zip(allt, outs)):
         md += ("=== sample\n" if i < len(samples) else "=== hidden\n") + gen_ref.get(i, t)
         if len(o) < 3000 and i not in gen_ref:      # generated tests: the judge computes the answer itself
             md += "---\n" + o.rstrip("\n") + "\n"
     if gen_ref:
         md += "\n## Generator\n```python\n" + s["gen"].strip() + "\n```\n"
-    md += "\n## Hints\n" + s["hints"].strip() + "\n\n## Solution\n" + s["explanation"].strip() + "\n\n```cpp\n" + s["solution"].strip() + "\n```\n"
-    dest = ROOT / "content" / "cpp" / "problems" / topic / f"{pid}.md"
+    md += "\n## Hints\n" + s["hints"].strip() + "\n\n## Solution\n" + s["explanation"].strip() + f"\n\n```{fl}\n" + s["solution"].strip() + "\n```\n"
+    dest = ROOT / "content" / LANG / "problems" / topic / f"{pid}.md"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(md)
     print(f"[{pid}] ok: {len(samples)} samples, {len(hidden)} hidden, stress {'vs brute' if brute else 'sanitizers only'} -> {dest.relative_to(ROOT)}")
