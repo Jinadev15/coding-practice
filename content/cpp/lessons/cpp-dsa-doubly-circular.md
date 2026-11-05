@@ -57,6 +57,9 @@ class DList {
         x->next->prev = x->prev;
     }
 public:
+    DList() = default;
+    DList(const DList&) = delete;                // the sentinel points to itself: a shallow copy would
+    DList& operator=(const DList&) = delete;     // share nodes and free them twice
     void push_front(int v) { link_after(&s_, new DNode{v, nullptr, nullptr}); ++n_; }
     void push_back(int v)  { link_after(s_.prev, new DNode{v, nullptr, nullptr}); ++n_; }
     void erase(DNode* x)   { unlink(x); delete x; --n_; }      // O(1) given the node
@@ -75,6 +78,18 @@ Because each node knows its neighbours, removing it needs nothing else. This is 
 
 - **get(key):** find the node through the map, `unlink` it, and `link_after(sentinel)` to move it to the front. O(1).
 - **put(key):** insert at the front. If over capacity, evict `sentinel.prev` (the least recently used) and erase its key from the map. O(1).
+
+**Dry run** with capacity 2 (the list is shown from most to least recently used):
+
+```text
+put(1,1)   [1]
+put(2,2)   [2, 1]
+get(1)     [1, 2]       returns 1: node 1 moves to the front
+put(3,3)   [3, 1]       size 3 > 2: evict sentinel.prev = 2, and erase key 2 from the map
+get(2)     [3, 1]       returns −1
+put(4,4)   [4, 3]       evicts 1
+get(3)     [3, 4]       returns 3
+```
 
 `std::list` gives you this with `splice`, and its iterators stay valid however the list changes around them.
 
@@ -121,7 +136,18 @@ Some lists have a `child` pointer to a whole sub-list (for example nested commen
 | traverse backwards | impossible | O(n) |
 | memory per node | value + 1 pointer | value + 2 pointers |
 
-## 8. Common mistakes
+## 8. Recognising the pattern
+
+| The problem says… | Think of |
+|---|---|
+| O(1) remove or move-to-front given a handle; LRU / LFU caches | a doubly linked list + a hash map of node pointers |
+| back / forward history, undo with the future discarded | a doubly linked list with a cursor node |
+| insert and delete at a cursor (editors) | a doubly linked list; the cursor is the node left of it |
+| round-robin, "every k-th person in a circle" | a circular list (or an index taken `% n`) |
+| fixed-capacity queue that never allocates | a ring buffer |
+| nested child lists to flatten | an explicit stack of saved `next` pointers |
+
+## 9. Common mistakes
 
 - **Updating only one direction.** After every operation, check the invariant: `x->next->prev == x` and `x->prev->next == x`.
 - **Assigning in the wrong order** in `link_after`, which overwrites `pos->next` before using it.
@@ -129,7 +155,7 @@ Some lists have a `child` pointer to a whole sub-list (for example nested commen
 - **Infinite loops on circular lists.** Stop when you return to the start, or at the sentinel.
 - **Not keeping the hash map in sync** in an LRU cache (it ends up holding pointers to deleted nodes).
 
-## 9. Interview questions
+## 10. Interview questions
 
 > [!INTERVIEW] "Design an LRU cache with O(1) get and put."
 > A hash map from key to node, plus a doubly linked list ordered by recency, with a sentinel. get: look the key up, move its node to the front, return the value. put: update an existing node and move it to the front, or create one at the front; if the size exceeds the capacity, remove the node before the sentinel (the least recently used) and erase its key from the map. Every step is O(1).

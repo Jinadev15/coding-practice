@@ -123,7 +123,7 @@ for (int it = 0; it < 100; ++it) {               // each step halves the error: 
 > Two binary searches: lower_bound(x) for the first index ≥ x, and upper_bound(x) − 1 for the last index ≤ x. If lower_bound is past the end or doesn't equal x, the answer is not found. That's O(log n). Explain the invariant (everything before lo is < x, everything from hi on is ≥ x) to show why it terminates correctly.
 
 > [!EXAM] Why must you compute mid as lo + (hi − lo) / 2?
-> lo + hi can exceed the integer range when the bounds are large (e.g. searching a value range up to 2·10⁹ with int, or up to 10¹⁸ with long long). The difference form never exceeds hi, so it can't overflow.
+> lo + hi can exceed the integer range when the bounds are large (e.g. searching a value range up to 2·10⁹ with int, or up to 10¹⁸ with long long). The difference form never exceeds hi, so it can't overflow when lo ≥ 0. (If the range can include large negative values, `hi − lo` itself can overflow: compute the midpoint in a wider type, or use `std::midpoint` from C++20.)
 
 ## Check your understanding
 

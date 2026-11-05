@@ -161,8 +161,8 @@ void rotate90(vector<vector<int>>& m) {
 }
 ```
 
-- **Counter-clockwise:** transpose, then reverse each **column** (or reverse the rows first, then transpose).
-- **180°:** reverse the rows and reverse each row.
+- **Counter-clockwise:** transpose, then reverse each **column** (equivalently: reverse the *order* of the rows, i.e. swap row i with row n−1−i, after the transpose; or reverse each row first, then transpose).
+- **180°:** reverse the order of the rows, then reverse each row.
 
 **Diagonals.** Cells on the same **anti-diagonal** share `r + c`, and cells on the same **main diagonal** share `r − c`. Grouping by these keys solves most diagonal problems.
 

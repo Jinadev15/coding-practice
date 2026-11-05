@@ -2,7 +2,7 @@
 id: cpp-monotonic-suite
 title: Monotonic Stacks and Deques in C++
 difficulty: Hard
-order: 1
+order: 10
 tags: monotonic stack, deque, histogram, sliding-window DP, stock span
 time_limit: 2
 ---

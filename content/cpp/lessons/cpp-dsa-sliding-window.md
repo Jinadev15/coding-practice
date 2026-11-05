@@ -122,6 +122,7 @@ long long count_product_less(const vector<int>& a, long long k) {
 
 ```cpp
 long long at_most(const vector<int>& a, int K) {      // subarrays with <= K distinct values
+    if (K < 0) return 0;                               // exactly(0) asks for at_most(-1): no subarray qualifies
     unordered_map<int,int> cnt; long long res = 0; int L = 0;
     for (int R = 0; R < (int)a.size(); ++R) {
         if (cnt[a[R]]++ == 0) --K;                     // a new distinct value

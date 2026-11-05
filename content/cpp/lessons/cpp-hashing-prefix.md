@@ -97,6 +97,20 @@ long long count_sum_k(const vector<int>& a, long long k) {
 
 That's O(n) expected. The `seen[0] = 1` line counts subarrays that start at index 0. Forgetting it is the most common bug.
 
+**Dry run** on `a = [1, −1, 5, −2, 3]`, `k = 3`:
+
+```text
+x    pre   look up pre−k   found   cnt   map after inserting pre
+             (start)                     {0:1}
+ 1    1        −2            0      0    {0:1, 1:1}
+−1    0        −3            0      0    {0:2, 1:1}
+ 5    5         2            0      0    {0:2, 1:1, 5:1}
+−2    3         0            2      2    {0:2, 1:1, 5:1, 3:1}   ← [1,−1,5,−2] and [5,−2]
+ 3    6         3            1      3    {..., 6:1}             ← [3]
+```
+
+The prefix value 0 was seen twice (the empty prefix and after `1, −1`), so reaching prefix 3 closes **two** subarrays at once. That is why the map stores counts, not just presence.
+
 **Variations of the same idea:**
 
 | Question | Key stored in the map |

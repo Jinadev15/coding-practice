@@ -1,0 +1,2 @@
+# after: cpp-dsa-list-reversal
+13 Linked Lists	cpp-dsa-fast-slow	Fast and Slow Pointers	Intermediate	Middle node and deletion, Floyd cycle detection with the entry proof and cycle length, intersection of two lists, O(1)-space palindrome check with restore, functional graphs (find the duplicate, circular array loops, happy numbers) and Brent's algorithm.

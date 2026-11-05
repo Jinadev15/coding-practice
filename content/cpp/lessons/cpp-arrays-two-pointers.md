@@ -196,7 +196,7 @@ long long trap(const vector<int>& h) {
 > If `a[L] + a[R] < target`, then `a[L]` paired with any element at or left of `R` is also too small, because `a[R]` is the largest remaining. So `a[L]` is in no solution and can be dropped. The same reasoning applies to `a[R]` when the sum is too big. Each step removes one impossible element, so the scan is complete and takes O(n).
 
 > [!EXAM] Why must `mid` not advance after swapping with `hi` in the Dutch-flag algorithm?
-> The element swapped in from `hi` comes from the unexamined region, and it could be a 0 or a 2. Advancing would leave it unclassified and break the invariant. After swapping with `lo`, the incoming value is known to be a 1 (from the `[lo, mid)` region), so `mid` can safely advance.
+> The element swapped in from `hi` comes from the unexamined region, and it could be a 0 or a 2. Advancing would leave it unclassified and break the invariant. After swapping with `lo`, the incoming value is known to be a 1 (from the `[lo, mid)` region), or, when `lo == mid`, it is the 0 itself; either way it is already classified, so `mid` can safely advance.
 
 ## Check your understanding
 

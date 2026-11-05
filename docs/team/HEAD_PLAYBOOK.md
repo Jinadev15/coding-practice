@@ -69,3 +69,19 @@ Problems (n):
 ```
 
 Reuse existing topic ids where they fit (see `content/<lang>/curriculum.csv`). A new id must be unique and kebab-case with the language prefix (`cpp-`, `py-`, `c-`).
+
+## Language notes (added by the Head after the plans were written)
+
+**Python specs:**
+
+- Put `lang: python` in the meta section.
+- The judge appends the driver to the learner's file, so the starter and solution must not contain `if __name__ == "__main__"` or `from __future__`.
+- The judge environment has numpy, pandas, scipy, scikit-learn, torch (CPU), opencv, matplotlib (Agg backend), fastapi, starlette, flask, django, sqlalchemy, pydantic, httpx, requests, click and typer. pint, hypothesis, alembic, celery, redis and DRF are NOT available, so teach those concepts and have learners build small versions themselves.
+- **Web problems must run in one process with no network.** Use the framework test clients (Flask `test_client`, FastAPI/Starlette `TestClient`, Django's test `Client` with `settings.configure(...)` and in-memory SQLite inside the file), or `httpx.MockTransport`, or `socket.socketpair()`.
+- **Plots:** inspect the matplotlib Figure/Axes objects (data, labels, limits). Never compare images.
+- **Topping up an existing topic** (status existing-thin): keep the existing problem files untouched. Add your new problems with `order:` values after the existing ones, and read the existing lesson. Improve the lesson only where it's thin or missing what your new problems need.
+- **Speed:** Python problems with heavy imports (torch, sklearn) need `time_limit: 5` or more, and the reference must still use under 30% of it.
+
+**C specs:** put `lang: c` in the meta section. C17, so POSIX functions need `#define _POSIX_C_SOURCE 200809L` at the top of the starter/solution (not the driver).
+
+**Plans:** `docs/team/plan/<lang>.md` is the authoritative list of topics, statuses and problems. Follow your entries. You may improve a problem idea if it makes it a better exercise, but say so in your report.

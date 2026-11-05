@@ -57,6 +57,20 @@ pair<int,int> longest_palindrome(const string& s) {      // {start, length}
 }
 ```
 
+**Dry run** on `"babad"`:
+
+```text
+centre       expansion                         palindrome found      best
+c=0 (odd)    s[0]='b'; next l=−1 stops         "b" (len 1)           (0, 1)
+c=0 (even)   s[0]='b' ≠ s[1]='a'               none
+c=1 (odd)    'a'; then s[0]='b' == s[2]='b'    "bab" (len 3)         (0, 3)
+             then l=−1 stops
+c=1 (even)   s[1]='a' ≠ s[2]='b'               none
+c=2 (odd)    'b'; s[1]='a' == s[3]='a';        "aba" (len 3)         (0, 3): not longer, keep leftmost
+             s[0]='b' ≠ s[4]='d' stops
+...          the remaining centres give length 1
+```
+
 That's O(n²) worst case with O(1) memory. Manacher's algorithm does it in O(n) (String Algorithms topic).
 
 **Counting palindromic substrings** uses the same expansion: every successful step is one palindrome.

@@ -17,10 +17,12 @@ This lesson builds every major sorting algorithm by hand, so you understand what
 | Selection | O(n²) | O(n²) | O(n²) | O(1) | no |
 | Insertion | O(n) | O(n²) | O(n²) | O(1) | yes |
 | Merge | O(n log n) | O(n log n) | O(n log n) | O(n) | yes |
-| Quick | O(n log n) | O(n log n) | O(n²) | O(log n) | no |
+| Quick | O(n log n) | O(n log n) | O(n²) | O(log n)* | no |
 | Heap | O(n log n) | O(n log n) | O(n log n) | O(1) | no |
 | Counting | O(n + k) | O(n + k) | O(n + k) | O(n + k) | yes |
 | Radix (base b) | O(d(n + b)) | same | same | O(n + b) | yes |
+
+\* Quicksort's stack is O(log n) only if you recurse into the smaller side first and loop on the larger one. The naive version can reach O(n) depth on bad pivots.
 
 ## 2. The simple quadratic sorts
 

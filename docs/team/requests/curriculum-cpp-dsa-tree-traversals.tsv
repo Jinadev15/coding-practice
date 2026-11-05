@@ -1,0 +1,2 @@
+# after: cpp-dsa-heaps
+15 Trees	cpp-dsa-tree-traversals	Binary Trees and Traversals	Intermediate	Tree vocabulary, recursive pre/in/post order, iterative traversals with explicit stacks, Morris O(1) traversal, level order (BFS), zigzag, side views, max width, vertical order, boundary traversal.

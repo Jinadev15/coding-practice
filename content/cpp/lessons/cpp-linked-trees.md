@@ -91,6 +91,18 @@ Node* remove_all(Node* head, int x) {
 }
 ```
 
+**Dry run:** `remove_all(2 → 1 → 2 → 3, 2)`
+
+```text
+p = dummy   p->next = 2  matches → unlink and delete it   dummy → 1 → 2 → 3   (p stays)
+p = dummy   p->next = 1  keep    → p = 1
+p = 1       p->next = 2  matches → unlink and delete it   dummy → 1 → 3       (p stays)
+p = 1       p->next = 3  keep    → p = 3
+p = 3       p->next = nullptr    → stop, return dummy.next = 1 → 3
+```
+
+Notice that `p` doesn't move after a deletion: the node that slid into `p->next` hasn't been checked yet. Advancing anyway is how `2 → 2` loses its second match.
+
 > [!TIP]
 > Whenever the head itself might change (insert in sorted order, remove elements, partition, merge), start with a dummy node and return `dummy.next`.
 
@@ -179,7 +191,18 @@ They are elegant, but O(n) stack depth. For long lists, prefer the iterative ver
 
 `list::splice` is the reason LRU caches use `std::list`: moving a node to the front is O(1), and no node is copied.
 
-## 9. Common mistakes
+## 9. Recognising linked-list patterns
+
+| The problem says… | Think of |
+|---|---|
+| remove / insert where the head might change | a dummy node, return `dummy.next` |
+| "k-th from the end", "middle", "cycle" | two pointers with a gap, or fast/slow pointers |
+| "reverse", "reorder", "palindrome list" | in-place reversal (Reversal topic) |
+| "partition", "odd/even positions", keep the order | two chains with their own dummies, then join (end the second with `nullptr`) |
+| O(1) removal of a given node, recency order | a doubly linked list + a hash map (next topic) |
+| consecutive nodes summing to 0 | prefix sums over the list + a hash map |
+
+## 10. Common mistakes
 
 - **Dereferencing `nullptr`:** check `cur` (and `cur->next`) before using them.
 - **Losing the rest of the list:** save `cur->next` before you overwrite it.
@@ -188,7 +211,7 @@ They are elegant, but O(n) stack depth. For long lists, prefer the iterative ver
 - **Memory leaks:** every `new` needs exactly one `delete`. Run with `-fsanitize=address`.
 - **Recursive destruction** of long `unique_ptr` chains, which overflows the stack.
 
-## 10. Interview questions
+## 11. Interview questions
 
 > [!INTERVIEW] "When would you choose a linked list over a vector?"
 > When I need O(1) insertion and removal at known positions without moving other elements, stable addresses or iterators for elements, or O(1) splicing of sublists, as in LRU caches, free lists and intrusive lists in kernels. For iteration-heavy work, a vector is much faster because of contiguous memory and caching, even when there are some middle insertions.

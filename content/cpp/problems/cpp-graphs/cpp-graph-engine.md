@@ -2,7 +2,7 @@
 id: cpp-graph-engine
 title: "Graph Engine: Dijkstra, Components, MST, Topological Order"
 difficulty: Hard
-order: 1
+order: 10
 tags: Dijkstra, priority_queue, DSU, Kruskal, topological sort, CSR
 time_limit: 3
 ---

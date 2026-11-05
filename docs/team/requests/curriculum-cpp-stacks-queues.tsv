@@ -1,0 +1,2 @@
+# after: cpp-dsa-skip-list
+14 Stacks, Queues and Heaps	cpp-stacks-queues	Stacks from Scratch	Intermediate	Array and linked stacks with amortized doubling and quarter shrinking, balanced brackets, O(1) min stack, postfix evaluation, shunting-yard (precedence and associativity), two-stack infix calculator with unary minus, undo/redo and decoding, the call stack and recursion elimination.

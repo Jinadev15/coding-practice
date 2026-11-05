@@ -44,6 +44,19 @@ long long min_speed(const vector<long long>& p, long long h) {
 }
 ```
 
+**Dry run** with `p = [3, 6, 7, 11]` and `h = 8`:
+
+```text
+lo  hi   k = mid   hours = Σ⌈p/k⌉            feasible?   update
+ 1  11     6       1 + 1 + 2 + 2 = 6         yes         hi = 6
+ 1   6     3       1 + 2 + 3 + 4 = 10        no          lo = 4
+ 4   6     5       1 + 2 + 2 + 3 = 8         yes         hi = 5
+ 4   5     4       1 + 2 + 2 + 3 = 8         yes         hi = 4
+ 4   4   stop: the answer is 4
+```
+
+Four feasibility checks instead of trying all 11 speeds. With `max(p) = 10⁹`, it would be about 30 checks.
+
 ## 3. Minimise the maximum: splitting into parts
 
 "Split an array into `m` contiguous parts, minimising the largest part sum" (also known as book allocation, painter's partition, or shipping packages within D days).
