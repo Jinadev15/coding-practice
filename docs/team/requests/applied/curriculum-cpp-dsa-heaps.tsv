@@ -1,0 +1,2 @@
+# after: cpp-dsa-queues-deques
+14 Stacks, Queues and Heaps	cpp-dsa-heaps	Heaps and Priority Queues	Intermediate	Binary heap from scratch (sift up/down, O(n) heapify proof), priority_queue and custom comparators, top-K and k-th largest, k-way merge and smallest covering range, running median with two heaps, SJF and cooldown scheduling simulations, IPO greedy, indexed priority queue with decrease-key, heap vs set trade-offs.

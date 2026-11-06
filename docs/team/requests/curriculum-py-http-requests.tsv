@@ -1,0 +1,2 @@
+# after: py-clean-architecture
+17 Web and Backend Engineering	py-http-requests	HTTP from First Principles, REST and httpx	Intermediate	Message anatomy and framing, methods and idempotency, status codes, headers, cookies, caching with ETags, REST vs RPC, httpx clients tested with MockTransport.
