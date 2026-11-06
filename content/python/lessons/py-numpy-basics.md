@@ -148,12 +148,195 @@ t = time.perf_counter(); s2 = np.dot(x, x);          t_vec = time.perf_counter()
 
 There's no per-element interpreter overhead and no boxing into Python objects, and the CPU gets cache-friendly contiguous memory plus SIMD instructions.
 
-## 9. Exam-ready answers
+## 9. Creating arrays the right way: `linspace` vs `arange`, and dtype ranges
+
+Two creation functions look alike but answer different questions:
+
+- `np.arange(start, stop, step)` answers "step by this amount until you pass `stop`". It is half-open, like `range`. With float steps, rounding can give you one element too many or too few: `np.arange(0, 0.3, 0.1)` has 3 elements on most machines, but `np.arange(1, 1.3, 0.1)` has 4, because `1.3` cannot be represented exactly.
+- `np.linspace(start, stop, n)` answers "give me exactly `n` points, ends included". Use it whenever you know the *count*, for example sample times, grid nodes or plot x-values.
+
+```python
+np.arange(1, 1.3, 0.1)       # array([1. , 1.1, 1.2, 1.3]): surprise, 4 elements
+np.linspace(1, 1.3, 4)       # array([1. , 1.1, 1.2, 1.3]): exactly 4, by design
+```
+
+Every integer dtype has a fixed range. `np.iinfo` and `np.finfo` tell you the limits:
+
+```python
+np.iinfo(np.uint8).max      # 255
+np.iinfo(np.int32).max      # 2147483647
+np.iinfo(np.uint64).max     # 18446744073709551615
+np.finfo(np.float32).eps    # 1.1920929e-07: relative precision of float32
+```
+
+Grids built by **broadcasting** cost no loops. A column vector plus a row vector gives a full table:
+
+```python
+r = np.arange(3)[:, None]    # shape (3, 1)
+c = np.arange(4)[None, :]    # shape (1, 4)
+(r + c) % 2 == 0             # (3, 4) checkerboard of booleans
+```
+
+## 10. Step-by-step dry run: an axis reduction on a 3-D array
+
+Take sensor data shaped `(days, hours, sensors) = (2, 3, 2)`:
+
+```python
+r = np.array([[[1, 9], [4, 2], [4, 8]],     # day 0: hours 0..2, sensors 0..1
+              [[0, 0], [5, 5], [3, 7]]])    # day 1
+```
+
+Think of the array as `r[day, hour, sensor]`. We want the peak reading of each sensor on each day, so the **hours axis (axis 1) must disappear**.
+
+| day | sensor | values over hours | `max` | `argmax` (first) |
+|---|---|---|---|---|
+| 0 | 0 | 1, 4, 4 | 4 | 1 |
+| 0 | 1 | 9, 2, 8 | 9 | 0 |
+| 1 | 0 | 0, 5, 3 | 5 | 1 |
+| 1 | 1 | 0, 5, 7 | 7 | 2 |
+
+```python
+r.max(axis=1)      # [[4, 9], [5, 7]]   shape (2, 2) = (days, sensors)
+r.argmax(axis=1)   # [[1, 0], [1, 2]]   the FIRST hour that reaches the max
+r.mean(axis=(0, 1))  # one mean per sensor: [2.833..., 5.166...]
+```
+
+Note day 0, sensor 0: the value 4 appears at hours 1 and 2, and `argmax` reports the first one. Now normalise each row of a 2-D matrix so that it sums to 1:
+
+```python
+x = np.array([[1., 3.], [0., 0.], [2., 2.]])
+s = x.sum(axis=1, keepdims=True)    # [[4.], [0.], [4.]]  shape (3, 1)
+np.divide(x, s, out=np.zeros_like(x), where=s != 0)
+# [[0.25, 0.75], [0., 0.], [0.5, 0.5]]
+```
+
+Without `keepdims`, `s` would have shape `(3,)`. Broadcasting aligns shapes from the **right**, so `(3, 2)` against `(3,)` fails here. Worse, for a square matrix it would *silently* divide each column by a row sum.
+
+## 11. Dry run: views vs copies in a function
+
+```python
+def rotate_left_wrong(a, k):
+    a = np.roll(a, -k)          # builds a new array and rebinds the LOCAL name a
+
+def rotate_left(a, k):
+    k %= a.size
+    a[:] = np.concatenate((a[k:], a[:k]))   # writes INTO the caller's buffer
+
+x = np.array([1, 2, 3, 4, 5])
+rotate_left_wrong(x, 2); x     # [1 2 3 4 5]: unchanged
+rotate_left(x, 2); x           # [3 4 5 1 2]
+```
+
+Trace the correct version:
+
+1. `a[k:]` is a view `[3, 4, 5]`, and `a[:k]` is a view `[1, 2]`.
+2. `np.concatenate` copies both into a **new** buffer `[3, 4, 5, 1, 2]`.
+3. `a[:] = ...` copies that buffer into `x`'s memory.
+
+Because the right-hand side was completely built before the write, the overlap between source and destination is harmless. A "clever" swap such as `a[:2], a[2:] = a[3:], a[:3]` reads from views of `a` *while* overwriting `a`, and silently produces garbage.
+
+| operation | shares memory with `a`? |
+|---|---|
+| `a[1:4]`, `a[::2]`, `a.T`, `a.reshape(...)`, `a.ravel()` (contiguous) | yes (view) |
+| `a[[1, 2]]`, `a[a > 0]`, `a.flatten()`, `a.copy()`, `a + 1` | no (new array) |
+| `a += 1`, `a[...] = v`, `np.add(a, 1, out=a)` | modifies `a` in place |
+
+## 12. Masks, sorting and lookup tables
+
+```python
+x = np.array([3, 9, 1, 9, 4])
+np.argsort(x)                    # [2 0 4 1 3]: indices that would sort ascending
+np.argsort(-x, kind="stable")    # [1 3 4 0 2]: descending, ties keep index order
+x[np.argsort(x)]                 # sorted values via fancy indexing
+
+lut = np.array([10, 20, 30])     # lookup table: label -> new value
+labels = np.array([[0, 1], [2, 1]])
+lut[labels]                      # [[10 20] [30 20]]: one gather, any shape
+```
+
+Two details matter:
+
+- `np.sort` and `np.argsort` default to quicksort, which is **not stable**. Pass `kind="stable"` when equal keys must keep their order.
+- Masks combine with `&`, `|` and `~`, and every comparison needs parentheses: `(x > 1) & (x < 5)`. Writing `x > 1 and x < 5` raises `ValueError: The truth value of an array with more than one element is ambiguous`.
+
+## 13. Complexity
+
+| operation | cost | why |
+|---|---|---|
+| creating `zeros`, `arange`, `linspace` of n elements | O(n) | fills n slots |
+| ufunc / elementwise op | O(n) | one C loop |
+| reduction along an axis | O(n) total | each element read once |
+| basic slice, transpose, reshape (contiguous) | **O(1)** | metadata only, no data copied |
+| fancy indexing / boolean mask | O(n) (plus output size) | gathers into a new array |
+| `np.sort` / `argsort` | O(n log n) | comparison sort |
+| `np.argpartition` (top-k) | O(n) average | introselect |
+
+The proof idea behind the speed claim: a vectorised operation still does Θ(n) work, so it does not change the asymptotics. It removes the **constant factor** of the interpreter (about 50–100 ns per Python-level operation, versus about 1 ns per element in a C/SIMD loop). That is why the rule "no Python loops over elements" turns 10-second programs into 50-millisecond ones.
+
+## 14. Pattern recognition cues
+
+- "for every element, if … then …" → a boolean mask plus assignment, or `np.where`.
+- "per row / per column / per day" → a reduction with `axis=`. Ask "which axis disappears?".
+- "replace each code by a value from a table" → a lookup table `lut[codes]`.
+- "the k largest / sort by a key" → `argsort` (stable if ties matter), then fancy indexing.
+- "must not modify the input" → return a new array; use `.copy()` before any in-place step.
+- "modify in place" → slice assignment `a[...] = ...`, never `a = ...`.
+- image or byte data → think about `uint8` overflow before any arithmetic.
+
+## 15. Common mistakes
+
+1. **`uint8` arithmetic wraps.** `img + 100` turns bright pixels dark. Widen, compute, clip, narrow.
+2. **`arange` with float steps** gives an unexpected count. Use `linspace`.
+3. **Forgetting `keepdims=True`** when you divide by a row reduction.
+4. **Using `and` / `or` on arrays**, or forgetting the parentheses around comparisons combined with `&`.
+5. **Rebinding instead of writing**: `a = a * 2` inside a function does not change the caller's array; `a *= 2` or `a[:] = a * 2` does.
+6. **Expecting a fancy-index result to be a view**: `a[[0, 2]][0] = 5` changes nothing in `a`.
+7. **Accidental in-place mutation**: `a -= a.mean()` on an argument corrupts the caller's data.
+8. **Unstable sorts** when ties must keep their order.
+9. **`np.empty`** contains garbage. Only use it when you overwrite every element.
+
+## 16. Interview and exam Q&A
+
+**Q: What is the difference between `a.ravel()` and `a.flatten()`?**
+A: `flatten` always returns a copy. `ravel` returns a view when the memory layout allows it (contiguous), and a copy otherwise.
+
+**Q: Why is `a[:, 0]` slower to iterate than `a[0, :]` for a large C-ordered array?**
+A: In C order, rows are contiguous. A column slice jumps `strides[0]` bytes between elements, which makes poor use of the cache.
+
+**Q: How do you find which elements of `a` are also in `b`?**
+A: `np.isin(a, b)` returns a boolean mask. It runs in O((n + m) log(n + m)) using sorting.
+
+**Q: How do you add 1 at repeated indices correctly?**
+A: `a[idx] += 1` adds only once per distinct index, because the fancy assignment is buffered. Use `np.add.at(a, idx, 1)`, or `np.bincount(idx, minlength=len(a))`.
+
+**Q: What does `-1` mean in `reshape`?**
+A: "Infer this dimension from the size". At most one `-1` is allowed.
+
+## 17. Check your understanding
+
+1. What is the shape of `np.zeros((4, 5, 6)).sum(axis=(0, 2))`?
+2. After `b = a[1:3]; b[:] = 0`, has `a` changed? What about after `c = a[[1, 2]]; c[:] = 0`?
+3. What does `np.array([250], dtype=np.uint8) + np.uint8(10)` produce?
+4. You need 101 sample times from 0 to 1 second, inclusive. Which call do you use?
+5. Write one expression that counts the elements of `x` strictly between 2 and 7.
+
+<details>
+<summary>Answers</summary>
+
+1. `(5,)`: axes 0 and 2 disappear.
+2. Yes, `a[1:3]` is a view, so `a[1]` and `a[2]` become 0. No, `a[[1, 2]]` is a copy, so `a` is unchanged.
+3. `array([4], dtype=uint8)`: 260 wraps modulo 256.
+4. `np.linspace(0, 1, 101)`.
+5. `np.count_nonzero((x > 2) & (x < 7))`.
+
+</details>
+
+## 18. Exam-ready answers
 
 > [!EXAM]
 > **The NumPy ndarray.** A NumPy ndarray is an n-dimensional array of fixed-size elements of a single dtype, stored in a contiguous (or strided) memory buffer described by its shape and strides. Operations are vectorised: universal functions and reductions execute compiled loops over the buffer, avoiding per-element interpreter overhead and enabling SIMD, which makes them orders of magnitude faster than Python loops. Basic slicing creates views that share memory with the original array, whereas integer (fancy) indexing and boolean masking produce copies; integer dtypes have fixed width and overflow silently.
 
-## 10. Cheat sheet
+## 19. Cheat sheet
 
 | Need | Code |
 |---|---|
