@@ -74,6 +74,65 @@ false false
 false true
 false false
 === hidden
+2 1 2
+2 4
+2 1 2
+4 2
+2 1 2
+-4 -2
+2 1 2
+-2 -4
+3 2 2
+-3 9 -1
+2 1 0
+-3 -3
+1 2 4
+-3
+6 0 4
+-5 3 2 5 4 2
+8 1 0
+-8 0 -8 -5 3 1 -8 -8
+2 0 4
+6 2
+6 4 3
+-6 2 7 2 -1 3
+2 1 1
+8 7
+6 1 1
+0 -1 4 -2 -6 3
+3 4 0
+2 -4 2
+9 4 2
+-3 5 8 -3 6 -3 -1 -2 6
+7 3 3
+4 -4 6 7 8 -2 1
+4 1 3
+-3 3 1 0
+4 3 3
+3 4 -5 6
+5 3 0
+-1 0 3 -5 3
+---
+false true
+false true
+false true
+false true
+false true
+true true
+false false
+false false
+true true
+false false
+true true
+false true
+false true
+true true
+true true
+false true
+false true
+false true
+true true
+=== hidden
 5 0 0
 -3 -7 -5 5 -1
 9 4 3

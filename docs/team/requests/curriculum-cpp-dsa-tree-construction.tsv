@@ -1,0 +1,2 @@
+# after: cpp-dsa-tree-traversals
+15 Trees	cpp-dsa-tree-construction	Building, Copying and Comparing Trees	Intermediate	Trees from preorder/postorder + inorder, serialize/deserialize codecs, BST from preorder in O(n), Cartesian trees with a monotonic stack, parent links, invert/symmetric, identical and subtree checks with serialization + KMP.
