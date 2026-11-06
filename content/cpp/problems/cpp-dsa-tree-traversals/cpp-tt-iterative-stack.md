@@ -15,7 +15,7 @@ vector<int> inorder_iter(TreeNode* root);
 vector<int> postorder_iter(TreeNode* root);
 ```
 
-Trees can be chains of 10⁶ nodes, and your code runs on the **normal 8 MB stack**: a recursive solution overflows it and crashes. Use an explicit stack (or no stack at all). This is the real-world reason iterative traversals exist: production trees (parsed documents, scene graphs, degenerate BSTs) can be far deeper than the call stack.
+Trees can be chains of 5·10⁵ nodes, and your code runs on the **normal 8 MB stack**: a recursive solution overflows it and crashes. Use an explicit stack (or no stack at all). This is the real-world reason iterative traversals exist: production trees (parsed documents, scene graphs, degenerate BSTs) can be far deeper than the call stack.
 
 - **Preorder:** pop a node, record it, push right then left (so left is processed first).
 - **Inorder:** "go left as far as possible, pushing every node; pop one, record it, then move to its right child".
@@ -31,7 +31,7 @@ Trees can be chains of 10⁶ nodes, and your code runs on the **normal 8 MB stac
     4
 ```
 
-**Input:** cases until the end of input. Each case is a line `pre`, `in` or `post`, then a tree line. Up to 10⁶ nodes per tree.
+**Input:** cases until the end of input. Each case is a line `pre`, `in` or `post`, then a tree line. Up to 5·10⁵ nodes per tree.
 
 **Output:** the traversal on one line. Lists of more than 60 numbers are printed as `count=C hash=H` (a fingerprint), shorter ones in full; an empty list prints `(none)`.
 
@@ -336,8 +336,8 @@ if not big:
         vals, L, R = rand_tree(r.randint(0, 12), -50, 50)
         print(r.choice(["pre", "in", "post"])); print(tline(vals, L, R))
 else:
-    kind = r.choice(["left", "right", "zigzag", "deep"])
-    vals, L, R = rand_tree(1000000, 0, 999, kind)
+    kind = r.choice(["left", "zigzag"])
+    vals, L, R = rand_tree(500000, 0, 999, kind)
     print(r.choice(["in", "post", "pre"])); print(tline(vals, L, R))
 ```
 

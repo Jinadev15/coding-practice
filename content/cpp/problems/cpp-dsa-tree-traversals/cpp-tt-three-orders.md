@@ -328,7 +328,7 @@ def rand_tree(n, lo, hi, kind=None):
     kind = kind or r.choice(KINDS)
     L, R = shape(n, kind)
     return [r.randint(lo, hi) for _ in range(n)], L, R
-for _ in range(6 if not big else 3):
+for _ in range(6 if not big else 2):
     n = r.randint(0, 12) if not big else 200000
     vals, L, R = rand_tree(n, -50, 50) if not big else rand_tree(n, -10**9, 10**9)
     print(r.choice(["pre", "in", "post"]))

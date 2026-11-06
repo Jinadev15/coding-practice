@@ -1,0 +1,2 @@
+# after: cpp-dsa-list-merge
+13 Linked Lists	cpp-dsa-skip-list	Advanced Lists: Skip Lists, XOR Lists, Unrolled Lists	Advanced	Skip lists with probabilistic levels (search, insert, erase, expected O(log n)), indexable skip lists with span widths (rank, k-th), unrolled lists with split and merge, intrusive lists (list_head, container_of), node pools with free lists, XOR doubly linked lists with O(1) reverse, LFU vs LRU caches with O(1) frequency lists.

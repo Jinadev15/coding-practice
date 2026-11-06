@@ -1,0 +1,2 @@
+# after: cpp-dsa-tree-paths
+15 Trees	cpp-dsa-bst	Binary Search Trees	Intermediate	BST property, search/insert, delete (all three cases), validation with bounds, successor/predecessor and k-th smallest, sorted array to balanced BST, BST iterator (amortised O(1)), two-sum with two iterators, range sum and trimming, recovering two swapped nodes.

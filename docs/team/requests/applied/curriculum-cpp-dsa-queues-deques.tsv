@@ -1,0 +1,2 @@
+# after: cpp-dsa-monotonic-stack
+14 Stacks, Queues and Heaps	cpp-dsa-queues-deques	Queues and Deques	Intermediate	Circular-buffer queues, the two-stack queue (amortized O(1)), growable ring-buffer deques, BFS and multi-source BFS, the monotonic deque (sliding window max, two-deque windows), deque-optimised DP, shortest subarray with sum >= K with negatives, round-robin scheduling simulation.

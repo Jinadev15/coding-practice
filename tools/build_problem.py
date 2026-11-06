@@ -113,6 +113,8 @@ def build(spec: Path) -> None:
     meta = dict(l.split(":", 1) for l in s["meta"].splitlines() if ":" in l)
     meta = {k.strip(): v.strip() for k, v in meta.items()}
     pid, topic = meta["id"], meta["topic"]
+    if re.search(r"^```(cpp|c|python)\b", s.get("explanation", ""), re.M):
+        sys.exit(f"[{pid}] the explanation must not contain a code fence: the loader would take it as the solution")
     global FLOAT_MODE, LANG, LIB_CFLAGS, LIB_LDFLAGS
     LANG = meta.get("lang", "cpp")
     LIB_CFLAGS, LIB_LDFLAGS = [], []

@@ -1,0 +1,1 @@
+Trees can be chains of 5·10⁵ nodes, and your code runs on the **normal 8 MB stack**: a recursive solution overflows it and crashes. Use an explicit stack (or no stack at all).

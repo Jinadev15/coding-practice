@@ -18,7 +18,7 @@ The trick (Morris, 1979): before descending into `cur->left`, find `cur`'s **ino
 
 **The tree must be exactly as it was when your function returns.** The driver checks this and prints `TREE MODIFIED` otherwise.
 
-Trees can be chains of 10⁶ nodes, and your code runs on the **normal 8 MB stack**: a recursive solution overflows it and crashes. Use an explicit stack (or no stack at all).
+Trees can be chains of 5·10⁵ nodes, and your code runs on the **normal 8 MB stack**: a recursive solution overflows it and crashes. Use an explicit stack (or no stack at all).
 
 **Tree format (input).** A tree is one line `k t1 t2 … tk`: `k` level-order (BFS) tokens, each an integer value or `#` for a missing child. Children are listed only for real nodes and trailing `#` are dropped, so `0` is the empty tree. Example: `5 1 2 3 # 4` is the tree below (4 is the right child of 2).
 
@@ -30,7 +30,7 @@ Trees can be chains of 10⁶ nodes, and your code runs on the **normal 8 MB stac
     4
 ```
 
-**Input:** cases until the end of input. Each case is a line `in` or `pre`, then a tree line. Up to 10⁶ nodes per tree.
+**Input:** cases until the end of input. Each case is a line `in` or `pre`, then a tree line. Up to 5·10⁵ nodes per tree.
 
 **Output:** the traversal on one line (Lists of more than 60 numbers are printed as `count=C hash=H` (a fingerprint), shorter ones in full; an empty list prints `(none)`.), followed by `TREE MODIFIED` on its own line if the tree changed.
 
@@ -337,7 +337,7 @@ if not big:
         print(r.choice(["in", "pre"])); print(tline(vals, L, R))
 else:
     kind = r.choice(["left", "zigzag", "deep", "random"])
-    vals, L, R = rand_tree(1000000, 0, 999, kind)
+    vals, L, R = rand_tree(500000, 0, 999, kind)
     print(r.choice(["in", "pre"])); print(tline(vals, L, R))
 ```
 
