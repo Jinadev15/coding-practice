@@ -85,3 +85,25 @@ Reuse existing topic ids where they fit (see `content/<lang>/curriculum.csv`). A
 **C specs:** put `lang: c` in the meta section. C17, so POSIX functions need `#define _POSIX_C_SOURCE 200809L` at the top of the starter/solution (not the driver).
 
 **Plans:** `docs/team/plan/<lang>.md` is the authoritative list of topics, statuses and problems. Follow your entries. You may improve a problem idea if it makes it a better exercise, but say so in your report.
+
+## Skills every agent loads first (Skill tool)
+
+Before any work, invoke these skills with the Skill tool and follow them:
+
+| Role | Skills |
+|---|---|
+| All agents | `superpowers:verification-before-completion` (evidence before claiming that anything works) |
+| Authors | `superpowers:test-driven-development` (the brute force and the stress test come first, and the reference must pass them), `superpowers:systematic-debugging` (whenever a build or validation fails), `superpowers:receiving-code-review` (when acting on files in `docs/team/feedback/`) |
+| Reviewer | `superpowers:requesting-code-review`, `caveman:surgical-patch` (smallest correct fix), `superpowers:systematic-debugging` |
+| Web-facing lessons (Python web modules) | read `impeccable` / `ui-ux-pro-max:ui-ux-pro-max` only when a problem involves HTML templates or UI output |
+
+Also read `docs/team/feedback/GUIDELINES.md` (the Reviewer's rules) before writing new content.
+
+## Resource limits on this laptop
+
+The laptop has 16 cores but only about 6 GB of free RAM while the user works.
+
+- **At most 3 agents run at once:** 2 Authors and 1 Reviewer. The Head enforces this.
+- **Validation:** always run `JUDGE_WORKERS=2 python3 tools/validate.py <lang> <problem-id>`, one problem at a time. Never validate a whole language while other agents are running.
+- **Big tests:** keep each generated input ≤ 10⁶ numbers, and reference memory well under 500 MB.
+- **Builds:** don't run more than one `build_problem.py` at a time per agent.
