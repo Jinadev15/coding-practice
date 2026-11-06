@@ -356,7 +356,7 @@ _slots = threading.BoundedSemaphore(int(os.environ.get("JUDGE_WORKERS", max(2, (
 
 def judge(lang: Language, problem: Problem, user_files: dict[str, str], samples_only=False,
           custom_input: str | None = None) -> dict:
-    if not _slots.acquire(timeout=300):
+    if not _slots.acquire(timeout=float(os.environ.get("JUDGE_WAIT", 300))):
         raise RuntimeError("The judge is busy. Please try again in a minute.")
     try:
         return _judge(lang, problem, user_files, samples_only, custom_input)

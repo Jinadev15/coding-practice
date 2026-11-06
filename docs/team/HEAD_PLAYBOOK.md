@@ -104,6 +104,6 @@ Also read `docs/team/feedback/GUIDELINES.md` (the Reviewer's rules) before writi
 The laptop has 16 cores but only about 6 GB of free RAM while the user works.
 
 - **At most 3 agents run at once:** 2 Authors and 1 Reviewer. The Head enforces this.
-- **Validation:** always run `JUDGE_WORKERS=2 python3 tools/validate.py <lang> <problem-id>`, one problem at a time. Never validate a whole language while other agents are running.
+- **Validation:** always run `JUDGE_WORKERS=2 JUDGE_WAIT=100000 python3 tools/validate.py <lang> <problem-id>`, one problem at a time. Never validate a whole language while other agents are running.
 - **Big tests:** keep each generated input ≤ 10⁶ numbers, and reference memory well under 500 MB.
 - **Builds:** don't run more than one `build_problem.py` at a time per agent.
