@@ -2,7 +2,15 @@
 
 A **binary search tree** (BST) keeps its values ordered *in the shape of the tree*. That turns binary search, which on an array needs contiguous sorted storage, into something that also supports fast insertion and deletion. `std::set` and `std::map` are balanced BSTs (red-black trees), and so are the ordered indexes inside many databases, the event queues of simulators and the interval structures of schedulers. This lesson builds BST operations from scratch: search, insert, the three cases of delete, validation, order queries (k-th smallest, successor, predecessor), iterators, two-sum, range queries, trimming, and repairing a corrupted tree.
 
-You need the traversals lesson (especially iterative inorder) and the tree recursion patterns. The node type is the usual `TreeNode { int val; TreeNode *left, *right; }`.
+You need the traversals lesson (especially iterative inorder) and the tree recursion patterns. The node type is the usual one from the traversals lesson. Every code block below assumes it:
+
+```cpp
+struct TreeNode {
+    int val;
+    TreeNode *left, *right;
+    TreeNode(int v, TreeNode* l = nullptr, TreeNode* r = nullptr) : val(v), left(l), right(r) {}
+};
+```
 
 ## 1. The BST property
 

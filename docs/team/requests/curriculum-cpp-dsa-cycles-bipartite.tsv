@@ -1,0 +1,2 @@
+# after: cpp-graphs
+16 Graphs	cpp-dsa-cycles-bipartite	Cycles and Bipartite Graphs	Intermediate	Undirected cycles (DFS with parent edge, union-find), directed cycles with three colours and cycle extraction, eventually safe states, bipartite two-colouring, odd-cycle certificates, parity union-find, girth, deadlock detection in wait-for graphs and by graph reduction.

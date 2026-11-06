@@ -48,7 +48,7 @@ bool has_cycle_undirected(int n, const vector<pair<int,int>>& edges) {
 }
 ```
 
-Skipping the parent **edge id**, not the parent **vertex**, makes parallel edges and self-loops work: a second copy of edge `u–v` has a different id, so it is (correctly) reported as a cycle. For a self-loop, the loop appears twice in `adj[u]` with the same id; the first copy can't be the arrival edge of `u` unless... it can't, because a self-loop never discovers anything, so it is reported. If the input is guaranteed simple, comparing the parent vertex is enough.
+Skipping the parent **edge id**, not the parent **vertex**, makes parallel edges and self-loops work. A second copy of edge `u–v` has a different id, so it is (correctly) reported as a 2-cycle. A self-loop `u–u` is never the edge `u` arrived by, and its other end `u` is already visited, so it is reported as a 1-cycle. If the input is guaranteed simple, comparing the parent vertex is enough.
 
 Since we mark vertices when we *push* them, a vertex discovered by two different neighbours is caught on the second discovery, which is exactly the second route.
 
@@ -279,7 +279,7 @@ For a **directed** graph, the shortest cycle through `s` is `1 + dist(v, s)` min
 
 <details><summary>Answers</summary>
 
-1. Not as a cycle found *now*: everything reachable from `v` has been explored, and `v` cannot reach `u` (if it could, `u` would have been grey when `v` was explored, giving a back edge then, or `u` would be black). So no cycle through this edge has been missed, and the edge cannot close a new one.
+1. No. A cycle through `u → v` needs a path from `v` back to `u`. While `v` was being explored, `u` was either grey (then that path would have ended in a back edge into `u` and the cycle would already have been reported) or white (then `u` would have become a descendant of `v` and finished before `v`, but `u` is still active). Both are impossible, so the edge to a black vertex can be ignored.
 2. Yes. A forest with 3 components on 10 vertices has exactly 7 edges; with 8 edges at least one edge is extra, so a cycle exists.
 3. BFS layers mean any edge joins depths differing by at most 1. Depths that differ by exactly 1 have different parity, so a same-parity (same-colour) edge must join equal depths.
 4. Their known relation is `1 ^ 0 = 1` (different teams), but the constraint says 0 (same). It's a contradiction: the constraint is the first conflict.

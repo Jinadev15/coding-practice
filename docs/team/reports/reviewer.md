@@ -37,7 +37,7 @@
    - Four survivors were out-of-bounds UB mutants: skyline, the sorted-matrix k-th problem, xor-and-balance, and merge-sort's leftover copy. Those aren't test gaps. The judge doesn't run sanitizers.
 3. **Statements.** I read all 121 spec statements, hints and hidden blocks. They are precise, with exact tie-breaks and good edge-case samples. I found no duplicates within a topic.
 4. **MCQs.** I checked all of them.
-   - **Systemic defect:** 146 of 164 answers were `B`, and the correct option was the longest in 132 of 164.
+   - **Bias found:** 146 of 164 answers were `B`, and the correct option was the longest in 132 of 164. The app shuffles options at runtime (`server.py`), so the letter bias is cosmetic, but the length bias still leaks the answer.
    - I rebalanced the answer letters for all 16 topics. I verified that every correct answer still maps to the same text, and remapped the one explanation that names letters.
    - I rewrote 2 duplicate questions (`cpp-hp-03`, `cpp-lt-01`).
    - I added 5 questions (`cpp-ddl-08`, `cpp-ddl-09`, `cpp-dlr-07..09`), so every topic now has at least 8.

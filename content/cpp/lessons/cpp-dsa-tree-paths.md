@@ -4,7 +4,15 @@ Most tree interview questions are secretly the same question: **what should a re
 
 Real systems use exactly these computations. A file system computes directory sizes bottom-up. A robot's kinematic chain accumulates transforms top-down from the base. A network's diameter bounds broadcast latency. Phylogenetic software finds the lowest common ancestor of two species.
 
-You need traversals (previous lessons) and recursion. The node type is the usual `TreeNode { int val; TreeNode *left, *right; }`.
+You need traversals (previous lessons) and recursion. The node type is the usual one from the traversals lesson. Every code block below assumes it:
+
+```cpp
+struct TreeNode {
+    int val;
+    TreeNode *left, *right;
+    TreeNode(int v, TreeNode* l = nullptr, TreeNode* r = nullptr) : val(v), left(l), right(r) {}
+};
+```
 
 ## 1. Two directions of information flow
 
